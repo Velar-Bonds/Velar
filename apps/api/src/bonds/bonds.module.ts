@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { BondsService } from './bonds.service';
+import { BondsController } from './bonds.controller';
+import { AuthModule } from '../auth/auth.module';
+import { AuditModule } from '../audit/audit.module';
+
+@Module({
+  imports: [AuthModule, AuditModule],
+  providers: [BondsService],
+  controllers: [BondsController],
+  exports: [BondsService],
+})
+export class BondsModule {}
