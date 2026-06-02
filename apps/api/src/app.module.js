@@ -41,8 +41,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 var common_1 = require("@nestjs/common");
 var config_1 = require("@nestjs/config");
-var app_controller_1 = require("./app.controller");
-var app_service_1 = require("./app.service");
 var supabase_module_1 = require("./common/supabase/supabase.module");
 var auth_module_1 = require("./auth/auth.module");
 var bonds_module_1 = require("./bonds/bonds.module");
@@ -64,8 +62,6 @@ var AppModule = function () {
                 users_module_1.UsersModule,
                 parties_module_1.PartiesModule,
             ],
-            controllers: [app_controller_1.AppController],
-            providers: [app_service_1.AppService],
         })];
     var _classDescriptor;
     var _classExtraInitializers = [];
@@ -80,4 +76,9 @@ var AppModule = function () {
         var _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
         __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
         AppModule = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: 
+        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+        __runInitializers(_classThis, _classExtraInitializers);
+    })();
+    return AppModule = _classThis;
+}();
+exports.AppModule = AppModule;
