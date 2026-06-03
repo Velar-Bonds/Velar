@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
       if (loginErr) throw loginErr;
-      router.push('/dashboard');
+      router.push('/');
       router.refresh();
     } catch (err: any) {
       setError(err.message ?? 'No se pudo iniciar sesión');
