@@ -3,6 +3,26 @@
 > Documento vivo. Refleja el estado real del backend al revisar el código (no promesas).
 > Dueño: agente de backend. El frontend NO edita esta carpeta — ver `docs/FRONTEND_GUIDE.md`.
 
+## 0. Arquitectura (IMPORTANTE — leer primero)
+
+**El bono ES un token real en Stellar (testnet).** No es un registro que "imita" un token.
+
+- Cada bono = un **activo Stellar único** (cantidad 1, no divisible), emitido por la cuenta plataforma.
+- **Tener el bono = tener ese activo** en la cuenta de custodia del dueño.
+- **Transferir = mover el token**: dueño → cuenta de escrow (la "canasta") → nuevo dueño.
+- **El escrow guarda el TOKEN**, no dinero. El pago es **físico/externo**; solo se registra el hash de su evidencia.
+- La **propiedad y la historia viven en el ledger de Stellar** (verificable en stellar.expert).
+- **Supabase = solo auth** (usuarios, roles, sesión) + índice de lectura para búsquedas rápidas.
+  La fuente de verdad de la propiedad del bono es la blockchain, no Supabase.
+- **Custodia asistida (demo):** el backend maneja las llaves (`.stellar-wallets.json`, gitignored)
+  y firma las transacciones. El usuario no maneja wallets ni dinero.
+
+Servicios clave: `StellarBondService` (emite/mueve/libera el token), `WalletService` (custodia/firma).
+Para verlo funcionar: `docs/DEMO.md` → `npm run demo:flow`.
+
+> Nota histórica: se exploró Trustless Work (escrow de DINERO/USDC) pero se descartó: el caso de
+> VELAR requiere bloquear el TOKEN del bono, no plata. Esa integración fue removida.
+
 ---
 
 ## 1. Qué YA está hecho y funciona

@@ -10,9 +10,14 @@
 
 Plataforma para tokenizar y trazar la propiedad de **bonos comprados a partidos políticos**,
 con auditoría en tiempo real para el **TSE** (Tribunal Supremo de Elecciones de Costa Rica).
-Cada bono es un token digital único; las transferencias pasan por un **escrow** (Trustless Work
-sobre Stellar) que bloquea el token hasta validar el pago. Todo evento crítico queda en un
-registro de auditoría **inmutable**.
+
+**Cada bono es un TOKEN REAL en Stellar (testnet):** un activo único (cantidad 1). Tener el bono
+= tener ese token en la cuenta de custodia del dueño. Las transferencias mueven el token a una
+**cuenta de escrow (la "canasta")** que lo bloquea hasta confirmar el pago (que es **físico/externo**),
+y luego lo libera al nuevo dueño. La propiedad y la historia viven en la **blockchain**.
+**Supabase = solo auth.** Todo evento crítico queda además en un registro de auditoría inmutable.
+
+Para verlo funcionar: `docs/DEMO.md` (`npm run demo:flow`).
 
 ## 1. Stack y estructura (NO lo cambies)
 
