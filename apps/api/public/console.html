@@ -148,8 +148,14 @@ async function onchain(id){
 }
 async function emitBond(){
   try{
-    const body = { bondId:document.getElementById('bondId').value, issuerPartyId:document.getElementById('party').value, initialOwner:document.getElementById('initOwner').value, faceValue:+document.getElementById('faceValue').value, documentHash:'sha256:demo-'+Date.now() };
-    await api('POST','/bonds', body); log('Bono emitido como token on-chain ✅'); loadBonds();
+    const bondId=document.getElementById('bondId').value.trim();
+    const issuerPartyId=document.getElementById('party').value;
+    const initialOwner=document.getElementById('initOwner').value;
+    if(!bondId) return log('Poné un número de bono.', false);
+    if(!issuerPartyId) return log('Elegí un partido.', false);
+    if(!initialOwner) return log('Elegí un dueño inicial (¿entraste como emisor/admin?).', false);
+    await api('POST','/bonds', { bondId, issuerPartyId, initialOwner, faceValue:+document.getElementById('faceValue').value, documentHash:'sha256:demo-'+Date.now() });
+    log('Bono emitido como token on-chain ✅'); loadBonds();
   }catch(e){ log('Emitir: '+e.message, false); }
 }
 async function newTransfer(){

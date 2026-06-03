@@ -33,7 +33,7 @@ export class UsersService {
    * Desbloquea que el frontend use un <select> en vez de pedir UUIDs a mano.
    */
   async listRecipients(actorId: string, actorRole: Role) {
-    const allowed: Role[] = ['comprador', 'recomprador', 'tse', 'admin'];
+    const allowed: Role[] = ['comprador', 'recomprador', 'emisor', 'tse', 'admin'];
     if (!allowed.includes(actorRole)) {
       throw new ForbiddenException('No autorizado para listar destinatarios');
     }
