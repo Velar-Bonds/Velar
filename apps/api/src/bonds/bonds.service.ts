@@ -5,15 +5,20 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { Logger } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { AuditService } from '../audit/audit.service';
+import { StellarBondService } from '../escrow/stellar-bond.service';
 import { RegisterBondInput, BondStatus, Role, AuditEventType } from '@velar/types';
 
 @Injectable()
 export class BondsService {
+  private readonly logger = new Logger(BondsService.name);
+
   constructor(
     private supabase: SupabaseService,
     private audit: AuditService,
+    private stellar: StellarBondService,
   ) {}
 
   async register(input: RegisterBondInput, actorId: string, actorRole: Role) {
@@ -43,11 +48,25 @@ export class BondsService {
     });
 
     if (input.initialOwner) {
+      // Emite el TOKEN del bono on-chain (Stellar testnet) hacia el dueño inicial.
+      let txHash: string | undefined;
+      if (this.stellar.enabled) {
+        const ownerWallet = await this.walletOf(input.initialOwner);
+        if (ownerWallet) {
+          try {
+            const res = await this.stellar.issueBond(data.bond_id, ownerWallet);
+            txHash = res.txHash;
+          } catch (e) {
+            this.logger.warn(`issueBond on-chain falló (sigue en BD): ${(e as Error).message}`);
+          }
+        }
+      }
       await this.audit.emit({
         type: AuditEventType.BOND_ASIGNADO,
         bondTokenId: data.token_id,
         actorId,
         payload: { owner: input.initialOwner },
+        txHash,
       });
     }
     return data;
@@ -104,6 +123,25 @@ export class BondsService {
     if (error) throw new BadRequestException(error.message);
     await this.audit.emit({ type: AuditEventType.BOND_DESCONGELADO, bondTokenId: tokenId, actorId, payload: {} });
     return data;
+  }
+
+  private async walletOf(profileId: string): Promise<string | null> {
+    const { data } = await this.supabase.admin
+      .from('profiles').select('stellar_wallet').eq('id', profileId).single();
+    return data?.stellar_wallet ?? null;
+  }
+
+  /** Dueño actual del bono on-chain + link al activo en el explorador. */
+  async onchainInfo(tokenId: string, actorId: string, actorRole: Role) {
+    const bond = await this.findOne(tokenId, actorId, actorRole);
+    if (!this.stellar.enabled) return { enabled: false };
+    const holder = await this.stellar.currentHolder(bond.bond_id).catch(() => null);
+    return {
+      enabled: true,
+      assetCode: this.stellar.assetCodeFor(bond.bond_id),
+      onchainHolder: holder,
+      assetExplorer: this.stellar.explorerUrl(bond.bond_id),
+    };
   }
 
   static hashDocument(content: string): string {

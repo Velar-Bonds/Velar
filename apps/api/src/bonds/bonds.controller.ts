@@ -24,6 +24,11 @@ export class BondsController {
     return this.bonds.findOne(tokenId, user.id, user.profile?.role as Role);
   }
 
+  @Get(':tokenId/onchain')
+  onchain(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
+    return this.bonds.onchainInfo(tokenId, user.id, user.profile?.role as Role);
+  }
+
   @Patch(':tokenId/freeze')
   freeze(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.freeze(tokenId, user.id, user.profile?.role as Role);

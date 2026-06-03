@@ -4,7 +4,7 @@ import {
 import * as crypto from 'crypto';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { AuditService } from '../audit/audit.service';
-import { EscrowService } from '../escrow/escrow.service';
+import { StellarBondService } from '../escrow/stellar-bond.service';
 import {
   AuditEventType, BondStatus, NON_TRANSFERABLE_STATUSES,
   RequestTransferInput, Role, TransferStatus,
@@ -17,7 +17,7 @@ export class TransfersService {
   constructor(
     private supabase: SupabaseService,
     private audit: AuditService,
-    private escrow: EscrowService,
+    private stellar: StellarBondService,
   ) {}
 
   private async getBond(tokenId: string) {
@@ -30,14 +30,6 @@ export class TransfersService {
   private async walletOf(profileId: string): Promise<string | null> {
     const { data } = await this.supabase.admin
       .from('profiles').select('stellar_wallet').eq('id', profileId).single();
-    return data?.stellar_wallet ?? null;
-  }
-
-  /** Wallet de un validador (approver/releaseSigner del escrow). */
-  private async validadorWallet(): Promise<string | null> {
-    const { data } = await this.supabase.admin
-      .from('profiles').select('stellar_wallet')
-      .eq('role', 'validador').not('stellar_wallet', 'is', null).limit(1).maybeSingle();
     return data?.stellar_wallet ?? null;
   }
 
@@ -67,36 +59,22 @@ export class TransfersService {
     await this.supabase.admin.from('transfers').update({ status: TransferStatus.ACEPTADA }).eq('id', transferId);
     await this.supabase.admin.from('bonds').update({ status: BondStatus.EN_ESCROW }).eq('token_id', transfer.bond_token_id);
 
-    const [fromWallet, toWallet, approver] = await Promise.all([
-      this.walletOf(transfer.from_owner),
-      this.walletOf(transfer.to_owner),
-      this.validadorWallet(),
-    ]);
-
-    let escrowContractId: string | undefined;
+    // Mueve el TOKEN del bono a la canasta de escrow on-chain (queda bloqueado).
+    const bond = await this.getBond(transfer.bond_token_id);
+    const fromWallet = await this.walletOf(transfer.from_owner);
     let txHash: string | undefined;
-
-    // Despliega el escrow real on-chain (single-release sobre Stellar testnet).
-    // serviceProvider/receiver = vendedor (dueño actual); approver/releaseSigner = validador.
-    if (this.escrow.enabled && fromWallet && toWallet && approver) {
+    if (this.stellar.enabled && fromWallet) {
       try {
-        const res = await this.escrow.initEscrow({
-          transferId, bondTokenId: transfer.bond_token_id,
-          seller: fromWallet, buyer: toWallet,
-          approver, amount: transfer.amount ?? 0,
-          title: `VELAR Bond Transfer ${transfer.bond_token_id}`,
-        });
-        escrowContractId = res.contractId;
-        txHash = res.txHash;
+        txHash = await this.stellar.lockInEscrow(bond.bond_id, fromWallet);
       } catch (e) {
-        this.logger.warn(`initEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
+        this.logger.warn(`lockInEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
       }
     }
 
     const { data: updated } = await this.supabase.admin
-      .from('transfers').update({ status: TransferStatus.EN_ESCROW, escrow_contract_id: escrowContractId ?? null }).eq('id', transferId).select().single();
+      .from('transfers').update({ status: TransferStatus.EN_ESCROW }).eq('id', transferId).select().single();
 
-    await this.audit.emit({ type: AuditEventType.ESCROW_BLOQUEADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { escrowContractId }, txHash });
+    await this.audit.emit({ type: AuditEventType.ESCROW_BLOQUEADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { canasta: 'escrow' }, txHash });
     return updated;
   }
 
@@ -106,22 +84,9 @@ export class TransfersService {
     if (transfer.to_owner !== actorId) throw new ForbiddenException();
     if (transfer.status !== TransferStatus.EN_ESCROW) throw new BadRequestException('Transfer must be in EN_ESCROW state');
 
+    // El pago es FÍSICO (fuera del sistema): solo registramos el hash de su evidencia.
+    // El token sigue bloqueado en la canasta hasta que el validador confirme.
     const evidenceHash = crypto.createHash('sha256').update(evidenceContent).digest('hex');
-
-    // On-chain: el comprador (buyer) fondea el escrow con USDC y el vendedor
-    // (serviceProvider) marca el hito como completado con la evidencia.
-    if (this.escrow.enabled && transfer.escrow_contract_id) {
-      const [buyerWallet, sellerWallet] = await Promise.all([
-        this.walletOf(transfer.to_owner),
-        this.walletOf(transfer.from_owner),
-      ]);
-      try {
-        if (buyerWallet) await this.escrow.fundEscrow(transfer.escrow_contract_id, buyerWallet, transfer.amount ?? 0);
-        if (sellerWallet) await this.escrow.markMilestoneDone(transfer.escrow_contract_id, sellerWallet, evidenceHash);
-      } catch (e) {
-        this.logger.warn(`fund/milestone falló (sigue el flujo en BD): ${(e as Error).message}`);
-      }
-    }
 
     const { data: updated } = await this.supabase.admin
       .from('transfers').update({ status: TransferStatus.PAGO_REGISTRADO, payment_evidence_hash: evidenceHash }).eq('id', transferId).select().single();
@@ -136,16 +101,8 @@ export class TransfersService {
     if (!transfer) throw new NotFoundException();
     if (transfer.status !== TransferStatus.PAGO_REGISTRADO) throw new BadRequestException('Payment not registered yet');
 
-    // On-chain: el approver (validador) aprueba el hito del escrow.
-    if (this.escrow.enabled && transfer.escrow_contract_id) {
-      const approver = await this.validadorWallet();
-      try {
-        if (approver) await this.escrow.approveMilestone(transfer.escrow_contract_id, approver);
-      } catch (e) {
-        this.logger.warn(`approveMilestone falló (sigue el flujo en BD): ${(e as Error).message}`);
-      }
-    }
-
+    // El validador confirma el pago físico. El token aún no se mueve: se libera
+    // en el paso "release". (No hay dinero on-chain; solo se mueve el token del bono.)
     const { data: updated } = await this.supabase.admin
       .from('transfers').update({ status: TransferStatus.PAGO_VALIDADO, validated_by: actorId }).eq('id', transferId).select().single();
     await this.audit.emit({ type: AuditEventType.PAGO_VALIDADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: {} });
@@ -158,17 +115,15 @@ export class TransfersService {
     if (!transfer) throw new NotFoundException();
     if (transfer.status !== TransferStatus.PAGO_VALIDADO) throw new BadRequestException('Payment must be validated before releasing');
 
-    // On-chain: el releaseSigner (validador) libera los fondos al vendedor.
+    // On-chain: libera el TOKEN del bono de la canasta hacia el nuevo dueño.
     let txHash: string | undefined;
-    if (this.escrow.enabled && transfer.escrow_contract_id) {
+    const bond = await this.getBond(transfer.bond_token_id);
+    const toWallet = await this.walletOf(transfer.to_owner);
+    if (this.stellar.enabled && toWallet) {
       try {
-        const releaseSigner = await this.validadorWallet();
-        if (releaseSigner) {
-          const result = await this.escrow.releaseEscrow(transfer.escrow_contract_id, releaseSigner);
-          txHash = result?.txHash;
-        }
+        txHash = await this.stellar.releaseFromEscrow(bond.bond_id, toWallet);
       } catch (e) {
-        this.logger.warn(`releaseEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
+        this.logger.warn(`releaseFromEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
       }
     }
 

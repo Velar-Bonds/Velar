@@ -3,9 +3,10 @@ import { BondsService } from './bonds.service';
 import { BondsController } from './bonds.controller';
 import { AuthModule } from '../auth/auth.module';
 import { AuditModule } from '../audit/audit.module';
+import { EscrowModule } from '../escrow/escrow.module';
 
 @Module({
-  imports: [AuthModule, AuditModule],
+  imports: [AuthModule, AuditModule, EscrowModule],
   providers: [BondsService],
   controllers: [BondsController],
   exports: [BondsService],

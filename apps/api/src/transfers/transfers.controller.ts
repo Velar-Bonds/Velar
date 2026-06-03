@@ -30,10 +30,10 @@ export class TransfersController {
   @Patch(':id/payment')
   registerPayment(
     @Param('id') id: string,
-    @Body() body: { evidenceContent: string },
+    @Body() body: { evidence?: string; evidenceContent?: string },
     @CurrentUser() user: any,
   ) {
-    return this.transfers.registerPayment(id, body.evidenceContent, user.id);
+    return this.transfers.registerPayment(id, body.evidence ?? body.evidenceContent ?? '', user.id);
   }
 
   @Patch(':id/validate')
