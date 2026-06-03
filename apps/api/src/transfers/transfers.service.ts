@@ -1,5 +1,5 @@
 import {
-  Injectable, BadRequestException, ForbiddenException, NotFoundException,
+  Injectable, BadRequestException, ForbiddenException, NotFoundException, Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { SupabaseService } from '../common/supabase/supabase.service';
@@ -12,6 +12,8 @@ import {
 
 @Injectable()
 export class TransfersService {
+  private readonly logger = new Logger(TransfersService.name);
+
   constructor(
     private supabase: SupabaseService,
     private audit: AuditService,
@@ -23,6 +25,20 @@ export class TransfersService {
       .from('bonds').select('*').eq('token_id', tokenId).single();
     if (error || !data) throw new NotFoundException('Bond not found');
     return data;
+  }
+
+  private async walletOf(profileId: string): Promise<string | null> {
+    const { data } = await this.supabase.admin
+      .from('profiles').select('stellar_wallet').eq('id', profileId).single();
+    return data?.stellar_wallet ?? null;
+  }
+
+  /** Wallet de un validador (approver/releaseSigner del escrow). */
+  private async validadorWallet(): Promise<string | null> {
+    const { data } = await this.supabase.admin
+      .from('profiles').select('stellar_wallet')
+      .eq('role', 'validador').not('stellar_wallet', 'is', null).limit(1).maybeSingle();
+    return data?.stellar_wallet ?? null;
   }
 
   async requestTransfer(input: RequestTransferInput, actorId: string) {
@@ -51,25 +67,30 @@ export class TransfersService {
     await this.supabase.admin.from('transfers').update({ status: TransferStatus.ACEPTADA }).eq('id', transferId);
     await this.supabase.admin.from('bonds').update({ status: BondStatus.EN_ESCROW }).eq('token_id', transfer.bond_token_id);
 
-    const [{ data: fromProfile }, { data: toProfile }] = await Promise.all([
-      this.supabase.admin.from('profiles').select('stellar_wallet').eq('id', transfer.from_owner).single(),
-      this.supabase.admin.from('profiles').select('stellar_wallet').eq('id', transfer.to_owner).single(),
+    const [fromWallet, toWallet, approver] = await Promise.all([
+      this.walletOf(transfer.from_owner),
+      this.walletOf(transfer.to_owner),
+      this.validadorWallet(),
     ]);
 
     let escrowContractId: string | undefined;
     let txHash: string | undefined;
 
-    if (fromProfile?.stellar_wallet && toProfile?.stellar_wallet) {
+    // Despliega el escrow real on-chain (single-release sobre Stellar testnet).
+    // serviceProvider/receiver = vendedor (dueño actual); approver/releaseSigner = validador.
+    if (this.escrow.enabled && fromWallet && toWallet && approver) {
       try {
         const res = await this.escrow.initEscrow({
           transferId, bondTokenId: transfer.bond_token_id,
-          seller: fromProfile.stellar_wallet, buyer: toProfile.stellar_wallet,
-          approver: toProfile.stellar_wallet, amount: transfer.amount ?? 0,
+          seller: fromWallet, buyer: toWallet,
+          approver, amount: transfer.amount ?? 0,
           title: `VELAR Bond Transfer ${transfer.bond_token_id}`,
         });
         escrowContractId = res.contractId;
-        txHash = res.unsignedTransaction;
-      } catch { /* non-fatal */ }
+        txHash = res.txHash;
+      } catch (e) {
+        this.logger.warn(`initEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
+      }
     }
 
     const { data: updated } = await this.supabase.admin
@@ -86,6 +107,22 @@ export class TransfersService {
     if (transfer.status !== TransferStatus.EN_ESCROW) throw new BadRequestException('Transfer must be in EN_ESCROW state');
 
     const evidenceHash = crypto.createHash('sha256').update(evidenceContent).digest('hex');
+
+    // On-chain: el comprador (buyer) fondea el escrow con USDC y el vendedor
+    // (serviceProvider) marca el hito como completado con la evidencia.
+    if (this.escrow.enabled && transfer.escrow_contract_id) {
+      const [buyerWallet, sellerWallet] = await Promise.all([
+        this.walletOf(transfer.to_owner),
+        this.walletOf(transfer.from_owner),
+      ]);
+      try {
+        if (buyerWallet) await this.escrow.fundEscrow(transfer.escrow_contract_id, buyerWallet, transfer.amount ?? 0);
+        if (sellerWallet) await this.escrow.markMilestoneDone(transfer.escrow_contract_id, sellerWallet, evidenceHash);
+      } catch (e) {
+        this.logger.warn(`fund/milestone falló (sigue el flujo en BD): ${(e as Error).message}`);
+      }
+    }
+
     const { data: updated } = await this.supabase.admin
       .from('transfers').update({ status: TransferStatus.PAGO_REGISTRADO, payment_evidence_hash: evidenceHash }).eq('id', transferId).select().single();
 
@@ -99,6 +136,16 @@ export class TransfersService {
     if (!transfer) throw new NotFoundException();
     if (transfer.status !== TransferStatus.PAGO_REGISTRADO) throw new BadRequestException('Payment not registered yet');
 
+    // On-chain: el approver (validador) aprueba el hito del escrow.
+    if (this.escrow.enabled && transfer.escrow_contract_id) {
+      const approver = await this.validadorWallet();
+      try {
+        if (approver) await this.escrow.approveMilestone(transfer.escrow_contract_id, approver);
+      } catch (e) {
+        this.logger.warn(`approveMilestone falló (sigue el flujo en BD): ${(e as Error).message}`);
+      }
+    }
+
     const { data: updated } = await this.supabase.admin
       .from('transfers').update({ status: TransferStatus.PAGO_VALIDADO, validated_by: actorId }).eq('id', transferId).select().single();
     await this.audit.emit({ type: AuditEventType.PAGO_VALIDADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: {} });
@@ -111,15 +158,18 @@ export class TransfersService {
     if (!transfer) throw new NotFoundException();
     if (transfer.status !== TransferStatus.PAGO_VALIDADO) throw new BadRequestException('Payment must be validated before releasing');
 
+    // On-chain: el releaseSigner (validador) libera los fondos al vendedor.
     let txHash: string | undefined;
-    if (transfer.escrow_contract_id) {
+    if (this.escrow.enabled && transfer.escrow_contract_id) {
       try {
-        const { data: profile } = await this.supabase.admin.from('profiles').select('stellar_wallet').eq('id', actorId).single();
-        if (profile?.stellar_wallet) {
-          const result = await this.escrow.releaseEscrow(transfer.escrow_contract_id, profile.stellar_wallet);
+        const releaseSigner = await this.validadorWallet();
+        if (releaseSigner) {
+          const result = await this.escrow.releaseEscrow(transfer.escrow_contract_id, releaseSigner);
           txHash = result?.txHash;
         }
-      } catch { /* non-fatal */ }
+      } catch (e) {
+        this.logger.warn(`releaseEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
+      }
     }
 
     await Promise.all([
