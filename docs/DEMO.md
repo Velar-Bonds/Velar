@@ -33,14 +33,26 @@ npm run seed                # 6 usuarios por rol + bonos + transferencias demo
 
 ---
 
-## 2. La forma más rápida de ver que TODO funciona
+## 1.b Consola web sin login manual (recomendado)
+
+Con la API corriendo (`npm run start`), abrí:
+```
+http://localhost:3001/api/console
+```
+Botones de un clic para entrar como **🏛️ TSE**, **🎗️ Partido (PLN)**, **👤 Usuario A** o **👤 Usuario B**.
+Flujo: TSE emite a un partido → Usuario solicita comprar → el dueño Acepta (token a la canasta) →
+Usuario "Registré el pago" → el vendedor "Confirmar pago y liberar" → el bono cambia de dueño on-chain.
+El botón "ver en Stellar" abre la transacción real en stellar.expert.
+
+## 2. La forma más rápida de ver que TODO funciona (CLI)
 
 Con la API corriendo, un solo comando ejecuta el ciclo completo y te da el link a la blockchain:
 
 ```bash
 cd apps/api
 npm run start            # en una terminal (deja corriendo)
-npm run demo:flow        # en otra terminal
+npm run demo:flow        # en otra terminal — flujo con cuentas sembradas
+npm run demo:register    # registra un partido y un usuario NUEVOS y corre el flujo
 ```
 
 Vas a ver paso a paso cómo el **token del bono** se mueve:
