@@ -1,14 +1,16 @@
 'use client';
 import { useState } from 'react';
-import { createClient } from '../../lib/supabase/client';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { createClient } from '../../lib/supabase/client';
+import { AuthBranding } from '../../components/AuthBranding';
+import { SocialButtons, Divider, Field, MailIcon, LockIcon, inputClass } from '../../components/AuthUI';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState('comprador');
+  const [showPass, setShowPass] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -19,79 +21,71 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      if (isSignUp) {
-        const { error: signUpErr } = await supabase.auth.signUp({
-          email, password,
-          options: { data: { full_name: fullName, role } },
-        });
-        if (signUpErr) throw signUpErr;
-        setError('Revisá tu email para confirmar la cuenta.');
-      } else {
-        const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (loginErr) throw loginErr;
-        router.push('/dashboard');
-        router.refresh();
-      }
+      const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginErr) throw loginErr;
+      router.push('/dashboard');
+      router.refresh();
     } catch (err: any) {
-      setError(err.message ?? 'Error al autenticar');
+      setError(err.message ?? 'No se pudo iniciar sesión');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-950 to-blue-800">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-blue-900">VELAR</h1>
-          <p className="text-gray-500 text-sm mt-1">Trazabilidad de Bonos Políticos</p>
-        </div>
+    <div className="min-h-screen w-full bg-gradient-to-br from-[#E9F0FF] via-[#F2F5FF] to-white">
+      <div className="mx-auto grid min-h-screen max-w-[1400px] grid-cols-1 lg:grid-cols-2">
+        <AuthBranding />
 
-        <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-6">
-          <button className={`flex-1 py-2 text-sm font-medium transition ${!isSignUp ? 'bg-blue-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-            onClick={() => setIsSignUp(false)} type="button">Ingresar</button>
-          <button className={`flex-1 py-2 text-sm font-medium transition ${isSignUp ? 'bg-blue-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-            onClick={() => setIsSignUp(true)} type="button">Registrarse</button>
-        </div>
+        <div className="flex items-center justify-center p-6 lg:p-10">
+          <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_20px_60px_-20px_rgba(37,99,235,0.25)] sm:p-10">
+            <h2 className="text-center text-3xl font-extrabold text-[#1E293B]">Iniciar sesión</h2>
+            <p className="mt-1.5 text-center text-sm text-slate-500">Accede a tu cuenta para continuar.</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {isSignUp && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
-                <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p className="mt-7 mb-3 text-sm font-medium text-[#1E293B]">Continuar con</p>
+            <SocialButtons />
+            <Divider text="O continúa con correo" />
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Field label="Correo electrónico" icon={MailIcon}>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@correo.com" className={inputClass} />
+              </Field>
+
+              <Field label="Contraseña" icon={LockIcon}>
+                <input type={showPass ? 'text' : 'password'} required value={password}
+                  onChange={(e) => setPassword(e.target.value)} placeholder="Ingresa tu contraseña"
+                  className={inputClass + ' pr-11'} />
+                <button type="button" onClick={() => setShowPass((s) => !s)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" aria-label="Mostrar contraseña">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                </button>
+              </Field>
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 text-slate-600">
+                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-[#2563EB] accent-[#2563EB]" />
+                  Recordarme
+                </label>
+                <a href="#" className="font-medium text-[#2563EB] hover:underline">¿Olvidaste tu contraseña?</a>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                <select value={role} onChange={e => setRole(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="comprador">Comprador</option>
-                  <option value="recomprador">Recomprador</option>
-                  <option value="emisor">Emisor (Partido)</option>
-                  <option value="validador">Validador de Pago</option>
-                  <option value="tse">TSE</option>
-                  <option value="admin">Administrador</option>
-                </select>
-              </div>
-            </>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
+              {error && <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+
+              <button type="submit" disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-3.5 text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:opacity-60">
+                {loading ? 'Iniciando…' : 'Iniciar sesión'}
+                {!loading && <span aria-hidden>→</span>}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-slate-600">
+              ¿No tienes cuenta?{' '}
+              <Link href="/signup" className="font-semibold text-[#2563EB] hover:underline">Crear cuenta</Link>
+            </p>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          {error && <div className={`rounded-lg px-3 py-2 text-sm ${error.includes('email') ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>{error}</div>}
-          <button type="submit" disabled={loading}
-            className="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg transition disabled:opacity-50">
-            {loading ? 'Procesando...' : isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   );
