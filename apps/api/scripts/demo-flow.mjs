@@ -1,14 +1,10 @@
 // ============================================================
 // VELAR — Demo del flujo completo (el bono como token Stellar)
 // ============================================================
-// Emite un bono NUEVO como token real en Stellar testnet y corre todo el
-// ciclo vía la API: emisión → transferencia → canasta(escrow) → pago →
-// validación → liberación. Muestra el dueño on-chain en cada paso y los
-// links al explorador público (stellar.expert).
-//
-// Requisitos: API corriendo (npm run start) + wallets provisionadas
-//   (npm run provision:wallets) + datos demo (npm run seed).
-// Uso:  npm run demo:flow
+// Flujo nuevo: la AUTORIDAD (TSE) emite el bono a un usuario; otro usuario
+// SOLICITA comprarlo; el DUEÑO acepta (token a la canasta); el comprador
+// registra el pago; el VENDEDOR confirma y se libera el token al comprador.
+// Uso:  npm run demo:flow   (con la API corriendo: npm run start)
 // ============================================================
 import w from '../.stellar-wallets.json' with { type: 'json' };
 
@@ -38,47 +34,40 @@ const tag = (addr) => {
   return addr ? addr.slice(0, 6) + '…' : '(nadie)';
 };
 
-console.log('🔑 Iniciando sesión como cada rol…');
-const [tEmisor, tComprador, tRecomprador, tValidador, tTse] = await Promise.all([
-  login('emisor@velar.cr'), login('comprador@velar.cr'),
-  login('recomprador@velar.cr'), login('validador@velar.cr'), login('tse@velar.cr'),
+console.log('🔑 Iniciando sesión…  (TSE = autoridad; comprador y recomprador = usuarios)');
+const [tTse, tComprador, tRecomprador] = await Promise.all([
+  login('tse@velar.cr'), login('comprador@velar.cr'), login('recomprador@velar.cr'),
 ]);
-
 const meComprador = await api('GET', '/users/me', tComprador);
-const meRecomprador = await api('GET', '/users/me', tRecomprador);
-const parties = await api('GET', '/parties', tEmisor);
+const parties = await api('GET', '/parties', tTse);
 const pln = parties.find((p) => p.code === 'PLN');
 
 const bondId = 'DEMO' + Date.now().toString().slice(-6);
-console.log(`\n① EMISOR emite el bono ${bondId} como TOKEN en Stellar → COMPRADOR`);
-const bond = await api('POST', '/bonds', tEmisor, {
-  bondId, issuerPartyId: pln.id, documentHash: 'sha256:demo-doc', faceValue: 1000000,
-  initialOwner: meComprador.id,
+console.log(`\n① AUTORIDAD (TSE) emite el bono ${bondId} [partido ${pln.code}] → USUARIO comprador`);
+const bond = await api('POST', '/bonds', tTse, {
+  bondId, issuerPartyId: pln.id, documentHash: 'sha256:demo', faceValue: 1000000, initialOwner: meComprador.id,
 });
 const id = bond.token_id;
 let oc = await api('GET', `/bonds/${id}/onchain`, tTse);
 console.log(`   dueño on-chain: ${tag(oc.onchainHolder)}`);
 
-console.log(`\n② COMPRADOR solicita transferir el bono → RECOMPRADOR`);
-const t = await api('POST', '/transfers', tComprador, { bondTokenId: id, toOwner: meRecomprador.id, amount: 950000 });
+console.log(`\n② USUARIO recomprador VE el bono disponible y SOLICITA comprarlo`);
+const available = await api('GET', '/bonds/available', tRecomprador);
+console.log(`   bonos disponibles para el recomprador: ${available.length}`);
+const t = await api('POST', '/transfers', tRecomprador, { bondTokenId: id, amount: 950000 });
 
-console.log(`③ RECOMPRADOR acepta → el TOKEN entra a la CANASTA (escrow) 🔒`);
-await api('PATCH', `/transfers/${t.id}/accept`, tRecomprador);
+console.log(`③ El DUEÑO (comprador) acepta vender → el token entra a la CANASTA 🔒`);
+await api('PATCH', `/transfers/${t.id}/accept`, tComprador);
 oc = await api('GET', `/bonds/${id}/onchain`, tTse);
 console.log(`   dueño on-chain: ${tag(oc.onchainHolder)}`);
 
-console.log(`④ RECOMPRADOR registra el pago físico (se guarda el hash de la evidencia)`);
-await api('PATCH', `/transfers/${t.id}/payment`, tRecomprador, { evidence: 'comprobante-banco-0001' });
+console.log(`④ El COMPRADOR (recomprador) registra el pago físico`);
+await api('PATCH', `/transfers/${t.id}/payment`, tRecomprador, { evidence: 'comprobante-0001' });
 
-console.log(`⑤ VALIDADOR confirma el pago`);
-await api('PATCH', `/transfers/${t.id}/validate`, tValidador);
-
-console.log(`⑥ VALIDADOR libera → el TOKEN sale de la canasta → RECOMPRADOR`);
-await api('PATCH', `/transfers/${t.id}/release`, tValidador);
+console.log(`⑤ El VENDEDOR (comprador) confirma el pago → libera el token al comprador`);
+await api('PATCH', `/transfers/${t.id}/release`, tComprador);
 oc = await api('GET', `/bonds/${id}/onchain`, tTse);
 console.log(`   dueño on-chain: ${tag(oc.onchainHolder)}`);
 
-console.log(`\n✅ LISTO. El token del bono viajó: COMPRADOR → CANASTA → RECOMPRADOR (todo en blockchain).`);
-console.log(`\n🔗 Vé el bono en la blockchain pública:`);
-console.log(`   ${oc.assetExplorer}`);
-console.log(`\n   (En esa página vas a ver el activo del bono y TODAS sus transacciones reales.)`);
+console.log(`\n✅ LISTO. El bono pasó del primer dueño al recomprador, con el token viajando por la canasta.`);
+console.log(`🔗 Vé el bono en la blockchain pública:\n   ${oc.assetExplorer}`);

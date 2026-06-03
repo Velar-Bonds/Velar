@@ -19,6 +19,11 @@ export class BondsController {
     return this.bonds.findAll(user.id, user.profile?.role as Role);
   }
 
+  @Get('available')
+  findAvailable(@CurrentUser() user: any) {
+    return this.bonds.findAvailable(user.id);
+  }
+
   @Get(':tokenId')
   findOne(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.findOne(tokenId, user.id, user.profile?.role as Role);

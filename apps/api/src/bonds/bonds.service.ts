@@ -11,6 +11,9 @@ import { AuditService } from '../audit/audit.service';
 import { StellarBondService } from '../escrow/stellar-bond.service';
 import { RegisterBondInput, BondStatus, Role, AuditEventType } from '@velar/types';
 
+/** Roles de AUTORIDAD: emiten bonos y ven todo. TSE = admin = emisor (misma perspectiva). */
+export const AUTHORITY: Role[] = ['tse', 'admin', 'emisor'];
+
 @Injectable()
 export class BondsService {
   private readonly logger = new Logger(BondsService.name);
@@ -22,8 +25,9 @@ export class BondsService {
   ) {}
 
   async register(input: RegisterBondInput, actorId: string, actorRole: Role) {
-    if (!['emisor', 'admin'].includes(actorRole)) {
-      throw new ForbiddenException('Only EMISOR or ADMIN can register bonds');
+    // La AUTORIDAD (TSE = admin = emisor) emite los bonos.
+    if (!AUTHORITY.includes(actorRole)) {
+      throw new ForbiddenException('Solo la autoridad (TSE) puede emitir bonos');
     }
     const { data, error } = await this.supabase.admin
       .from('bonds')
@@ -83,19 +87,23 @@ export class BondsService {
       .select('*, parties(*), profiles!bonds_current_owner_fkey(id, full_name, email)')
       .order('created_at', { ascending: false });
 
-    if (!['tse', 'admin'].includes(actorRole)) {
-      if (actorRole === 'comprador' || actorRole === 'recomprador') {
-        q = q.eq('current_owner', actorId);
-      } else if (actorRole === 'emisor') {
-        const { data: profile } = await this.supabase.admin
-          .from('profiles')
-          .select('party_id')
-          .eq('id', actorId)
-          .single();
-        if (profile?.party_id) q = q.eq('issuer_party_id', profile.party_id);
-      }
+    // La autoridad ve TODO; un usuario ve solo los bonos que posee.
+    if (!AUTHORITY.includes(actorRole)) {
+      q = q.eq('current_owner', actorId);
     }
     const { data } = await q;
+    return data ?? [];
+  }
+
+  /** Vitrina: bonos disponibles para que un usuario solicite comprar (de otros dueños). */
+  async findAvailable(actorId: string) {
+    const { data } = await this.supabase.admin
+      .from('bonds')
+      .select('*, parties(*), profiles!bonds_current_owner_fkey(id, full_name, email)')
+      .eq('status', BondStatus.ACTIVO)
+      .not('current_owner', 'is', null)
+      .neq('current_owner', actorId)
+      .order('created_at', { ascending: false });
     return data ?? [];
   }
 
@@ -106,8 +114,10 @@ export class BondsService {
       .eq('token_id', tokenId)
       .single();
     if (error || !data) throw new NotFoundException('Bond not found');
-    if (!['tse', 'admin'].includes(actorRole)) {
-      if (data.current_owner !== actorId) throw new ForbiddenException();
+    // Autoridad ve cualquiera; un usuario ve los suyos o los disponibles (activos de otros).
+    if (!AUTHORITY.includes(actorRole)) {
+      const visible = data.current_owner === actorId || data.status === BondStatus.ACTIVO;
+      if (!visible) throw new ForbiddenException();
     }
     return data;
   }

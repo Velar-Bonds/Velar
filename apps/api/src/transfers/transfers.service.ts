@@ -33,27 +33,37 @@ export class TransfersService {
     return data?.stellar_wallet ?? null;
   }
 
+  // El COMPRADOR solicita comprar un bono a su dueño actual (modelo "vitrina").
   async requestTransfer(input: RequestTransferInput, actorId: string) {
     const bond = await this.getBond(input.bondTokenId);
-    if (bond.current_owner !== actorId) throw new ForbiddenException('Only the current owner can initiate a transfer');
+    if (!bond.current_owner) throw new BadRequestException('El bono no tiene dueño asignado');
+    if (bond.current_owner === actorId) throw new BadRequestException('No podés solicitar comprar tu propio bono');
     if (NON_TRANSFERABLE_STATUSES.includes(bond.status)) {
-      throw new BadRequestException(`Bond status "${bond.status}" does not allow transfers`);
+      throw new BadRequestException(`El bono está "${bond.status}" y no se puede solicitar ahora`);
     }
+    // Evitar dos solicitudes abiertas sobre el mismo bono.
+    const { data: open } = await this.supabase.admin
+      .from('transfers').select('id')
+      .eq('bond_token_id', input.bondTokenId)
+      .in('status', ['solicitada', 'aceptada', 'en_escrow', 'pago_registrado', 'pago_validado'])
+      .limit(1).maybeSingle();
+    if (open) throw new BadRequestException('Ya hay una solicitud en curso para este bono');
 
     const { data: transfer, error } = await this.supabase.admin
       .from('transfers')
-      .insert({ bond_token_id: input.bondTokenId, from_owner: actorId, to_owner: input.toOwner, status: TransferStatus.SOLICITADA, amount: input.amount ?? null })
+      .insert({ bond_token_id: input.bondTokenId, from_owner: bond.current_owner, to_owner: actorId, status: TransferStatus.SOLICITADA, amount: input.amount ?? null })
       .select().single();
     if (error) throw new BadRequestException(error.message);
 
-    await this.audit.emit({ type: AuditEventType.TRANSFER_SOLICITADA, bondTokenId: input.bondTokenId, transferId: transfer.id, actorId, payload: { toOwner: input.toOwner, amount: input.amount } });
+    await this.audit.emit({ type: AuditEventType.TRANSFER_SOLICITADA, bondTokenId: input.bondTokenId, transferId: transfer.id, actorId, payload: { buyer: actorId, seller: bond.current_owner, amount: input.amount } });
     return transfer;
   }
 
+  // El DUEÑO (vendedor) acepta la solicitud → el token entra a la canasta.
   async acceptTransfer(transferId: string, actorId: string) {
     const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
     if (!transfer) throw new NotFoundException('Transfer not found');
-    if (transfer.to_owner !== actorId) throw new ForbiddenException('Not the intended buyer');
+    if (transfer.from_owner !== actorId) throw new ForbiddenException('Solo el dueño del bono puede aceptar la venta');
     if (transfer.status !== TransferStatus.SOLICITADA) throw new BadRequestException('Transfer not in SOLICITADA state');
 
     await this.supabase.admin.from('transfers').update({ status: TransferStatus.ACEPTADA }).eq('id', transferId);
@@ -109,11 +119,15 @@ export class TransfersService {
     return updated;
   }
 
+  // El VENDEDOR (dueño actual) confirma que recibió el pago → libera el token al comprador.
   async releaseToken(transferId: string, actorId: string, actorRole: Role) {
-    if (!['validador', 'tse', 'admin'].includes(actorRole)) throw new ForbiddenException('Only VALIDADOR can release tokens');
     const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
     if (!transfer) throw new NotFoundException();
-    if (transfer.status !== TransferStatus.PAGO_VALIDADO) throw new BadRequestException('Payment must be validated before releasing');
+    const isSeller = transfer.from_owner === actorId;
+    if (!isSeller && !['tse', 'admin'].includes(actorRole)) {
+      throw new ForbiddenException('Solo el vendedor confirma el pago y libera el bono');
+    }
+    if (transfer.status !== TransferStatus.PAGO_REGISTRADO) throw new BadRequestException('El comprador aún no registró el pago');
 
     // On-chain: libera el TOKEN del bono de la canasta hacia el nuevo dueño.
     let txHash: string | undefined;
