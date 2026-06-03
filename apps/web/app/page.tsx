@@ -16,6 +16,7 @@ export default function LandingPage() {
             </div>
             <nav className="hidden space-x-8 md:flex">
               <a className="text-sm font-medium text-primary" href="#">Inicio</a>
+              <Link className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="/dashboard/marketplace">Marketplace</Link>
               <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#proceso">Proceso</a>
               <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#historial">Historial</a>
               <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#historial">Consulta pública</a>

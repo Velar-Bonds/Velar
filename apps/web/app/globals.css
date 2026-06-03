@@ -28,6 +28,9 @@
   --color-inverse-surface: #242f52;
   --color-inverse-on-surface: #eff0ff;
   --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-tertiary-container: #035afd;
+  --color-secondary-fixed: #dbe1ff;
 
   --shadow-glass: 0 8px 32px 0 rgba(0, 71, 193, 0.08);
   --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
