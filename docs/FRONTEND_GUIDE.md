@@ -48,6 +48,17 @@ nuevos en paralelo.
 
 > Todos requieren `Authorization: Bearer <token>` salvo que se indique. Prefijo: `/api`.
 
+### Perspectivas (3)
+- **TSE** (rol `tse`): emite bonos a nombre de un partido; ve todo; puede congelar.
+- **Partido** (rol `emisor`): recibe sus bonos y los vende (acepta solicitudes, confirma pago).
+- **Usuario** (rol `comprador`/`recomprador`, son lo mismo): compra y revende bonos.
+
+### Registro (público, sin token)
+- `POST /auth/register` con body:
+  - Usuario: `{ email, password, perspectiva: "usuario", nombres, apellidos, identificacion, telefono, direccion }`
+  - Partido: `{ email, password, perspectiva: "partido", nombrePartido, codigo, representanteLegal, cedulaJuridica }`
+  - Crea la cuenta + perfil con la info + una wallet de custodia. (El TSE se siembra, no se auto-registra.)
+
 ### Usuarios
 - `GET  /users/me` → perfil del usuario actual (incluye `role`, `party_id`, `stellar_wallet`).
 - `PATCH /users/me` → body `{ full_name?, stellar_wallet? }`.
@@ -70,15 +81,20 @@ nuevos en paralelo.
 - `PATCH /bonds/:tokenId/freeze` (tse/admin) → congela.
 - `PATCH /bonds/:tokenId/unfreeze` (tse/admin) → reactiva.
 
-### Transferencias (flujo principal)
-- `GET   /transfers` → transferencias visibles según rol.
+### Bonos en venta (vitrina)
+- `GET /bonds/available` → bonos `activo` de OTROS dueños, que un usuario puede solicitar comprar.
+
+### Transferencias (flujo principal) — el COMPRADOR inicia
+- `GET   /transfers` → transferencias donde sos vendedor o comprador.
 - `GET   /transfers/:id` → detalle (con bono y perfiles).
-- `POST  /transfers` → `{ bondTokenId, toOwner, amount? }`. Inicia la solicitud (dueño actual).
-- `PATCH /transfers/:id/accept` → el recomprador acepta; el bono pasa a escrow.
-- `PATCH /transfers/:id/payment` → `{ evidence }` (texto/ref); el backend guarda su hash.
-- `PATCH /transfers/:id/validate` → validador confirma el pago.
-- `PATCH /transfers/:id/release` → validador libera el token al nuevo dueño.
-- `PATCH /transfers/:id/cancel` → cancela (vuelve el bono al dueño anterior).
+- `POST  /transfers` → `{ bondTokenId, amount? }`. **El comprador solicita comprar** ese bono
+  (el vendedor = dueño actual se resuelve solo). Estado `solicitada`.
+- `PATCH /transfers/:id/accept` → **el dueño/vendedor acepta** la venta; el token va a la canasta (escrow).
+- `PATCH /transfers/:id/payment` → `{ evidence }`; **el comprador** registra el pago físico (se guarda su hash).
+- `PATCH /transfers/:id/release` → **el vendedor confirma el pago** y libera el token al comprador.
+- `PATCH /transfers/:id/cancel` → cancela (el token vuelve al dueño anterior).
+
+> Nota: ya no hay rol "validador" en el flujo; el propio vendedor confirma el pago recibido.
 
 ### Auditoría (TSE)
 - Endpoints bajo `/audit/...` para timeline y eventos de un bono. Ver `audit.controller.ts`

@@ -74,13 +74,16 @@ Estados de la **transferencia**:
 `solicitada → aceptada → en_escrow → pago_registrado → pago_validado → liberada`
 (+ `rechazada`, `cancelada`).
 
+Tres perspectivas: **TSE** (autoridad: emite + audita), **Partido** (rol `emisor`: vende sus bonos),
+**Usuario** (rol `comprador`/`recomprador`, son lo mismo: compra/revende).
+
 Flujo principal (cada paso emite un evento de auditoría):
-1. **Emisor** registra el bono → token creado (`emitido`/`activo`).
-2. **Dueño actual** solicita transferencia a un recomprador (`solicitada`).
-3. **Recomprador** acepta → token al escrow, bono `en_escrow` (`aceptada`→`en_escrow`).
-4. **Recomprador** registra evidencia de pago (hash) (`pago_registrado`).
-5. **Validador** valida el pago (`pago_validado`).
-6. **Validador** libera → bono cambia de dueño, queda `activo` (`liberada`).
+1. **TSE** emite el bono **a nombre de un partido** → dueño inicial = la cuenta del partido (`activo`).
+2. Un **usuario** ve el bono en venta y **solicita comprarlo** (`solicitada`).
+3. El **dueño/vendedor acepta** → token a la canasta, bono `en_escrow`.
+4. El **comprador** registra evidencia de pago físico (hash) (`pago_registrado`).
+5. El **vendedor confirma el pago** → libera → bono cambia de dueño, queda `activo` (`liberada`).
+   (Ya NO hay rol validador en el flujo; confirma el propio vendedor.)
 
 Reglas duras:
 - Un bono tiene **un solo dueño** a la vez.
