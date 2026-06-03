@@ -33,11 +33,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#E9F0FF] via-[#F2F5FF] to-white">
-      <div className="mx-auto grid min-h-screen max-w-[1400px] grid-cols-1 lg:grid-cols-2">
+    <div className="h-screen w-full overflow-hidden bg-gradient-to-br from-[#E9F0FF] via-[#F2F5FF] to-white">
+      <div className="mx-auto grid h-screen max-w-[1400px] grid-cols-1 lg:grid-cols-2">
         <AuthBranding />
 
-        <div className="flex items-center justify-center p-6 lg:p-10">
+        <div className="flex items-center justify-center overflow-y-auto p-6 lg:p-10">
           <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_20px_60px_-20px_rgba(37,99,235,0.25)] sm:p-10">
             <h2 className="text-center text-3xl font-extrabold text-[#1E293B]">Iniciar sesión</h2>
             <p className="mt-1.5 text-center text-sm text-slate-500">Accede a tu cuenta para continuar.</p>
