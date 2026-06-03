@@ -1,10 +1,20 @@
 'use client';
 
 /**
- * Hero del login: el "V de cristal" hecho a mano en SVG
- * (anillo orbital + V de vidrio + esfera). Sin dependencia de imágenes externas.
+ * Hero del login: el "V de cristal" (render real en /velar-hero.png).
+ * mix-blend-multiply funde el fondo blanco de la imagen con el panel.
  */
 export function HeroArt() {
+  return (
+    <img
+      src="/velar-hero.png"
+      alt="VELAR"
+      className="w-[540px] max-w-[88%] object-contain mix-blend-multiply"
+    />
+  );
+}
+
+function _HeroSvgFallback() {
   return (
     <svg width="520" height="400" viewBox="0 0 520 400" fill="none" aria-hidden className="max-w-[85%]">
       <defs>
