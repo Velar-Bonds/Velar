@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 # Compiled JS leaking into NestJS source (debe ir solo a dist/)
 apps/api/src/**/*.js
 apps/api/src/**/*.js.map
+
+# Stellar custody keys (NUNCA commitear)
+apps/api/.stellar-wallets.json
