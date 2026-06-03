@@ -10,6 +10,7 @@ export class AppController {
   /** Consola de prueba (HTML estático servido desde el mismo origen). */
   @Get('console')
   @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Cache-Control', 'no-store')
   console(): string {
     return fs.readFileSync(path.join(process.cwd(), 'public', 'console.html'), 'utf8');
   }
