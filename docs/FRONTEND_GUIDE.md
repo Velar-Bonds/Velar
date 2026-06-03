@@ -5,6 +5,10 @@
 > consumir la API y presentar bien la información. **No toques `apps/api`, `supabase/` ni la
 > lógica de `packages/types`.**
 
+> 🔗 **Importante:** el bono es un **token real en Stellar**. La propiedad y la historia viven
+> en la blockchain. Mostrá el dueño on-chain y un link al explorador (usá `GET /bonds/:id/onchain`).
+> Supabase es solo para login. Para entender el flujo, mirá `docs/DEMO.md`.
+
 ---
 
 ## 1. Tu alcance
@@ -59,6 +63,8 @@ nuevos en paralelo.
 - `GET  /bonds` → bonos visibles según el rol (dueño ve los suyos; emisor los de su partido;
   TSE/admin ven todos). Incluye `parties` y datos del dueño.
 - `GET  /bonds/:tokenId` → detalle de un bono.
+- `GET  /bonds/:tokenId/onchain` → info blockchain: `{ assetCode, onchainHolder, assetExplorer }`.
+  Mostrá `assetExplorer` como link a Stellar (stellar.expert) y `onchainHolder` como dueño real on-chain.
 - `POST /bonds` (emisor/admin) → `{ bondId, issuerPartyId, documentHash, metadataUri?,
   faceValue?, initialOwner? }`.
 - `PATCH /bonds/:tokenId/freeze` (tse/admin) → congela.
