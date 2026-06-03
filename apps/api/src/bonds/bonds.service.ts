@@ -38,7 +38,12 @@ export class BondsService {
       })
       .select()
       .single();
-    if (error) throw new BadRequestException(error.message);
+    if (error) {
+      if (error.code === '23505' || /duplicate/i.test(error.message)) {
+        throw new BadRequestException(`Ya existe un bono con el número "${input.bondId}". Usá otro.`);
+      }
+      throw new BadRequestException(error.message);
+    }
 
     await this.audit.emit({
       type: AuditEventType.BOND_EMITIDO,
