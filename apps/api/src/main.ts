@@ -1,3 +1,13 @@
+// --- WebSocket polyfill ---------------------------------------------------
+// Supabase Realtime requiere un WebSocket global. Node < 22 no lo trae nativo,
+// así que lo inyectamos con el paquete `ws` antes de crear cualquier cliente.
+// (El backend no usa realtime, pero el SDK lo inicializa al construir el cliente.)
+import { WebSocket } from 'ws';
+if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === 'undefined') {
+  (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
+}
+// --------------------------------------------------------------------------
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
