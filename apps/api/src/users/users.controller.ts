@@ -20,6 +20,11 @@ export class UsersController {
   @Get()
   listAll(@CurrentUser() user: any) { return this.users.listUsers(user.profile?.role as Role); }
 
+  @Get('recompradores')
+  listRecipients(@CurrentUser() user: any) {
+    return this.users.listRecipients(user.id, user.profile?.role as Role);
+  }
+
   @Patch(':id/role')
   setRole(@Param('id') id: string, @Body() body: { role: Role }, @CurrentUser() user: any) {
     return this.users.setRole(id, body.role, user.profile?.role as Role);

@@ -26,6 +26,27 @@ export class UsersService {
     return data ?? [];
   }
 
+  /**
+   * Lista de usuarios a los que se puede transferir un bono (destinatarios).
+   * Devuelve compradores y recompradores, excluyendo al propio usuario.
+   * Accesible a dueños (comprador/recomprador) y a tse/admin.
+   * Desbloquea que el frontend use un <select> en vez de pedir UUIDs a mano.
+   */
+  async listRecipients(actorId: string, actorRole: Role) {
+    const allowed: Role[] = ['comprador', 'recomprador', 'tse', 'admin'];
+    if (!allowed.includes(actorRole)) {
+      throw new ForbiddenException('No autorizado para listar destinatarios');
+    }
+    const { data, error } = await this.supabase.admin
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .in('role', ['comprador', 'recomprador'])
+      .neq('id', actorId)
+      .order('full_name', { ascending: true });
+    if (error) throw new BadRequestException(error.message);
+    return data ?? [];
+  }
+
   async setRole(targetId: string, role: Role, actorRole: Role) {
     if (actorRole !== 'admin') throw new ForbiddenException('Admin only');
     const { data, error } = await this.supabase.admin
