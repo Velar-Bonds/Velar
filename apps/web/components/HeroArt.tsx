@@ -1,25 +1,10 @@
 'use client';
-import { useState } from 'react';
 
 /**
- * Hero del login: el "V de cristal".
- * Si existe /velar-hero.png (render real) lo muestra; si no, cae a una
- * ilustración SVG de cristal (anillo + V + esfera) hecha a mano.
+ * Hero del login: el "V de cristal" hecho a mano en SVG
+ * (anillo orbital + V de vidrio + esfera). Sin dependencia de imágenes externas.
  */
 export function HeroArt() {
-  const [usePng, setUsePng] = useState(true);
-
-  if (usePng) {
-    return (
-      <img
-        src="/velar-hero.png"
-        alt="VELAR"
-        onError={() => setUsePng(false)}
-        className="w-[520px] max-w-[85%] object-contain mix-blend-multiply"
-      />
-    );
-  }
-
   return (
     <svg width="520" height="400" viewBox="0 0 520 400" fill="none" aria-hidden className="max-w-[85%]">
       <defs>
