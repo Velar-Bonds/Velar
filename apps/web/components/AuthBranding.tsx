@@ -60,19 +60,13 @@ export function AuthBranding() {
         </div>
       </div>
 
-      {/* Hero: V de cristal (aproximación; reemplazable por /public/velar-hero.png) */}
-      <div className="pointer-events-none absolute -bottom-10 left-0 right-0 flex justify-center opacity-90">
-        <svg width="460" height="360" viewBox="0 0 460 360" fill="none" aria-hidden>
-          <defs>
-            <linearGradient id="vg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#BFD3FF" stopOpacity=".95" />
-              <stop offset="1" stopColor="#7FA8FF" stopOpacity=".55" />
-            </linearGradient>
-          </defs>
-          <ellipse cx="230" cy="250" rx="180" ry="46" stroke="#9CC0FF" strokeWidth="10" opacity=".55" />
-          <path d="M120 90 L230 290 L340 90 L300 90 L230 215 L160 90 Z" fill="url(#vg)" />
-          <circle cx="372" cy="252" r="22" fill="#BFD3FF" opacity=".8" />
-        </svg>
+      {/* Hero: V de cristal (render real). Guardar la imagen en public/velar-hero.png */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-24 flex justify-center">
+        <img
+          src="/velar-hero.png"
+          alt="VELAR"
+          className="w-[520px] max-w-[85%] object-contain mix-blend-multiply"
+        />
       </div>
 
       <div className="relative z-10 flex gap-6 text-xs text-slate-500">
