@@ -98,18 +98,23 @@ export default function MarketplacePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1440px] space-y-8 px-4 pb-24 pt-[140px] md:px-10">
+      <main className="mx-auto max-w-[1440px] space-y-6 px-4 pb-24 pt-[140px] md:px-10">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-on-surface" style={{ fontFamily: 'Geist' }}>Marketplace de bonos</h1>
+          <p className="mt-1 text-on-surface-variant">Explore y negocie instrumentos de deuda institucional con transparencia radical.</p>
+        </div>
         {msg && <div className="rounded-xl border border-[#D5E3FF] bg-white px-4 py-2 text-sm">{msg}</div>}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           {/* Left: filters + cards */}
           <div className="space-y-6 lg:col-span-8">
             <div className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-xl p-3">
               <div className="flex flex-wrap items-center gap-2">
-                {['Estado', 'Valor', 'Tipo'].map((f) => (
+                {['Estado', 'Valor', 'Tipo', 'Riesgo', 'Emisor'].map((f) => (
                   <button key={f} className="flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-white px-3 py-1.5 text-sm font-medium text-on-surface transition-colors hover:border-primary-container/50 hover:bg-surface-container-low">
                     <span className="text-on-surface-variant">{f}</span> Todos<span className="material-symbols-outlined text-sm text-outline">expand_more</span>
                   </button>
                 ))}
+                <button className="flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-white px-3 py-1.5 text-sm font-medium text-primary-container">Más filtros <span className="material-symbols-outlined text-sm">filter_list</span></button>
               </div>
               <button className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-on-surface-variant hover:bg-surface-container-low">Ordenar: <span className="font-semibold text-on-surface">Más recientes</span><span className="material-symbols-outlined text-sm">expand_more</span></button>
             </div>
