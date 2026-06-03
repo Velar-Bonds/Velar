@@ -38,13 +38,30 @@ export class WalletService {
     return this.secretByPublic.size > 0;
   }
 
-  /** Dirección pública de la plataforma (signer del deploy). */
+  /** Dirección pública de la plataforma (emisora de los tokens de bono). */
   get platformAddress(): string | undefined {
     return this.nameToPublic.get('platform');
   }
 
+  /** Cuenta emisora de los activos de bono (= plataforma). */
+  get issuerAddress(): string | undefined {
+    return this.nameToPublic.get('platform');
+  }
+
+  /** Cuenta de la canasta de escrow. */
+  get escrowAddress(): string | undefined {
+    return this.nameToPublic.get('escrow');
+  }
+
   hasKeyFor(publicKey: string): boolean {
     return this.secretByPublic.has(publicKey);
+  }
+
+  /** Keypair en custodia para una dirección pública (para firmar transacciones). */
+  keypairFor(publicKey: string): Keypair {
+    const secret = this.secretByPublic.get(publicKey);
+    if (!secret) throw new Error(`No hay llave en custodia para ${publicKey}`);
+    return Keypair.fromSecret(secret);
   }
 
   /** Firma un XDR (Soroban/Stellar) en nombre de `publicKey` y devuelve el XDR firmado. */

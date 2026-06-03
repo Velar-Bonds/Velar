@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { EscrowService } from './escrow.service';
 import { WalletService } from './wallet.service';
+import { StellarBondService } from './stellar-bond.service';
 
 @Module({
-  providers: [EscrowService, WalletService],
-  exports: [EscrowService, WalletService],
+  providers: [WalletService, StellarBondService],
+  exports: [WalletService, StellarBondService],
 })
 export class EscrowModule {}

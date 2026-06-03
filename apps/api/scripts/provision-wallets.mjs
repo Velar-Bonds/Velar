@@ -29,8 +29,8 @@ const FRIENDBOT = 'https://friendbot.stellar.org';
 const USDC = new Asset('USDC', 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5');
 const server = new Horizon.Server(HORIZON);
 
-// Wallets a crear: plataforma + roles que participan en el escrow.
-const NAMES = ['platform', 'comprador', 'recomprador', 'validador', 'emisor'];
+// Wallets a crear: plataforma (emisora) + canasta de escrow + roles.
+const NAMES = ['platform', 'escrow', 'comprador', 'recomprador', 'validador', 'emisor'];
 const EMAIL_BY_NAME = {
   comprador: 'comprador@velar.cr',
   recomprador: 'recomprador@velar.cr',
@@ -39,17 +39,23 @@ const EMAIL_BY_NAME = {
 };
 
 function loadOrCreateKeys() {
+  let out = {};
   if (fs.existsSync(WALLETS_FILE)) {
-    console.log('= reutilizando llaves de .stellar-wallets.json');
-    return JSON.parse(fs.readFileSync(WALLETS_FILE, 'utf8'));
+    out = JSON.parse(fs.readFileSync(WALLETS_FILE, 'utf8'));
+    console.log('= reutilizando llaves existentes de .stellar-wallets.json');
   }
-  const out = {};
+  let added = false;
   for (const name of NAMES) {
-    const kp = Keypair.random();
-    out[name] = { publicKey: kp.publicKey(), secret: kp.secret() };
+    if (!out[name]) {
+      const kp = Keypair.random();
+      out[name] = { publicKey: kp.publicKey(), secret: kp.secret() };
+      console.log(`  + nueva wallet: ${name}`);
+      added = true;
+    }
   }
-  fs.writeFileSync(WALLETS_FILE, JSON.stringify(out, null, 2));
-  console.log('+ llaves generadas y guardadas en .stellar-wallets.json');
+  if (added || !fs.existsSync(WALLETS_FILE)) {
+    fs.writeFileSync(WALLETS_FILE, JSON.stringify(out, null, 2));
+  }
   return out;
 }
 
