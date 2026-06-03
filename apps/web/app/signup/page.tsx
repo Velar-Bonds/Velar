@@ -34,7 +34,7 @@ export default function SignUpPage() {
       // Iniciar sesión automáticamente.
       const { error: loginErr } = await supabase.auth.signInWithPassword({ email: f.email, password: f.password });
       if (loginErr) throw loginErr;
-      router.push('/dashboard');
+      router.push('/');
       router.refresh();
     } catch (err: any) {
       setError(err.message ?? 'Error al registrarse');
