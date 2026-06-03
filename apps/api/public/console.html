@@ -121,7 +121,11 @@ async function login(role){
 }
 
 async function loadParties(){
-  try{ const p = await api('GET','/parties'); document.getElementById('party').innerHTML = p.map(x=>`<option value="${x.id}">${x.code}</option>`).join(''); }catch(e){}
+  try{
+    const p = await api('GET','/parties');
+    document.getElementById('party').innerHTML = '<option value="">— partido —</option>' + p.map(x=>`<option value="${x.id}">${x.code} · ${x.name}</option>`).join('');
+    log(`Partidos cargados: ${p.length}`);
+  }catch(e){ log('No se pudieron cargar partidos: '+e.message, false); }
 }
 async function loadRecipients(){
   try{
