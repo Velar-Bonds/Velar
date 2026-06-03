@@ -62,8 +62,8 @@ export function AuthBranding() {
         </div>
       </div>
 
-      {/* Hero: V de cristal (usa /velar-hero.png si existe, si no un SVG hecho a mano) */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-20 flex justify-center">
+      {/* Hero: V de cristal, sangrando por abajo-izquierda como en el diseño */}
+      <div className="pointer-events-none absolute -left-6 bottom-10 flex justify-start">
         <HeroArt />
       </div>
 

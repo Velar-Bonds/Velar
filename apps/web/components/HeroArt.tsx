@@ -5,11 +5,16 @@
  * mix-blend-multiply funde el fondo blanco de la imagen con el panel.
  */
 export function HeroArt() {
+  // Máscara radial: difumina los bordes de la imagen para fundirla con el panel
+  // (elimina el "rectángulo" visible). mix-blend-multiply integra el fondo claro.
+  const fade =
+    'radial-gradient(ellipse 72% 72% at 46% 52%, #000 52%, rgba(0,0,0,0.45) 72%, transparent 88%)';
   return (
     <img
       src="/velar-hero.png"
       alt="VELAR"
-      className="w-[540px] max-w-[88%] object-contain mix-blend-multiply"
+      className="w-[640px] max-w-none object-contain mix-blend-multiply"
+      style={{ WebkitMaskImage: fade, maskImage: fade }}
     />
   );
 }
