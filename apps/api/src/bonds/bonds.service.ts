@@ -9,10 +9,11 @@ import { Logger } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { AuditService } from '../audit/audit.service';
 import { StellarBondService } from '../escrow/stellar-bond.service';
+import { WalletService } from '../escrow/wallet.service';
 import { RegisterBondInput, BondStatus, Role, AuditEventType } from '@velar/types';
 
-/** Roles de AUTORIDAD: emiten bonos y ven todo. TSE = admin = emisor (misma perspectiva). */
-export const AUTHORITY: Role[] = ['tse', 'admin', 'emisor'];
+/** Roles de AUTORIDAD: ven todo y emiten bonos. Solo el TSE (y admin) emite. */
+export const AUTHORITY: Role[] = ['tse', 'admin'];
 
 @Injectable()
 export class BondsService {
@@ -22,13 +23,44 @@ export class BondsService {
     private supabase: SupabaseService,
     private audit: AuditService,
     private stellar: StellarBondService,
+    private wallets: WalletService,
   ) {}
 
-  async register(input: RegisterBondInput, actorId: string, actorRole: Role) {
-    // La AUTORIDAD (TSE = admin = emisor) emite los bonos.
-    if (!AUTHORITY.includes(actorRole)) {
-      throw new ForbiddenException('Solo la autoridad (TSE) puede emitir bonos');
+  /** Cuenta (profile emisor) del partido, dueña inicial de los bonos a su nombre. */
+  private async partyOwner(partyId: string) {
+    const { data } = await this.supabase.admin
+      .from('profiles').select('id, stellar_wallet')
+      .eq('role', 'emisor').eq('party_id', partyId).limit(1).maybeSingle();
+    return data;
+  }
+
+  /** Asegura que un profile tenga wallet de custodia; la crea si falta. */
+  private async ensureWallet(profileId: string): Promise<string | null> {
+    const { data } = await this.supabase.admin
+      .from('profiles').select('stellar_wallet, email').eq('id', profileId).single();
+    if (data?.stellar_wallet) return data.stellar_wallet;
+    try {
+      const pk = await this.wallets.createWallet(data?.email ?? profileId);
+      await this.supabase.admin.from('profiles').update({ stellar_wallet: pk }).eq('id', profileId);
+      return pk;
+    } catch (e) {
+      this.logger.warn(`ensureWallet falló: ${(e as Error).message}`);
+      return null;
     }
+  }
+
+  async register(input: RegisterBondInput, actorId: string, actorRole: Role) {
+    // Solo el TSE (autoridad) emite bonos, a nombre de un partido.
+    if (!AUTHORITY.includes(actorRole)) {
+      throw new ForbiddenException('Solo el TSE puede emitir bonos');
+    }
+    // El bono se emite A NOMBRE de un partido: dueño inicial = la cuenta del partido.
+    const party = await this.partyOwner(input.issuerPartyId);
+    if (!party) {
+      throw new BadRequestException('Ese partido no tiene cuenta registrada. Registrá el partido primero.');
+    }
+    const owner = party.id;
+
     const { data, error } = await this.supabase.admin
       .from('bonds')
       .insert({
@@ -37,8 +69,8 @@ export class BondsService {
         document_hash: input.documentHash,
         metadata_uri: input.metadataUri ?? null,
         face_value: input.faceValue ?? null,
-        current_owner: input.initialOwner ?? null,
-        status: input.initialOwner ? BondStatus.ACTIVO : BondStatus.EMITIDO,
+        current_owner: owner,
+        status: BondStatus.ACTIVO,
       })
       .select()
       .single();
@@ -56,28 +88,26 @@ export class BondsService {
       payload: { bondId: data.bond_id, issuerPartyId: data.issuer_party_id },
     });
 
-    if (input.initialOwner) {
-      // Emite el TOKEN del bono on-chain (Stellar testnet) hacia el dueño inicial.
-      let txHash: string | undefined;
-      if (this.stellar.enabled) {
-        const ownerWallet = await this.walletOf(input.initialOwner);
-        if (ownerWallet) {
-          try {
-            const res = await this.stellar.issueBond(data.bond_id, ownerWallet);
-            txHash = res.txHash;
-          } catch (e) {
-            this.logger.warn(`issueBond on-chain falló (sigue en BD): ${(e as Error).message}`);
-          }
+    // Emite el TOKEN del bono on-chain (Stellar testnet) hacia la wallet del partido.
+    let txHash: string | undefined;
+    if (this.stellar.enabled) {
+      const ownerWallet = party.stellar_wallet ?? (await this.ensureWallet(owner));
+      if (ownerWallet) {
+        try {
+          const res = await this.stellar.issueBond(data.bond_id, ownerWallet);
+          txHash = res.txHash;
+        } catch (e) {
+          this.logger.warn(`issueBond on-chain falló (sigue en BD): ${(e as Error).message}`);
         }
       }
-      await this.audit.emit({
-        type: AuditEventType.BOND_ASIGNADO,
-        bondTokenId: data.token_id,
-        actorId,
-        payload: { owner: input.initialOwner },
-        txHash,
-      });
     }
+    await this.audit.emit({
+      type: AuditEventType.BOND_ASIGNADO,
+      bondTokenId: data.token_id,
+      actorId,
+      payload: { owner, party: input.issuerPartyId },
+      txHash,
+    });
     return data;
   }
 

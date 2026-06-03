@@ -14,24 +14,43 @@ export class WalletService {
   private readonly logger = new Logger(WalletService.name);
   private readonly secretByPublic = new Map<string, string>();
   private readonly nameToPublic = new Map<string, string>();
+  private readonly file = path.join(process.cwd(), '.stellar-wallets.json');
+  private store: Record<string, { publicKey: string; secret: string }> = {};
 
   constructor() {
-    const file = path.join(process.cwd(), '.stellar-wallets.json');
-    if (!fs.existsSync(file)) {
+    if (!fs.existsSync(this.file)) {
       this.logger.warn(
         '.stellar-wallets.json no encontrado: el escrow on-chain quedará deshabilitado. Corré "npm run provision:wallets".',
       );
       return;
     }
-    const data = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<
-      string,
-      { publicKey: string; secret: string }
-    >;
-    for (const [name, kp] of Object.entries(data)) {
+    this.store = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+    for (const [name, kp] of Object.entries(this.store)) {
       this.secretByPublic.set(kp.publicKey, kp.secret);
       this.nameToPublic.set(name, kp.publicKey);
     }
     this.logger.log(`Custodia cargada: ${this.secretByPublic.size} wallets testnet`);
+  }
+
+  /**
+   * Crea una wallet de custodia nueva para un usuario/partido recién registrado:
+   * genera el par de llaves, la fondea con XLM (Friendbot, testnet) y la guarda.
+   * Devuelve la dirección pública (que se guarda en profiles.stellar_wallet).
+   */
+  async createWallet(label: string): Promise<string> {
+    const kp = Keypair.random();
+    const publicKey = kp.publicKey();
+    try {
+      const res = await fetch(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
+      if (!res.ok && res.status !== 400) throw new Error(`friendbot ${res.status}`);
+    } catch (e) {
+      this.logger.warn(`Friendbot falló para ${label}: ${(e as Error).message}`);
+    }
+    this.store[`user:${label}:${publicKey.slice(0, 6)}`] = { publicKey, secret: kp.secret() };
+    this.secretByPublic.set(publicKey, kp.secret());
+    fs.writeFileSync(this.file, JSON.stringify(this.store, null, 2));
+    this.logger.log(`Wallet de custodia creada para ${label}: ${publicKey}`);
+    return publicKey;
   }
 
   get enabled(): boolean {
