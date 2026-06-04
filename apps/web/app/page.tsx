@@ -1,8 +1,66 @@
+import Image from 'next/image';
 import Link from 'next/link';
+import type { Metadata } from 'next';
+import {
+  Activity,
+  ArrowRight,
+  BadgeCheck,
+  Blocks,
+  Globe,
+  Landmark,
+  ShieldCheck,
+  Waypoints,
+} from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'VELAR | Trazabilidad verificable de bonos políticos',
+  description: 'Plataforma blockchain para registrar, validar y consultar bonos políticos con transparencia pública.',
+};
 
 const Arrow = ({ w = 'w-4 h-4' }: { w?: string }) => (
-  <svg className={w} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></svg>
+  <ArrowRight aria-hidden="true" className={w} strokeWidth={2.25} />
 );
+
+const featureCards = [
+  {
+    Icon: ShieldCheck,
+    title: 'Registro inmutable',
+    description: 'Cada evento queda grabado en blockchain y no puede ser alterado.',
+  },
+  {
+    Icon: BadgeCheck,
+    title: 'Validación en tiempo real',
+    description: 'Los datos se validan al instante y se sincronizan con todos los nodos de la red.',
+  },
+  {
+    Icon: Globe,
+    title: 'Acceso público',
+    description: 'Cualquier persona puede consultar la información de forma abierta y gratuita.',
+  },
+  {
+    Icon: Waypoints,
+    title: 'Historial auditable',
+    description: 'Historial completo, trazable y verificable para auditorías y control ciudadano.',
+  },
+] as const;
+
+const trustPillars = [
+  {
+    Icon: Globe,
+    title: 'Transparente',
+    description: 'Datos abiertos y verificables por cualquier ciudadano.',
+  },
+  {
+    Icon: ShieldCheck,
+    title: 'Confiable',
+    description: 'Infraestructura descentralizada con validadores independientes.',
+  },
+  {
+    Icon: Blocks,
+    title: 'Verificable',
+    description: 'Cada registro incluye hash, bloque y sello de tiempo.',
+  },
+] as const;
 
 export default function LandingPage() {
   return (
@@ -12,10 +70,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
             <div className="flex flex-shrink-0 items-center gap-2">
-              <img alt="VELAR" className="h-9 w-auto" src="/velar-logo.png" />
+              <Image alt="VELAR" className="h-9 w-auto" src="/velar-logo.png" width={512} height={341} />
             </div>
             <nav className="hidden space-x-8 md:flex">
-              <a className="text-sm font-medium text-primary" href="#">Inicio</a>
+              <Link className="text-sm font-medium text-primary" href="/">Inicio</Link>
               <Link className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="/marketplace">Marketplace</Link>
               <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#proceso">Proceso</a>
               <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#historial">Historial</a>
@@ -38,6 +96,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-12">
             <div className="flex flex-col justify-center lg:col-span-5">
               <div className="mb-6 inline-flex w-max items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-container px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+                <Landmark aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.1} />
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> Blockchain para la transparencia pública
               </div>
               <h1 className="mb-6 text-4xl font-bold leading-[1.1] tracking-tight text-on-surface lg:text-5xl">
@@ -53,10 +112,13 @@ export default function LandingPage() {
             </div>
 
             <div className="relative flex justify-end pt-4 lg:col-span-7">
-              <img alt="" className="pointer-events-none absolute -top-48 right-[-150px] z-0 h-[1100px] w-[1100px] rotate-6 object-contain opacity-40" src="/landing-orbital.png" />
+              <Image alt="" className="pointer-events-none absolute -top-48 right-[-150px] z-0 h-[1100px] w-[1100px] rotate-6 object-contain opacity-40" src="/landing-orbital.png" width={500} height={500} />
               <div className="glass-panel relative z-10 w-full max-w-lg rounded-2xl bg-white/20 p-6 shadow-glass backdrop-blur-2xl lg:p-8">
                 <div className="mb-6 flex items-center justify-between">
-                  <h3 className="text-xl font-bold text-on-surface">Historial en tiempo real</h3>
+                  <h3 className="flex items-center gap-2 text-xl font-bold text-on-surface">
+                    <Activity aria-hidden="true" className="h-5 w-5 text-primary" strokeWidth={2.2} />
+                    Historial en tiempo real
+                  </h3>
                   <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> En vivo
                   </div>
@@ -65,8 +127,8 @@ export default function LandingPage() {
                   <div className="absolute left-8 right-8 top-3 z-0 h-0.5 bg-outline-variant/40" />
                   <div className="absolute left-8 top-3 z-0 h-0.5 w-[60%] bg-primary" />
                   {[['Emisión', true], ['Asignación', true], ['Transferencia', 'now'], ['Validación', false], ['Consulta', false]].map(([label, st], i) => (
-                    <div key={i} className="relative z-10 flex flex-col items-center gap-2">
-                      {st === true && <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white shadow-lg"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} /></svg></div>}
+                    <div key={label as string} className="relative z-10 flex flex-col items-center gap-2">
+                      {st === true && <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white shadow-lg"><BadgeCheck aria-hidden="true" className="h-4 w-4" strokeWidth={2.3} /></div>}
                       {st === 'now' && <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-primary shadow-md"><div className="h-2 w-2 rounded-full bg-white" /></div>}
                       {st === false && <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-surface-container" />}
                       <span className={`text-[10px] font-semibold ${st === 'now' ? 'text-on-surface' : st ? 'text-on-surface-variant' : 'text-outline'}`}>{label}</span>
@@ -79,7 +141,13 @@ export default function LandingPage() {
                     {[['ID TRANSACCIÓN', '0x7f3a…9c21'], ['BLOQUE', '18,754,321'], ['TIEMPO', 'Hace 2 min']].map(([k, v]) => (
                       <div key={k}><span className="mb-1 block text-[10px] text-outline">{k}</span><span className="text-xs font-semibold text-on-surface" style={{ fontFamily: 'JetBrains Mono' }}>{v}</span></div>
                     ))}
-                    <div><span className="mb-1 block text-[10px] text-outline">ESTADO</span><span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Confirmado</span></div>
+                    <div>
+                      <span className="mb-1 block text-[10px] text-outline">ESTADO</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                        <BadgeCheck aria-hidden="true" className="h-3 w-3" strokeWidth={2.3} />
+                        Confirmado
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <a className="flex items-center gap-1.5 text-sm font-bold text-primary transition-all hover:gap-2.5" href="#historial">Ver detalles en explorador <Arrow /></a>
@@ -93,17 +161,12 @@ export default function LandingPage() {
       <section className="relative z-20 bg-white py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {[
-              ['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'Registro inmutable', 'Cada evento queda grabado en blockchain y no puede ser alterado.'],
-              ['M13 10V3L4 14h7v7l9-11h-7z', 'Validación en tiempo real', 'Los datos se validan al instante y se sincronizan con todos los nodos de la red.'],
-              ['M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9', 'Acceso público', 'Cualquier persona puede consultar la información de forma abierta y gratuita.'],
-              ['M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 'Historial auditable', 'Historial completo, trazable y verificable para auditorías y control ciudadano.'],
-            ].map(([d, t, p]) => (
-              <div key={t} className="flex flex-1 flex-col items-start gap-5 rounded-2xl border border-outline-variant/30 bg-white p-8 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            {featureCards.map(({ Icon, title, description }) => (
+              <div key={title} className="flex flex-1 flex-col items-start gap-5 rounded-2xl border border-outline-variant/30 bg-white p-8 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                 <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary/5 text-primary">
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d={d} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></svg>
+                  <Icon aria-hidden="true" className="h-6 w-6" strokeWidth={2.1} />
                 </div>
-                <div><h3 className="mb-2 text-lg font-bold text-on-surface">{t}</h3><p className="text-sm leading-relaxed text-on-surface-variant">{p}</p></div>
+                <div><h3 className="mb-2 text-lg font-bold text-on-surface">{title}</h3><p className="text-sm leading-relaxed text-on-surface-variant">{description}</p></div>
               </div>
             ))}
           </div>
@@ -144,10 +207,12 @@ export default function LandingPage() {
               <h2 className="mb-6 text-3xl font-bold">Historial auditable</h2>
               <p className="mb-10 text-sm leading-relaxed text-inverse-on-surface opacity-80">Explora eventos reales registrados en blockchain y verifica la integridad de cada movimiento.</p>
               <div className="space-y-8">
-                {[['Transparente', 'Datos abiertos y verificables por cualquier ciudadano.'], ['Confiable', 'Infraestructura descentralizada con validadores independientes.'], ['Verificable', 'Cada registro incluye hash, bloque y sello de tiempo.']].map(([t, p]) => (
-                  <div key={t} className="flex gap-4">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/20"><span className="material-symbols-outlined text-primary-fixed">check_circle</span></div>
-                    <div><h4 className="mb-1 font-medium text-white">{t}</h4><p className="text-xs text-inverse-on-surface opacity-70">{p}</p></div>
+                {trustPillars.map(({ Icon, title, description }) => (
+                  <div key={title} className="flex gap-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/20">
+                      <Icon aria-hidden="true" className="h-4 w-4 text-primary-fixed" strokeWidth={2.2} />
+                    </div>
+                    <div><h4 className="mb-1 font-medium text-white">{title}</h4><p className="text-xs text-inverse-on-surface opacity-70">{description}</p></div>
                   </div>
                 ))}
               </div>
@@ -192,7 +257,7 @@ export default function LandingPage() {
               <Link className="flex w-max items-center justify-center gap-2 rounded-full bg-primary px-8 py-3.5 text-sm font-medium text-white shadow-md transition-all hover:bg-primary-container" href="/login">Acceder a la plataforma <Arrow /></Link>
             </div>
             <div className="relative z-10 flex justify-center lg:w-1/2 lg:justify-end">
-              <img alt="Seguridad" className="animate-float h-auto w-full max-w-[400px] object-contain" src="/landing-shield.png" style={{ mixBlendMode: 'multiply' }} />
+              <Image alt="Seguridad" className="animate-float h-auto w-full max-w-[400px] object-contain" src="/landing-shield.png" width={512} height={384} style={{ mixBlendMode: 'multiply' }} />
             </div>
           </div>
         </div>
@@ -203,7 +268,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-16 grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <img alt="VELAR" className="mb-6 h-10 w-auto brightness-0 invert" src="/velar-logo.png" />
+              <Image alt="VELAR" className="mb-6 h-10 w-auto brightness-0 invert" src="/velar-logo.png" width={512} height={341} />
               <p className="mb-6 max-w-xs text-sm leading-relaxed opacity-70">Plataforma blockchain para la trazabilidad, transparencia y validación de bonos políticos del TSE.</p>
             </div>
             <div>
@@ -212,7 +277,7 @@ export default function LandingPage() {
             </div>
             <div>
               <h4 className="mb-4 text-sm font-semibold text-white">Recursos</h4>
-              <ul className="space-y-3 text-sm opacity-70"><li><a className="hover:text-white" href="#">Documentación</a></li><li><a className="hover:text-white" href="#">API</a></li><li><a className="hover:text-white" href="#">FAQ</a></li></ul>
+              <ul className="space-y-3 text-sm opacity-70"><li><span>Documentación</span></li><li><span>API</span></li><li><span>FAQ</span></li></ul>
             </div>
             <div className="lg:ml-auto">
               <h4 className="mb-4 text-sm font-semibold text-white">Acceso</h4>

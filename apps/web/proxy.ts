@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { getSafeRedirectTarget } from './lib/auth/routing';
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -28,10 +29,13 @@ export async function proxy(request: NextRequest) {
   const isProtected = PROTECTED.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
   if (!user && isProtected) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', pathname + request.nextUrl.search);
+    return NextResponse.redirect(loginUrl);
   }
   if (user && pathname === '/login') {
-    return NextResponse.redirect(new URL('/', request.url));
+    const nextTarget = getSafeRedirectTarget(request.nextUrl.searchParams.get('next'));
+    return NextResponse.redirect(new URL(nextTarget ?? '/', request.url));
   }
 
   return supabaseResponse;
