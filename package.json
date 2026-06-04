@@ -10,9 +10,11 @@
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {
+    "react-doctor": "^0.3.0",
     "typescript": "^5.4.0"
   }
 }
