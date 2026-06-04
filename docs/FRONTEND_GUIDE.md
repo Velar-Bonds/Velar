@@ -9,7 +9,34 @@
 > en la blockchain. Mostrá el dueño on-chain y un link al explorador (usá `GET /bonds/:id/onchain`).
 > Supabase es solo para login. Para entender el flujo, mirá `docs/DEMO.md`.
 
+> 🚫 **Para NO romper el backend (regla dura):** trabajá **solo en `apps/web/`**.
+> NO edites `apps/api/`, `supabase/migrations/`, ni los `.ts` de `packages/types/` (podés
+> importar sus tipos, no cambiarlos). NO toques los `.env`. NO cambies los contratos de la API:
+> si necesitás un endpoint o campo nuevo, anotalo acá y avisá — no lo "arregles" en el backend.
+> Antes de commitear: `npm run build --workspace apps/web` debe pasar.
+
 ---
+
+## 0. Estado actual del frontend (qué ya existe)
+
+Páginas ya construidas en `apps/web/app/` (Next.js App Router, Tailwind v4, lucide-react):
+
+| Ruta | Archivo | Qué es |
+|---|---|---|
+| `/` | `app/page.tsx` | Landing pública |
+| `/login` | `app/login/` (page + `LoginPageClient`) | Login (Supabase) |
+| `/signup` | `app/signup/` (page + `SignUpPageClient`) | Registro (POST `/api/auth/register`) |
+| `/marketplace` | `app/marketplace/page.tsx` | Marketplace del comprador (vitrina + comprar) |
+| `/partido` | `app/partido/page.tsx` | Panel del Partido (aceptar ventas, confirmar pago) |
+| `/tse` | `app/tse/` (page + `TSEPageClient`) | Panel del TSE (ve todo) |
+
+Convenciones del proyecto (seguilas):
+- **Rutas normales** (NO `/dashboard/*`). El middleware `proxy.ts` protege `/marketplace`, `/partido`, `/tse`, `/admin`.
+- **Patrón page + Client**: `page.tsx` exporta `metadata` y renderiza un `XPageClient` (`'use client'`).
+- **Tokens de diseño** en `app/globals.css` (`@theme`): usá clases como `text-primary`, `bg-surface-container`, `glass-card`, etc. No hardcodees hex si hay token.
+- **Íconos**: `lucide-react` o Material Symbols (clase `material-symbols-outlined`).
+- **Auth**: `lib/supabase/client.ts` (browser). Para llamar la API, mandá `Authorization: Bearer <access_token>`.
+- **Imágenes** en `apps/web/public/`.
 
 ## 1. Tu alcance
 
