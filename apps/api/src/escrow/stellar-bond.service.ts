@@ -58,6 +58,16 @@ export class StellarBondService {
     return new Asset(this.assetCodeFor(bondId), this.wallets.issuerAddress!);
   }
 
+  /** Activo VCRC: representación en Stellar de colones, emitido por la plataforma. */
+  private paymentAsset(): Asset {
+    return new Asset('VCRC', this.wallets.issuerAddress!);
+  }
+
+  /** URL del explorador para ver el asset VCRC y sus volúmenes acumulados. */
+  paymentAssetExplorerUrl(): string {
+    return `https://stellar.expert/explorer/${EXPLORER_NETWORK}/asset/VCRC-${this.wallets.issuerAddress}`;
+  }
+
   /** Explorador público para ver el activo del bono en la blockchain. */
   explorerUrl(bondId: string): string {
     return `https://stellar.expert/explorer/${EXPLORER_NETWORK}/asset/${this.assetCodeFor(bondId)}-${this.wallets.issuerAddress}`;
@@ -130,6 +140,42 @@ export class StellarBondService {
     const { txHash } = await this.payOne(this.wallets.escrowAddress!, newOwnerAddress, asset, memo);
     this.logger.log(`Bono ${bondId} liberado de escrow → ${newOwnerAddress} (${txHash})`);
     return txHash;
+  }
+
+  /**
+   * Registra ON-CHAIN el precio pagado en la venta enviando VCRC al vendedor.
+   * Como la plataforma es el ISSUER de VCRC, cada pago "crea" esa cantidad.
+   * Esto hace que el volumen del precio aparezca en Stellar Expert (asset VCRC).
+   */
+  async settlePrice(sellerAddress: string, amount: number, bondId: string): Promise<string | undefined> {
+    if (!amount || amount <= 0) return undefined;
+    const vcrc = this.paymentAsset();
+    try {
+      await this.ensureTrustline(sellerAddress, vcrc);
+    } catch (e) {
+      this.logger.warn(`trustline VCRC falló para ${sellerAddress}: ${(e as Error).message}`);
+      return undefined;
+    }
+    try {
+      const kp = this.wallets.keypairFor(this.wallets.issuerAddress!);
+      const src = await this.server.loadAccount(this.wallets.issuerAddress!);
+      const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
+        .addOperation(Operation.payment({
+          destination: sellerAddress,
+          asset: vcrc,
+          amount: amount.toFixed(7), // Stellar usa 7 decimales
+        }))
+        .addMemo(Memo.text(`bond:${bondId}`.slice(0, 28)))
+        .setTimeout(60)
+        .build();
+      tx.sign(kp);
+      const res = await this.server.submitTransaction(tx);
+      this.logger.log(`Precio ₡${amount} pagado on-chain a ${sellerAddress} (VCRC) → ${res.hash}`);
+      return res.hash;
+    } catch (e) {
+      this.logger.warn(`settlePrice falló: ${(e as Error).message}`);
+      return undefined;
+    }
   }
 
   /** Devuelve la cuenta que actualmente tiene el token (dueño on-chain). */

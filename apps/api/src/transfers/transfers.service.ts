@@ -227,13 +227,24 @@ export class TransfersService {
 
     // On-chain: libera el TOKEN del bono de la canasta hacia el nuevo dueño.
     let txHash: string | undefined;
+    let priceTxHash: string | undefined;
     const bond = await this.getBond(transfer.bond_token_id);
     const toWallet = await this.walletOf(transfer.to_owner);
+    const fromWallet = await this.walletOf(transfer.from_owner);
+    const amount = Number(transfer.amount) || 0;
     if (this.stellar.enabled && toWallet) {
       try {
-        txHash = await this.stellar.releaseFromEscrow(bond.bond_id, toWallet, Number(transfer.amount) || undefined);
+        txHash = await this.stellar.releaseFromEscrow(bond.bond_id, toWallet, amount || undefined);
       } catch (e) {
         this.logger.warn(`releaseFromEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
+      }
+    }
+    // Registra ON-CHAIN el precio: paga VCRC al vendedor por el monto de la venta.
+    if (this.stellar.enabled && fromWallet && amount > 0) {
+      try {
+        priceTxHash = await this.stellar.settlePrice(fromWallet, amount, bond.bond_id);
+      } catch (e) {
+        this.logger.warn(`settlePrice falló: ${(e as Error).message}`);
       }
     }
 
@@ -241,8 +252,8 @@ export class TransfersService {
       this.supabase.admin.from('bonds').update({ current_owner: transfer.to_owner, status: BondStatus.ACTIVO }).eq('token_id', transfer.bond_token_id),
       this.supabase.admin.from('transfers').update({ status: TransferStatus.LIBERADA }).eq('id', transferId),
     ]);
-    await this.audit.emit({ type: AuditEventType.TOKEN_LIBERADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { newOwner: transfer.to_owner }, txHash });
-    return { success: true, newOwner: transfer.to_owner, txHash };
+    await this.audit.emit({ type: AuditEventType.TOKEN_LIBERADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { newOwner: transfer.to_owner, priceTxHash }, txHash });
+    return { success: true, newOwner: transfer.to_owner, txHash, priceTxHash };
   }
 
   async cancelTransfer(transferId: string, actorId: string) {
