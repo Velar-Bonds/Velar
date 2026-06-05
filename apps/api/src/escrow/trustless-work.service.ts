@@ -31,21 +31,21 @@ export class TrustlessWorkService {
     const res = await fetch(`${this.base}${path}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'x-api-key': this.apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.text().catch(() => '');
-      throw new Error(`TrustlessWork ${path} ${res.status}: ${err.slice(0, 200)}`);
+      throw new Error(`TrustlessWork ${path} ${res.status}: ${err.slice(0, 400)}`);
     }
     return res.json() as Promise<T>;
   }
 
   private async getJSON<T = any>(path: string): Promise<T> {
     const res = await fetch(`${this.base}${path}`, {
-      headers: { 'Authorization': `Bearer ${this.apiKey}` },
+      headers: { 'x-api-key': this.apiKey },
     });
     if (!res.ok) throw new Error(`TrustlessWork GET ${path} ${res.status}`);
     return res.json() as Promise<T>;
@@ -93,35 +93,26 @@ export class TrustlessWorkService {
         description: `Transferencia del bono ${input.bondId}`,
       }],
       // amount referencial — el escrow nunca se fondea, es solo coordinación
-      amount: (input.amountCRC || 0).toFixed(7),
-      platformFee: '0',
+      amount: Number(input.amountCRC) || 1,
+      platformFee: 0,
       trustline: {
         address: this.wallets.issuerAddress,
-        assetCode: 'VCRC',
+        symbol: 'VCRC',
       },
       receiverMemo: input.bondId.slice(0, 28),
       signer: this.platformAddress,
     };
 
-    const { unsignedTransaction } = await this.call<{ unsignedTransaction: string }>(
-      '/deployer/single-release',
-      body,
-    );
-    const { txHash, contractId: deployedId } = await this.signAndSubmit(unsignedTransaction);
+    const deployRes = await this.call<{ unsignedTransaction: string }>('/deployer/single-release', body);
+    const submitRes = await this.signAndSubmit(deployRes.unsignedTransaction);
 
-    // Si la respuesta del helper no trae el contractId, lo obtenemos por engagementId
-    let contractId = deployedId;
-    if (!contractId) {
-      try {
-        const esc = await this.getJSON<{ contractId?: string }>(
-          `/escrow/single-release/get-escrow-by-engagement-id?engagementId=${encodeURIComponent(input.transferId)}`,
-        );
-        contractId = esc.contractId;
-      } catch {}
+    if (!submitRes.contractId) {
+      this.logger.warn(`TW deploy ok pero send-transaction no devolvió contractId: ${JSON.stringify(submitRes).slice(0, 200)}`);
     }
-
-    if (!contractId) throw new Error('TrustlessWork no devolvió contractId');
-    return { contractId, deployTx: txHash };
+    return {
+      contractId: submitRes.contractId ?? `pending-${input.transferId}`,
+      deployTx: submitRes.txHash,
+    };
   }
 
   /** Marca el milestone como completado (vendedor "entregó" el bono). */
