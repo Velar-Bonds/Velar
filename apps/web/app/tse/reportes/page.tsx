@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { FileText, CheckCircle, AlertCircle, Eye, X } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle, AlertCircle, Eye, X, ExternalLink, User, Waypoints, Coins } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { bondAssetUrl } from '../../../lib/stellar';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmtCRC = (n?: number | null) => n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -17,12 +19,20 @@ const STATUS: Record<string, [string, string]> = {
 export default function TSEReportesPage() {
   const { token, me, loading, error } = useSession();
   const [reports, setReports] = useState<any[]>([]);
+  const [allBonds, setAllBonds] = useState<any[]>([]);
+  const [allTransfers, setAllTransfers] = useState<any[]>([]);
   const [sel, setSel] = useState<any | null>(null);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const load = () => apiFetch(token, 'GET', '/reports').then(setReports).catch(() => {});
+  const load = () =>
+    Promise.all([
+      apiFetch(token, 'GET', '/reports').then(setReports).catch(() => {}),
+      apiFetch(token, 'GET', '/bonds').then(setAllBonds).catch(() => {}),
+      apiFetch(token, 'GET', '/transfers').then(setAllTransfers).catch(() => {}),
+    ]);
+
   useEffect(() => { if (token) load(); /* eslint-disable-next-line */ }, [token]);
 
   if (loading || !token || !me) {
@@ -94,8 +104,8 @@ export default function TSEReportesPage() {
 
       {/* Modal de revisión */}
       {sel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={() => setSel(null)}>
+          <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-semibold" style={{ fontFamily: 'Geist' }}>{sel.title}</h3>
@@ -126,8 +136,107 @@ export default function TSEReportesPage() {
 
             {sel.bond_token_ids?.length > 0 && (
               <div className="mb-4">
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Bonos asociados</p>
-                <p className="font-mono text-xs">{sel.bond_token_ids.length} bono{sel.bond_token_ids.length !== 1 ? 's' : ''}</p>
+                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+                  <Coins size={12} /> Bonos asociados ({sel.bond_token_ids.length})
+                </p>
+                <div className="flex max-h-72 flex-col gap-2 overflow-y-auto rounded-xl border border-outline-variant/20 bg-surface-container-low/30 p-2">
+                  {sel.bond_token_ids.map((tid: string) => {
+                    const b = allBonds.find((x: any) => x.token_id === tid);
+                    if (!b) return (
+                      <div key={tid} className="rounded-lg border border-outline-variant/20 bg-white p-3 text-xs text-on-surface-variant">
+                        Bono no encontrado: <span className="font-mono">{tid.slice(0, 8)}…</span>
+                      </div>
+                    );
+                    const transfers = allTransfers.filter((t: any) => t.bond_token_id === tid);
+                    const liberadas = transfers.filter((t: any) => t.status === 'liberada');
+                    return (
+                      <div key={tid} className="rounded-lg border border-outline-variant/20 bg-white p-3">
+                        <div className="mb-2 flex items-start justify-between">
+                          <div>
+                            <p className="font-mono text-sm font-bold text-primary">{b.bond_id}</p>
+                            <p className="text-[11px] text-on-surface-variant">{b.parties?.name ?? '—'} · {b.certificate_number ?? 'sin certificado'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-mono text-sm font-semibold">{fmtCRC(b.face_value)}</p>
+                            <span className="rounded-full bg-surface-container px-2 py-0.5 text-[10px] uppercase text-on-surface-variant">{b.status}</span>
+                          </div>
+                        </div>
+
+                        <div className="mb-2 grid grid-cols-2 gap-2 border-t border-outline-variant/10 pt-2 text-[11px]">
+                          <div>
+                            <span className="text-on-surface-variant">Dueño actual:</span>
+                            <p className="flex items-center gap-1 font-medium"><User size={10} /> {b.profiles?.full_name ?? '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-on-surface-variant">Movimientos:</span>
+                            <p className="font-medium">{liberadas.length} venta{liberadas.length !== 1 ? 's' : ''}</p>
+                          </div>
+                          {b.series && (
+                            <div>
+                              <span className="text-on-surface-variant">Serie:</span>
+                              <p className="font-medium">{b.series}</p>
+                            </div>
+                          )}
+                          {b.interest_rate != null && (
+                            <div>
+                              <span className="text-on-surface-variant">Tasa:</span>
+                              <p className="font-medium">{b.interest_rate}%</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Mini trazabilidad de propietarios */}
+                        {liberadas.length > 0 && (
+                          <div className="mb-2 border-t border-outline-variant/10 pt-2">
+                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">Cadena de propietarios</p>
+                            <div className="flex flex-wrap items-center gap-1 text-[11px]">
+                              {liberadas
+                                .sort((a: any, c: any) => (a.created_at ?? '').localeCompare(c.created_at ?? ''))
+                                .map((t: any, i: number) => (
+                                  <span key={t.id} className="flex items-center gap-1">
+                                    {i === 0 && <span className="font-medium">{t.from_profile?.full_name ?? '?'}</span>}
+                                    <span className="text-on-surface-variant">→</span>
+                                    <span className="font-medium">{t.to_profile?.full_name ?? '?'}</span>
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Stellar info */}
+                        <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant/10 pt-2">
+                          {b.stellar_status === 'confirmed' && (
+                            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                              <CheckCircle size={9} /> On-chain
+                            </span>
+                          )}
+                          {b.stellar_transaction_hash && (
+                            <a
+                              href={`https://stellar.expert/explorer/testnet/tx/${b.stellar_transaction_hash}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-primary transition hover:bg-blue-100"
+                            >
+                              <ExternalLink size={9} /> Tx hash
+                            </a>
+                          )}
+                          <a
+                            href={bondAssetUrl(b.bond_id)}
+                            target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 rounded-full border border-outline-variant/30 bg-white px-2 py-0.5 text-[10px] font-medium text-on-surface-variant transition hover:border-primary hover:text-primary"
+                          >
+                            <ExternalLink size={9} /> Stellar asset
+                          </a>
+                          <Link
+                            href={`/tse/trazabilidad?bono=${b.bond_id}`}
+                            className="flex items-center gap-1 rounded-full border border-outline-variant/30 bg-white px-2 py-0.5 text-[10px] font-medium text-on-surface-variant transition hover:border-primary hover:text-primary"
+                          >
+                            <Waypoints size={9} /> Trazabilidad
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
