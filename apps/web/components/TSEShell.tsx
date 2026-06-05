@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutGrid, ClipboardCheck, Send, ScrollText, Waypoints, Search, Settings, LogOut,
-  ShieldCheck, Landmark, BarChart3, FileText,
+  ShieldCheck, Landmark, BarChart3, FileText, Shield,
 } from 'lucide-react';
 import { createClient } from '../lib/supabase/client';
 import type { Me } from '../lib/api';
@@ -15,6 +15,7 @@ const NAV = [
   { href: '/tse/revision', label: 'Revisión', Icon: ClipboardCheck },
   { href: '/tse/emision', label: 'Emisión', Icon: Send },
   { href: '/tse/registros', label: 'Registros', Icon: ScrollText },
+  { href: '/tse/escrows', label: 'Escrows on-chain', Icon: Shield },
   { href: '/tse/analytics', label: 'Análisis', Icon: BarChart3 },
   { href: '/tse/reportes', label: 'Reportes', Icon: FileText },
   { href: '/tse/trazabilidad', label: 'Trazabilidad', Icon: Waypoints },

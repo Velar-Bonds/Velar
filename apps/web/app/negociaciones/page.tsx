@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Handshake, ArrowRight } from 'lucide-react';
+import { Handshake, ArrowRight, Shield, ExternalLink } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { StatusBadge, EmptyState, fmtMoney, fmtDate } from '../../components/ui';
 import { apiFetch, type Me } from '../../lib/api';
@@ -9,6 +9,7 @@ type Transfer = {
   id: string; status: string; amount: number | null; from_owner: string; to_owner: string;
   bonds?: { bond_id?: string }; from_profile?: { full_name?: string }; to_profile?: { full_name?: string };
   created_at?: string;
+  escrow_contract_id?: string | null;
 };
 
 const ACTIVE = ['solicitada', 'aceptada', 'en_escrow', 'pago_registrado', 'pago_validado'];
@@ -46,12 +47,23 @@ function Content({ token, me }: { token: string; me: Me }) {
     const a = actionFor(t);
     const cancelable = ['solicitada', 'aceptada', 'en_escrow'].includes(t.status);
     return (
-      <div className="velar-hover-card glass-card flex flex-col gap-3 rounded-2xl p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="velar-hover-card glass-card flex flex-col gap-3 rounded-2xl p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-container/10 text-primary-container"><Handshake size={20} /></span>
           <div>
             <div className="mono-data text-sm font-semibold text-primary-container">{t.bonds?.bond_id ?? 'Bono'}</div>
             <div className="flex items-center gap-1.5 text-sm text-on-surface-variant">{t.from_profile?.full_name ?? '?'} <ArrowRight size={13} /> {t.to_profile?.full_name ?? '?'}</div>
+            {t.escrow_contract_id && (
+              <a
+                href={`https://stellar.expert/explorer/testnet/contract/${t.escrow_contract_id}`}
+                target="_blank" rel="noopener noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-100"
+                title={t.escrow_contract_id}
+              >
+                <Shield size={10} /> Canasta on-chain (Trustless Work)
+                <ExternalLink size={9} />
+              </a>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">

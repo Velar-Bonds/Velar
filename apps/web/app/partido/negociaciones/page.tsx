@@ -79,6 +79,16 @@ export default function PartidoNegociacionesPage() {
                 {t.from_profile?.full_name ?? '?'} <ArrowRight size={13} /> {t.to_profile?.full_name ?? '?'}
               </p>
               <p className="text-xs text-on-surface-variant">{fmtDate(t.created_at)}</p>
+              {(t as any).escrow_contract_id && (
+                <a
+                  href={`https://stellar.expert/explorer/testnet/contract/${(t as any).escrow_contract_id}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-100"
+                  title={(t as any).escrow_contract_id}
+                >
+                  🛡 Canasta on-chain (Trustless Work) ↗
+                </a>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
