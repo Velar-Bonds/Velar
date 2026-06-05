@@ -21,20 +21,20 @@ fn setup() -> (Env, Address, Address, Address, Address) {
 
 fn init(env: &Env, contract_id: &Address, tse: &Address, party: &Address) -> VelarBondClient<'_> {
     let client = VelarBondClient::new(env, contract_id);
-    client.initialize(
-        tse,
-        &String::from_str(env, "party-aurora-001"),
-        party,
-        &String::from_str(env, "SOL-2026-018"),
-        &String::from_str(env, "CERT-2026-018"),
-        &String::from_str(env, "Serie A"),
-        &5_000_000_i128,
-        &Symbol::new(env, "CRC"),
-        &650_u32,                          // 6.50%
-        &1_700_000_000_u64,
-        &1_731_536_000_u64,
-        &BytesN::from_array(env, &[0xAB; 32]),
-    );
+    let args = InitArgs {
+        party_id: String::from_str(env, "party-aurora-001"),
+        party_owner: party.clone(),
+        bond_id: String::from_str(env, "SOL-2026-018"),
+        certificate_number: String::from_str(env, "CERT-2026-018"),
+        series: String::from_str(env, "Serie A"),
+        face_value: 5_000_000_i128,
+        currency: Symbol::new(env, "CRC"),
+        interest_rate_bps: 650_u32, // 6.50%
+        issue_date: 1_700_000_000_u64,
+        maturity_date: 1_731_536_000_u64,
+        document_hash: BytesN::from_array(env, &[0xAB; 32]),
+    };
+    client.initialize(tse, &args);
     client
 }
 

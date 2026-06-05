@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module';
 import { PartiesModule } from './parties/parties.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ReportsModule } from './reports/reports.module';
+import { ExplorerModule } from './explorer/explorer.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ReportsModule } from './reports/reports.module';
     PartiesModule,
     AnalyticsModule,
     ReportsModule,
+    ExplorerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -105,23 +105,47 @@ export class SorobanBondService {
     const contractId = this.extractContractId(deployStatus);
     this.logger.log(`Bono ${input.bondId} desplegado: contract=${contractId} tx=${deployRes.hash}`);
 
-    // ── Paso 2: initialize con todos los atributos
+    // ── Paso 2: initialize con todos los atributos.
+    // Soroban limita las funciones a 10 parámetros, así que el contrato
+    // recibe `(tse, args)` donde `args` es un struct InitArgs.
     const contract = new Contract(contractId);
     const initAccount = await this.server.getAccount(sourceAddress);
+
+    const initArgs = nativeToScVal(
+      {
+        party_id: input.partyId,
+        party_owner: Address.fromString(input.partyOwner),
+        bond_id: input.bondId,
+        certificate_number: input.certificateNumber,
+        series: input.series,
+        face_value: BigInt(Math.round(input.faceValue)),
+        currency: input.currency, // se marca como Symbol abajo
+        interest_rate_bps: input.interestRateBps,
+        issue_date: BigInt(input.issueDate),
+        maturity_date: BigInt(input.maturityDate),
+        document_hash: Buffer.from(input.documentHash, 'hex'),
+      },
+      {
+        type: {
+          party_id: ['symbol', 'string'],
+          party_owner: ['symbol', null],
+          bond_id: ['symbol', 'string'],
+          certificate_number: ['symbol', 'string'],
+          series: ['symbol', 'string'],
+          face_value: ['symbol', 'i128'],
+          currency: ['symbol', 'symbol'],
+          interest_rate_bps: ['symbol', 'u32'],
+          issue_date: ['symbol', 'u64'],
+          maturity_date: ['symbol', 'u64'],
+          document_hash: ['symbol', 'bytes'],
+        },
+      },
+    );
+
     const initOp = contract.call(
       'initialize',
       Address.fromString(this.tseAddress).toScVal(),
-      nativeToScVal(input.partyId, { type: 'string' }),
-      Address.fromString(input.partyOwner).toScVal(),
-      nativeToScVal(input.bondId, { type: 'string' }),
-      nativeToScVal(input.certificateNumber, { type: 'string' }),
-      nativeToScVal(input.series, { type: 'string' }),
-      nativeToScVal(BigInt(Math.round(input.faceValue)), { type: 'i128' }),
-      nativeToScVal(input.currency, { type: 'symbol' }),
-      nativeToScVal(input.interestRateBps, { type: 'u32' }),
-      nativeToScVal(BigInt(input.issueDate), { type: 'u64' }),
-      nativeToScVal(BigInt(input.maturityDate), { type: 'u64' }),
-      nativeToScVal(Buffer.from(input.documentHash, 'hex'), { type: 'bytes' }),
+      initArgs,
     );
 
     const initTx = new TransactionBuilder(initAccount, {
