@@ -132,49 +132,68 @@ export class StellarBondService {
     return txHash;
   }
 
-  /** Libera el token de la canasta al nuevo dueño (confirmada la transferencia). */
-  async releaseFromEscrow(bondId: string, newOwnerAddress: string, amount?: number): Promise<string> {
-    const asset = this.assetFor(bondId);
-    await this.ensureTrustline(newOwnerAddress, asset);
-    const memo = amount ? `sold:${amount}CRC` : `sold:${bondId}`;
-    const { txHash } = await this.payOne(this.wallets.escrowAddress!, newOwnerAddress, asset, memo);
-    this.logger.log(`Bono ${bondId} liberado de escrow → ${newOwnerAddress} (${txHash})`);
-    return txHash;
-  }
-
   /**
-   * Registra ON-CHAIN el precio pagado en la venta enviando VCRC al vendedor.
-   * Como la plataforma es el ISSUER de VCRC, cada pago "crea" esa cantidad.
-   * Esto hace que el volumen del precio aparezca en Stellar Expert (asset VCRC).
+   * Libera el token de la canasta al nuevo dueño Y registra el precio pagado on-chain.
+   *
+   * En una sola transacción atómica firmada por escrow + issuer:
+   *  - Op 1: paga 1 unidad del token bono: escrow → comprador
+   *  - Op 2 (opcional, si hay precio y vendedor): paga VCRC: issuer → vendedor
+   *
+   * Combinarlas en una sola tx evita race conditions de sequence number y
+   * garantiza que el cambio de dueño y el registro del precio sean atómicos.
    */
-  async settlePrice(sellerAddress: string, amount: number, bondId: string): Promise<string | undefined> {
-    if (!amount || amount <= 0) return undefined;
+  async releaseFromEscrow(
+    bondId: string,
+    newOwnerAddress: string,
+    amount?: number,
+    sellerAddress?: string,
+  ): Promise<{ txHash: string; priceRecorded: boolean }> {
+    const asset = this.assetFor(bondId);
     const vcrc = this.paymentAsset();
-    try {
-      await this.ensureTrustline(sellerAddress, vcrc);
-    } catch (e) {
-      this.logger.warn(`trustline VCRC falló para ${sellerAddress}: ${(e as Error).message}`);
-      return undefined;
+    // Asegura trustlines (en txs separadas, son idempotentes y rápidas)
+    await this.ensureTrustline(newOwnerAddress, asset);
+    const wantsPrice = !!sellerAddress && !!amount && amount > 0 && sellerAddress !== this.wallets.issuerAddress;
+    if (wantsPrice) {
+      try { await this.ensureTrustline(sellerAddress!, vcrc); }
+      catch (e) { this.logger.warn(`trustline VCRC falló: ${(e as Error).message}`); }
     }
+
+    const issuerKp = this.wallets.keypairFor(this.wallets.issuerAddress!);
+    const escrowKp = this.wallets.keypairFor(this.wallets.escrowAddress!);
+    const escrowSrc = await this.server.loadAccount(this.wallets.escrowAddress!);
+    const memo = amount ? `sold:${amount}CRC` : `sold:${bondId}`;
+
+    const builder = new TransactionBuilder(escrowSrc, { fee: BASE_FEE, networkPassphrase: NET })
+      .addOperation(Operation.payment({
+        destination: newOwnerAddress,
+        asset,
+        amount: '1',
+      }))
+      .addMemo(Memo.text(memo.slice(0, 28)))
+      .setTimeout(60);
+
+    if (wantsPrice) {
+      builder.addOperation(Operation.payment({
+        source: this.wallets.issuerAddress!,
+        destination: sellerAddress!,
+        asset: vcrc,
+        amount: amount!.toFixed(7),
+      }));
+    }
+
+    const tx = builder.build();
+    tx.sign(escrowKp);
+    if (wantsPrice) tx.sign(issuerKp);
+
     try {
-      const kp = this.wallets.keypairFor(this.wallets.issuerAddress!);
-      const src = await this.server.loadAccount(this.wallets.issuerAddress!);
-      const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
-        .addOperation(Operation.payment({
-          destination: sellerAddress,
-          asset: vcrc,
-          amount: amount.toFixed(7), // Stellar usa 7 decimales
-        }))
-        .addMemo(Memo.text(`bond:${bondId}`.slice(0, 28)))
-        .setTimeout(60)
-        .build();
-      tx.sign(kp);
       const res = await this.server.submitTransaction(tx);
-      this.logger.log(`Precio ₡${amount} pagado on-chain a ${sellerAddress} (VCRC) → ${res.hash}`);
-      return res.hash;
-    } catch (e) {
-      this.logger.warn(`settlePrice falló: ${(e as Error).message}`);
-      return undefined;
+      this.logger.log(`Bono ${bondId} liberado → ${newOwnerAddress} (${res.hash})${wantsPrice ? ` + ₡${amount} VCRC → ${sellerAddress}` : ''}`);
+      return { txHash: res.hash, priceRecorded: wantsPrice };
+    } catch (e: any) {
+      const codes = e?.response?.data?.extras?.result_codes;
+      const detail = codes ? JSON.stringify(codes) : (e as Error).message;
+      this.logger.warn(`releaseFromEscrow falló: ${detail}`);
+      throw e;
     }
   }
 
