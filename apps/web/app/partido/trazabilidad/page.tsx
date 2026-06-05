@@ -52,7 +52,10 @@ export default function PartidoTrazabilidadPage() {
     .filter((t) => t.bond_token_id === sel)
     .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''));
 
-  const currentOwner = movs.filter((t) => t.status === 'liberada').at(-1)?.to_profile?.full_name ?? me.full_name;
+  // El dueño actual viene de la BD (bond.profiles.full_name), fallback al último mov liberado
+  const currentOwner = (bond as any)?.profiles?.full_name
+    ?? movs.filter((t) => t.status === 'liberada').at(-1)?.to_profile?.full_name
+    ?? '—';
 
   return (
     <PartidoShell me={me}>

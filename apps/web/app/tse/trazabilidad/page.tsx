@@ -59,6 +59,7 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
   // Historial de este bono: transfers + seed traceability
   const realMovs = transfers
     .filter((t) => t.bond_token_id === sel)
+    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? '')) // cronológico ASC
     .map((t) => ({
       owner: t.from_profile?.full_name ?? '?',
       to: t.to_profile?.full_name,
@@ -71,7 +72,9 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
   const seedMovs = bond ? (SEED_TRACEABILITY[bond.bond_id] ?? []) : [];
   const movs = realMovs.length > 0 ? realMovs : seedMovs;
 
-  const currentOwner = bond?.profiles?.full_name ?? (movs.length > 0 ? (movs.at(-1) as any)?.owner ?? '—' : '—');
+  // La verdad del dueño actual viene de la BD (bond.profiles), no de los movs
+  const lastReleased = [...realMovs].reverse().find((m) => m.status === 'liberada');
+  const currentOwner = bond?.profiles?.full_name ?? lastReleased?.to ?? '—';
 
   return (
     <TSEShell me={me}>
@@ -145,18 +148,20 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
                     {(movs as any[]).map((m, i) => {
                       const colorCls = STATUS_COLOR[m.status] ?? 'bg-gray-100 text-gray-500 border-gray-200';
                       const isLast = i === movs.length - 1;
+                      // Solo marcar "dueño actual" si este mov terminó la cadena con liberada y el `to` coincide
+                      const showsCurrent = isLast && m.status === 'liberada' && m.to === currentOwner;
                       return (
                         <div key={i} className="relative flex gap-4">
                           <span className={`z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm ${colorCls}`}>
-                            {isLast ? <CheckCircle size={16} /> : <ArrowRight size={16} />}
+                            {showsCurrent ? <CheckCircle size={16} /> : <ArrowRight size={16} />}
                           </span>
-                          <div className={`flex-1 rounded-xl border p-3.5 ${isLast ? 'border-emerald-200 bg-emerald-50/30' : 'border-outline-variant/20 bg-white'}`}>
+                          <div className={`flex-1 rounded-xl border p-3.5 ${showsCurrent ? 'border-emerald-200 bg-emerald-50/30' : 'border-outline-variant/20 bg-white'}`}>
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <div>
                                 <p className="text-sm font-semibold">
                                   {m.owner}
-                                  {m.to && <><span className="mx-1.5 text-on-surface-variant">→</span>{m.to}</>}
-                                  {isLast && <span className="ml-2 text-xs font-normal text-emerald-600">(dueño actual)</span>}
+                                  {m.to && <><span className="mx-1.5 text-on-surface-variant">→</span><span className={showsCurrent ? 'text-emerald-700' : ''}>{m.to}</span></>}
+                                  {showsCurrent && <span className="ml-2 text-xs font-normal text-emerald-600">(dueño actual)</span>}
                                 </p>
                                 {m.amount && <p className="text-xs font-medium text-on-surface-variant">{fmtMoney(m.amount)}</p>}
                                 {m.tx && <p className="font-mono text-[11px] text-on-surface-variant">{m.tx}</p>}

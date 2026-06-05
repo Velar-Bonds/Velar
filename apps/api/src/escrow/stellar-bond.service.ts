@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  Asset, Horizon, Networks, Operation, TransactionBuilder, BASE_FEE,
+  Asset, Horizon, Memo, Networks, Operation, TransactionBuilder, BASE_FEE,
 } from '@stellar/stellar-sdk';
 import { WalletService } from './wallet.service';
 
@@ -84,13 +84,17 @@ export class StellarBondService {
   }
 
   /** Paga 1 unidad del activo de `from` a `to`, firmado por `from` (custodia). */
-  private async payOne(from: string, to: string, asset: Asset): Promise<{ txHash: string; ledger: number }> {
+  private async payOne(from: string, to: string, asset: Asset, memoText?: string): Promise<{ txHash: string; ledger: number }> {
     const kp = this.wallets.keypairFor(from);
     const src = await this.server.loadAccount(from);
-    const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
+    const builder = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
       .addOperation(Operation.payment({ destination: to, asset, amount: '1' }))
-      .setTimeout(60)
-      .build();
+      .setTimeout(60);
+    if (memoText) {
+      // Stellar memo TEXT permite hasta 28 bytes UTF-8
+      builder.addMemo(Memo.text(memoText.slice(0, 28)));
+    }
+    const tx = builder.build();
     tx.sign(kp);
     const res = await this.server.submitTransaction(tx);
     return { txHash: res.hash, ledger: res.ledger };
@@ -103,25 +107,27 @@ export class StellarBondService {
   async issueBond(bondId: string, ownerAddress: string) {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(ownerAddress, asset);
-    const { txHash, ledger } = await this.payOne(this.wallets.issuerAddress!, ownerAddress, asset);
+    const { txHash, ledger } = await this.payOne(this.wallets.issuerAddress!, ownerAddress, asset, `VELAR:issue:${bondId}`);
     this.logger.log(`Bono ${bondId} emitido on-chain → ${ownerAddress} (${txHash})`);
     return { assetCode: asset.getCode(), issuer: asset.getIssuer(), owner: ownerAddress, txHash, ledger };
   }
 
   /** Mueve el token del dueño a la canasta de escrow (queda bloqueado). */
-  async lockInEscrow(bondId: string, ownerAddress: string): Promise<string> {
+  async lockInEscrow(bondId: string, ownerAddress: string, amount?: number): Promise<string> {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(this.wallets.escrowAddress!, asset);
-    const { txHash } = await this.payOne(ownerAddress, this.wallets.escrowAddress!, asset);
+    const memo = amount ? `escrow:${amount}` : `escrow:${bondId}`;
+    const { txHash } = await this.payOne(ownerAddress, this.wallets.escrowAddress!, asset, memo);
     this.logger.log(`Bono ${bondId} → escrow (${txHash})`);
     return txHash;
   }
 
   /** Libera el token de la canasta al nuevo dueño (confirmada la transferencia). */
-  async releaseFromEscrow(bondId: string, newOwnerAddress: string): Promise<string> {
+  async releaseFromEscrow(bondId: string, newOwnerAddress: string, amount?: number): Promise<string> {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(newOwnerAddress, asset);
-    const { txHash } = await this.payOne(this.wallets.escrowAddress!, newOwnerAddress, asset);
+    const memo = amount ? `sold:${amount}CRC` : `sold:${bondId}`;
+    const { txHash } = await this.payOne(this.wallets.escrowAddress!, newOwnerAddress, asset, memo);
     this.logger.log(`Bono ${bondId} liberado de escrow → ${newOwnerAddress} (${txHash})`);
     return txHash;
   }
