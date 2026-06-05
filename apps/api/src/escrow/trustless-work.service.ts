@@ -99,7 +99,6 @@ export class TrustlessWorkService {
         address: this.wallets.issuerAddress,
         symbol: 'VCRC',
       },
-      receiverMemo: input.bondId.slice(0, 28),
       signer: this.platformAddress,
     };
 
