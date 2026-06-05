@@ -182,9 +182,19 @@ export default function RegistrosPage() {
                                 title="Emitir token en Stellar">
                                 {busyOnchain === b.token_id ? '…' : '⛓ On-chain'}
                               </button>
-                              <a href={bondAssetUrl(b.bond_id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded-lg border border-outline-variant/40 px-2 py-1 text-xs text-on-surface-variant hover:text-primary">
+                              <a href={bondAssetUrl(b.bond_id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded-lg border border-outline-variant/40 px-2 py-1 text-xs text-on-surface-variant hover:text-primary" title="Ver asset Classic en Stellar Expert">
                                 <ExternalLink size={11} />
                               </a>
+                              {(b as any).soroban_contract_id && (
+                                <a
+                                  href={`https://stellar.expert/explorer/testnet/contract/${(b as any).soroban_contract_id}`}
+                                  target="_blank" rel="noopener noreferrer"
+                                  title={`Soroban NFT: ${(b as any).soroban_contract_id}`}
+                                  className="flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 transition hover:bg-purple-100"
+                                >
+                                  🪙 NFT
+                                </a>
+                              )}
                             </>
                           )}
                         </div>
@@ -210,6 +220,18 @@ export default function RegistrosPage() {
                               </div>
                             ))}
                           </div>
+                          {(b as any).soroban_contract_id && (
+                            <div className="mt-4 rounded-xl border border-purple-200 bg-purple-50/60 p-4">
+                              <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-purple-700">
+                                🪙 Soroban NFT (Web3)
+                              </p>
+                              <p className="break-all font-mono text-xs text-purple-900">{(b as any).soroban_contract_id}</p>
+                              <a href={`https://stellar.expert/explorer/testnet/contract/${(b as any).soroban_contract_id}`} target="_blank" rel="noopener noreferrer"
+                                className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 hover:text-purple-900">
+                                Ver contrato en Stellar Expert <ExternalLink size={10} />
+                              </a>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )}
