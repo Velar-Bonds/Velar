@@ -10,6 +10,8 @@ import { EscrowModule } from './escrow/escrow.module';
 import { AuditModule } from './audit/audit.module';
 import { UsersModule } from './users/users.module';
 import { PartiesModule } from './parties/parties.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { PartiesModule } from './parties/parties.module';
     AuditModule,
     UsersModule,
     PartiesModule,
+    AnalyticsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

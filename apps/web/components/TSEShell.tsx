@@ -3,8 +3,8 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutGrid, ClipboardCheck, Send, ScrollText, Waypoints, Search, Globe, Settings, LogOut,
-  ShieldCheck, Landmark,
+  LayoutGrid, ClipboardCheck, Send, ScrollText, Waypoints, Search, Settings, LogOut,
+  ShieldCheck, Landmark, BarChart3, FileText,
 } from 'lucide-react';
 import { createClient } from '../lib/supabase/client';
 import type { Me } from '../lib/api';
@@ -15,6 +15,8 @@ const NAV = [
   { href: '/tse/revision', label: 'Revisión', Icon: ClipboardCheck },
   { href: '/tse/emision', label: 'Emisión', Icon: Send },
   { href: '/tse/registros', label: 'Registros', Icon: ScrollText },
+  { href: '/tse/analytics', label: 'Análisis', Icon: BarChart3 },
+  { href: '/tse/reportes', label: 'Reportes', Icon: FileText },
   { href: '/tse/trazabilidad', label: 'Trazabilidad', Icon: Waypoints },
   { href: '/tse/auditoria', label: 'Auditoría', Icon: Search },
   { href: '/tse/configuracion', label: 'Configuración', Icon: Settings },

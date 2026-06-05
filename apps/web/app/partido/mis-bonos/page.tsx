@@ -191,8 +191,8 @@ export default function PartidoMisBonosPage() {
                       <div className="flex items-center justify-end gap-2">
                         {canPublish && (
                           <button onClick={() => publicar(b.token_id)} disabled={busy === b.token_id}
-                            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-60">
-                            <ShoppingCart size={12} /> {busy === b.token_id ? '…' : 'Publicar'}
+                            className={`btn-action ${busy === b.token_id ? 'btn-loading' : ''}`}>
+                            {busy === b.token_id ? <><span className="btn-spinner" /> Publicando…</> : <><ShoppingCart size={12} /> Publicar</>}
                           </button>
                         )}
                         {!b.token_id.startsWith('mock') && (

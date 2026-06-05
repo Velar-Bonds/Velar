@@ -71,8 +71,8 @@ function Content({ token }: { token: string }) {
                       <div className="flex items-center justify-end gap-2">
                         {canPublish && (
                           <button onClick={() => publicar(b.token_id)} disabled={busy === b.token_id}
-                            className="flex items-center gap-1.5 rounded-lg bg-primary-container px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primary-container/90 disabled:opacity-60">
-                            <ShoppingCart size={12} /> {busy === b.token_id ? 'Publicando…' : 'Publicar'}
+                            className={`btn-action ${busy === b.token_id ? 'btn-loading' : ''}`}>
+                            {busy === b.token_id ? <><span className="btn-spinner" /> Publicando…</> : <><ShoppingCart size={12} /> Publicar</>}
                           </button>
                         )}
                         <StellarExpertButton href={bondAssetUrl(b.bond_id)} label="Stellar" small />

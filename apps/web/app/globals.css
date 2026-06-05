@@ -192,3 +192,117 @@ body {
   border-color: var(--color-primary-container);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary-container) 15%, transparent);
 }
+
+/* ─── Botones de acción con animaciones ─────────────────────────────────── */
+
+/* Mejora del primary-button existente */
+.velar-primary-button {
+  transition: transform .12s ease, box-shadow .15s ease, background .15s ease, filter .15s ease;
+}
+.velar-primary-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+.velar-primary-button:active {
+  transform: translateY(0);
+  filter: brightness(0.96);
+}
+.velar-primary-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Botón de acción genérico (aceptar, confirmar, etc.) */
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-primary-container);
+  color: white;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .15s ease, background .15s ease, filter .15s ease;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 12px rgba(21,94,239,0.12);
+}
+.btn-action:hover:not(:disabled) {
+  background: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.05), 0 8px 18px rgba(21,94,239,0.22);
+}
+.btn-action:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+.btn-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+}
+.btn-action::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.35), transparent 60%);
+  opacity: 0;
+  transition: opacity .25s ease;
+  pointer-events: none;
+}
+.btn-action:hover:not(:disabled)::after { opacity: 1; }
+
+/* Variantes de color */
+.btn-success { background: #059669; box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 12px rgba(5,150,105,0.18); }
+.btn-success:hover:not(:disabled) { background: #047857; box-shadow: 0 2px 0 rgba(0,0,0,0.05), 0 8px 18px rgba(5,150,105,0.28); }
+.btn-danger  { background: #ef4444; box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 12px rgba(239,68,68,0.16); }
+.btn-danger:hover:not(:disabled) { background: #dc2626; box-shadow: 0 2px 0 rgba(0,0,0,0.05), 0 8px 18px rgba(239,68,68,0.26); }
+.btn-warn    { background: #d97706; }
+.btn-warn:hover:not(:disabled) { background: #b45309; }
+
+/* Botón outline (cancelar, secundario) */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  background: white;
+  color: var(--color-on-surface-variant);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+  cursor: pointer;
+  transition: transform .12s ease, border-color .15s ease, color .15s ease, background .15s ease;
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--color-primary-container);
+  color: var(--color-primary-container);
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-primary-container) 4%, white);
+}
+.btn-ghost:active:not(:disabled) { transform: translateY(0); }
+.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Pulse para botones en loading */
+@keyframes velar-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(21,94,239,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(21,94,239,0); }
+}
+.btn-loading { animation: velar-pulse 1.4s ease-in-out infinite; }
+
+/* Spinner inline */
+.btn-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

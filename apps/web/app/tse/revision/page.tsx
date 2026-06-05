@@ -164,11 +164,10 @@ export default function RevisionPage() {
                         {r.status === 'pendiente' && (
                           <div className="flex items-center justify-end gap-2">
                             <button onClick={() => approve(r.id)} disabled={busy === r.id}
-                              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
-                              <CheckCircle size={13} /> Aprobar
+                              className={`btn-action btn-success ${busy === r.id ? 'btn-loading' : ''}`}>
+                              {busy === r.id ? <><span className="btn-spinner" /> Aprobando…</> : <><CheckCircle size={13} /> Aprobar</>}
                             </button>
-                            <button onClick={() => setRejectTarget(r.id)}
-                              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100">
+                            <button onClick={() => setRejectTarget(r.id)} className="btn-action btn-danger">
                               <XCircle size={13} /> Rechazar
                             </button>
                           </div>
@@ -224,10 +223,10 @@ export default function RevisionPage() {
             <p className="mb-4 text-sm text-on-surface-variant">Ingresá el motivo del rechazo. Será visible para el partido solicitante.</p>
             <textarea rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Motivo del rechazo…" className="field-input mb-4 resize-none" />
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} className="rounded-xl border border-outline-variant/40 px-4 py-2 text-sm font-medium transition hover:bg-surface-container-low">Cancelar</button>
+              <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} className="btn-ghost">Cancelar</button>
               <button onClick={() => reject(rejectTarget)} disabled={busy === rejectTarget}
-                className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
-                <XCircle size={14} /> Rechazar
+                className={`btn-action btn-danger ${busy === rejectTarget ? 'btn-loading' : ''}`}>
+                {busy === rejectTarget ? <><span className="btn-spinner" /> Rechazando…</> : <><XCircle size={14} /> Rechazar</>}
               </button>
             </div>
           </div>

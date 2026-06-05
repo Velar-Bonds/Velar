@@ -137,9 +137,9 @@ function Content({ token }: { token: string }) {
                       type="button"
                       onClick={() => requestPurchase(bond.token_id, offerAmount, offerMessages[bond.token_id])}
                       disabled={busy === bond.token_id || !!currentTransfer || !Number.isFinite(offerAmount) || offerAmount <= 0}
-                      className="flex items-center gap-1.5 rounded-xl border border-primary-container/30 px-3 py-2 text-sm font-semibold text-primary-container transition hover:bg-primary-container/5 disabled:opacity-50"
+                      className={`btn-ghost ${busy === bond.token_id ? 'btn-loading' : ''}`}
                     >
-                      <Handshake size={15} /> Ofertar
+                      {busy === bond.token_id ? <><span className="btn-spinner" /> Enviando…</> : <><Handshake size={15} /> Ofertar</>}
                     </button>
                   </div>
                   <input
@@ -155,9 +155,9 @@ function Content({ token }: { token: string }) {
                       type="button"
                       onClick={() => requestPurchase(bond.token_id, bond.face_value ?? null)}
                       disabled={busy === bond.token_id || !!currentTransfer}
-                      className="velar-primary-button flex flex-1 items-center justify-center rounded-xl py-2.5 text-sm font-semibold transition disabled:opacity-60"
+                      className={`btn-action flex-1 justify-center ${busy === bond.token_id ? 'btn-loading' : ''}`}
                     >
-                      {busy === bond.token_id ? 'Enviando...' : 'Comprar al precio'}
+                      {busy === bond.token_id ? <><span className="btn-spinner" /> Enviando…</> : 'Comprar al precio'}
                     </button>
                     {issuer && <StellarExpertButton href={stellarExpert.asset(assetCodeFor(bond.bond_id), issuer)} label="Stellar" small />}
                   </div>
