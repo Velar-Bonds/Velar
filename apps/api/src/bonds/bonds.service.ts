@@ -397,6 +397,12 @@ export class BondsService {
     const ownerWallet = bondWithOwner.profiles?.stellar_wallet ?? await this.ensureWallet(bondWithOwner.current_owner);
     if (!ownerWallet) throw new BadRequestException('El dueño no tiene wallet Stellar');
 
+    // Idempotencia: si ya está confirmado, no re-emitir.
+    if ((bond as any).stellar_status === 'confirmed' && (bond as any).stellar_transaction_hash) {
+      this.logger.log(`Bono ${bond.bond_id} ya estaba emitido on-chain. No se re-emite.`);
+      return { ok: true, alreadyIssued: true, txHash: (bond as any).stellar_transaction_hash, explorerUrl: this.stellar.explorerUrl(bond.bond_id) };
+    }
+
     try {
       const res = await this.stellar.issueBond(bond.bond_id, ownerWallet);
       await this.supabase.admin.from('bonds').update({
@@ -412,8 +418,22 @@ export class BondsService {
       const txHash = res.txHash;
       await this.audit.emit({ type: AuditEventType.BOND_ASIGNADO, bondTokenId: tokenId, actorId, payload: { onchain: true }, txHash });
       return { ok: true, txHash, explorerUrl: this.stellar.explorerUrl(bond.bond_id) };
-    } catch (e) {
-      throw new BadRequestException(`Error al emitir on-chain: ${(e as Error).message}`);
+    } catch (e: any) {
+      // Stellar Horizon devuelve detalles útiles en e.response.data.extras
+      const codes = e?.response?.data?.extras?.result_codes;
+      let msg = e.message;
+      if (codes) {
+        const op = codes.operations?.[0];
+        if (op === 'op_line_full' || op === 'op_underfunded') {
+          msg = 'Este bono ya tiene un token emitido al dueño (la trustline está llena). Probá emitir un bono nuevo en vez de re-emitir éste.';
+        } else if (op === 'op_no_trust') {
+          msg = 'El dueño no tiene trustline para este asset. Necesita crearla primero.';
+        } else {
+          msg = `Stellar rechazó la operación: ${JSON.stringify(codes)}`;
+        }
+      }
+      await this.supabase.admin.from('bonds').update({ stellar_error: msg }).eq('token_id', tokenId);
+      throw new BadRequestException(msg);
     }
   }
 
