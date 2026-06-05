@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { ArrowRight, Boxes } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { id: 'hero',      label: 'Inicio' },
-  { id: 'proceso',   label: 'Proceso' },
-  { id: 'historial', label: 'Historial' },
-  { id: 'consulta',  label: 'Consulta pública' },
+  { id: 'hero',      label: 'Inicio',           href: '#hero',      external: false },
+  { id: 'proceso',   label: 'Proceso',          href: '#proceso',   external: false },
+  { id: 'historial', label: 'Historial',        href: '#historial', external: false },
+  { id: 'explorer',  label: 'Explorador',       href: '/explorer',  external: true },
 ];
 
 export function LandingNav() {
@@ -27,19 +27,19 @@ export function LandingNav() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {NAV_ITEMS.map(({ id, label }) => {
+          {NAV_ITEMS.map(({ id, label, href, external }) => {
             const isActive = active === id;
-            return (
-              <a
-                key={id}
-                href={`#${id}`}
-                onClick={() => setActive(id)}
-                className={`relative px-3.5 py-2 text-[14px] transition-colors ${
-                  isActive
-                    ? 'font-semibold text-primary'
-                    : 'font-medium text-slate-600 hover:text-primary'
-                }`}
-              >
+            const className = `relative px-3.5 py-2 text-[14px] transition-colors ${
+              isActive
+                ? 'font-semibold text-primary'
+                : 'font-medium text-slate-600 hover:text-primary'
+            }`;
+            return external ? (
+              <Link key={id} href={href} className={className} onClick={() => setActive(id)}>
+                {label}
+              </Link>
+            ) : (
+              <a key={id} href={href} className={className} onClick={() => setActive(id)}>
                 {label}
                 {isActive && (
                   <span className="absolute -bottom-[1px] left-3.5 right-3.5 h-[2px] rounded-full bg-primary" />

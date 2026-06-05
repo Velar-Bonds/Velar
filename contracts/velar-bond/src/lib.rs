@@ -7,20 +7,21 @@
 //! actual, partido emisor y estado. Postgres queda como índice/cache.
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, panic_with_error, symbol_short,
+    contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short,
     Address, BytesN, Env, String, Symbol,
 };
 
 // ─── Tipos del estado ───────────────────────────────────────────────────────
 
+// Enums con #[contracttype] no soportan discriminants explícitos.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[contracttype]
 pub enum Status {
-    Active = 0,
-    InEscrow = 1,
-    Frozen = 2,
-    Sold = 3,
-    Cancelled = 4,
+    Active,
+    InEscrow,
+    Frozen,
+    Sold,
+    Cancelled,
 }
 
 #[derive(Clone)]
@@ -50,10 +51,29 @@ pub enum DataKey {
     InitializedAt,   // u64 timestamp
 }
 
+/// Parámetros para inicializar el bono. Se pasa como struct porque Soroban
+/// limita las funciones a 10 parámetros y el bono tiene más metadata.
+#[derive(Clone)]
+#[contracttype]
+pub struct InitArgs {
+    pub party_id: String,
+    pub party_owner: Address,
+    pub bond_id: String,
+    pub certificate_number: String,
+    pub series: String,
+    pub face_value: i128,
+    pub currency: Symbol,
+    pub interest_rate_bps: u32,
+    pub issue_date: u64,
+    pub maturity_date: u64,
+    pub document_hash: BytesN<32>,
+}
+
 // ─── Errores del contrato ───────────────────────────────────────────────────
 
+#[contracterror]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[contracttype]
+#[repr(u32)]
 pub enum Error {
     AlreadyInitialized = 1,
     NotInitialized = 2,
@@ -73,21 +93,7 @@ pub struct VelarBond;
 impl VelarBond {
     /// Despliega el bono con todos sus atributos. Solo el TSE puede invocarla
     /// (la firma del TSE se requiere). Se llama UNA SOLA VEZ por contrato.
-    pub fn initialize(
-        env: Env,
-        tse: Address,
-        party_id: String,
-        party_owner: Address,
-        bond_id: String,
-        certificate_number: String,
-        series: String,
-        face_value: i128,
-        currency: Symbol,
-        interest_rate_bps: u32,
-        issue_date: u64,
-        maturity_date: u64,
-        document_hash: BytesN<32>,
-    ) {
+    pub fn initialize(env: Env, tse: Address, args: InitArgs) {
         // El TSE autoriza la emisión.
         tse.require_auth();
 
@@ -97,29 +103,31 @@ impl VelarBond {
         }
 
         let details = BondDetails {
-            bond_id: bond_id.clone(),
-            party_id: party_id.clone(),
-            certificate_number,
-            series,
-            face_value,
-            currency,
-            interest_rate_bps,
-            issue_date,
-            maturity_date,
-            document_hash,
-            current_owner: party_owner.clone(),
+            bond_id: args.bond_id.clone(),
+            party_id: args.party_id,
+            certificate_number: args.certificate_number,
+            series: args.series,
+            face_value: args.face_value,
+            currency: args.currency,
+            interest_rate_bps: args.interest_rate_bps,
+            issue_date: args.issue_date,
+            maturity_date: args.maturity_date,
+            document_hash: args.document_hash,
+            current_owner: args.party_owner.clone(),
             status: Status::Active,
             created_at: env.ledger().timestamp(),
         };
 
         storage.set(&DataKey::Tse, &tse);
-        storage.set(&DataKey::Owner, &party_owner);
+        storage.set(&DataKey::Owner, &args.party_owner);
         storage.set(&DataKey::Details, &details);
         storage.set(&DataKey::InitializedAt, &env.ledger().timestamp());
 
         // Evento on-chain de emisión
-        env.events()
-            .publish((symbol_short!("issued"),), (party_owner, bond_id, face_value));
+        env.events().publish(
+            (symbol_short!("issued"),),
+            (args.party_owner, args.bond_id, args.face_value),
+        );
     }
 
     /// Transferir el bono a un nuevo dueño. Solo el dueño actual puede ejecutar.

@@ -518,16 +518,16 @@ export default function LandingPage() {
             </div>
 
             {[
-              { title: 'Producto', items: ['Proceso','Historial','Consulta pública','Seguridad'] },
-              { title: 'Recursos', items: ['Documentación','API','Guías','Preguntas frecuentes'] },
-              { title: 'Legal',    items: ['Términos de uso','Política de privacidad','Transparencia','Avisos legales'] },
+              { title: 'Producto', items: [['Proceso','#proceso'],['Historial','#historial'],['Consulta pública','/explorer']] },
+              { title: 'On-chain', items: [['Ledger público','/explorer'],['Asset VCRC','/explorer#vcrc'],['Documentación','#'],['API','#']] },
+              { title: 'Legal',    items: [['Términos de uso','#'],['Política de privacidad','#'],['Transparencia','#']] },
             ].map((col) => (
               <div key={col.title}>
                 <p className="mb-4 text-[12px] font-semibold uppercase tracking-wide text-slate-500">{col.title}</p>
                 <ul className="space-y-2.5">
-                  {col.items.map((it) => (
-                    <li key={it}>
-                      <a href="#" className="text-[14px] text-slate-400 transition hover:text-white">{it}</a>
+                  {col.items.map(([label, href]) => (
+                    <li key={label}>
+                      <a href={href} className="text-[14px] text-slate-400 transition hover:text-white">{label}</a>
                     </li>
                   ))}
                 </ul>
