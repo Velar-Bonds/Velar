@@ -107,12 +107,18 @@ export class TrustlessWorkService {
       signer: this.platformAddress,
     };
 
-    // Trustless Work valida que el receiver tenga trustline al asset antes de
-    // crear el escrow. Aseguramos la trustline VCRC en su custodia.
+    // Trustless Work valida que el receiver tenga trustline al asset antes
+    // de crear el escrow. Aseguramos la trustline VCRC y damos tiempo de
+    // propagación en Horizon antes de continuar.
     try {
+      this.logger.log(`TW: asegurando trustline VCRC para receiver ${input.sellerAddress}…`);
       await this.stellar.ensureVcrcTrustline(input.sellerAddress);
+      // Pausa breve para que Horizon propague la trustline antes de que
+      // Trustless Work la lea con su propia consulta.
+      await new Promise((r) => setTimeout(r, 2500));
+      this.logger.log(`TW: trustline VCRC lista para ${input.sellerAddress}`);
     } catch (e) {
-      this.logger.warn(`No se pudo crear trustline VCRC para receiver: ${(e as Error).message}`);
+      this.logger.warn(`TW: trustline VCRC falló: ${(e as Error).message}`);
     }
 
     const deployRes = await this.call<{ unsignedTransaction: string }>('/deployer/single-release', body);
