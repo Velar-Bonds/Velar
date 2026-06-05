@@ -11,8 +11,12 @@ import {
   FileSearch,
   Boxes,
   ChevronRight,
+  Landmark,
+  Users,
 } from 'lucide-react';
 import { LandingNav } from './_components/LandingNav';
+import { Reveal } from './_components/Reveal';
+import { FAQ } from './_components/FAQ';
 
 export const metadata: Metadata = {
   title: 'VELAR · Trazabilidad pública de bonos políticos',
@@ -226,36 +230,128 @@ export default function LandingPage() {
       {/* ─── 2. PROCESO: 5 cards conectadas por flechas ──────────────────── */}
       <section id="proceso" className="border-t border-slate-200/60 bg-white py-24">
         <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
-          <div className="mx-auto mb-14 max-w-2xl text-center">
-            <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-primary">
-              Proceso de emisión
-            </p>
-            <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-900 md:text-[40px] md:leading-[1.1]"
-                style={{ fontFamily: 'Geist, sans-serif' }}>
-              Un flujo transparente, paso a paso
-            </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-slate-600">
-              Cada etapa del ciclo de vida del bono político queda registrada, validada y disponible para consulta.
-            </p>
-          </div>
+          <Reveal>
+            <div className="mx-auto mb-14 max-w-2xl text-center">
+              <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-primary">
+                Proceso de emisión
+              </p>
+              <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-900 md:text-[40px] md:leading-[1.1]"
+                  style={{ fontFamily: 'Geist, sans-serif' }}>
+                Un flujo transparente, paso a paso
+              </h2>
+              <p className="mt-4 text-[15px] leading-relaxed text-slate-600">
+                Cada etapa del ciclo de vida del bono político queda registrada, validada y disponible para consulta.
+              </p>
+            </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:gap-0">
             {STEPS.map((s, i) => (
-              <div key={s.n} className="relative lg:px-2">
-                <div className="group relative h-full rounded-2xl border border-slate-200 bg-white p-6 transition hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_18px_40px_-18px_rgba(21,94,239,0.25)]">
-                  <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white shadow-md shadow-primary/25">
-                    {s.n}
+              <Reveal key={s.n} delay={i * 0.07}>
+                <div className="relative lg:px-2">
+                  <div className="group relative h-full rounded-2xl border border-slate-200 bg-white p-6 transition hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_18px_40px_-18px_rgba(21,94,239,0.25)]">
+                    <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white shadow-md shadow-primary/25">
+                      {s.n}
+                    </div>
+                    <p className="font-semibold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>{s.name}</p>
+                    <p className="mt-2 text-[13px] leading-relaxed text-slate-500">{s.desc}</p>
                   </div>
-                  <p className="font-semibold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>{s.name}</p>
-                  <p className="mt-2 text-[13px] leading-relaxed text-slate-500">{s.desc}</p>
+                  {/* Flecha entre cards (excepto la última) */}
+                  {i < STEPS.length - 1 && (
+                    <div aria-hidden className="pointer-events-none absolute right-[-12px] top-1/2 hidden -translate-y-1/2 text-slate-300 lg:block">
+                      <ChevronRight size={22} strokeWidth={1.5} />
+                    </div>
+                  )}
                 </div>
-                {/* Flecha entre cards (excepto la última) */}
-                {i < STEPS.length - 1 && (
-                  <div aria-hidden className="pointer-events-none absolute right-[-12px] top-1/2 hidden -translate-y-1/2 text-slate-300 lg:block">
-                    <ChevronRight size={22} strokeWidth={1.5} />
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 2.5 PARA QUIÉN ES VELAR ──────────────────────────────────────── */}
+      <section id="quienes" className="border-t border-slate-200/60 bg-gradient-to-b from-white to-slate-50/40 py-24">
+        <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
+          <Reveal>
+            <div className="mx-auto mb-14 max-w-2xl text-center">
+              <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-900 md:text-[40px] md:leading-[1.1]"
+                  style={{ fontFamily: 'Geist, sans-serif' }}>
+                Un mismo registro,<br />tres formas de usarlo
+              </h2>
+              <p className="mt-4 text-[15px] leading-relaxed text-slate-600">
+                VELAR no le sirve solo a partidos o auditores. La transparencia tiene sentido
+                cuando es accesible para todos los lados de la mesa.
+              </p>
+            </div>
+          </Reveal>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            {[
+              {
+                Icon: Landmark,
+                accent: 'from-primary-container to-primary',
+                role: 'Para el partido',
+                headline: 'Financiá la campaña con respaldo verificable.',
+                bullets: [
+                  'Solicitá bonos al TSE y seguí el estado en vivo',
+                  'Publicá en el marketplace cuando estén aprobados',
+                  'Cada movimiento queda firmado en tu wallet de custodia',
+                ],
+                cta: 'Crear cuenta de partido',
+                href: '/signup',
+              },
+              {
+                Icon: ShieldCheck,
+                accent: 'from-emerald-500 to-emerald-700',
+                role: 'Para el TSE',
+                headline: 'Supervisá el sistema completo sin recibir papeles.',
+                bullets: [
+                  'Aprobá o rechazá solicitudes con motivo registrado',
+                  'Visualizá análisis por partido, montos y reventas',
+                  'Resolvé disputas retirando el bono del escrow',
+                ],
+                cta: 'Acceso institucional',
+                href: '/login',
+              },
+              {
+                Icon: Users,
+                accent: 'from-slate-600 to-slate-900',
+                role: 'Para la ciudadanía',
+                headline: 'Verificá quién financia qué, sin pedir permiso.',
+                bullets: [
+                  'Consultá la trazabilidad de cualquier bono',
+                  'Abrí cualquier transacción en Stellar Expert',
+                  'El historial es público y no se puede alterar',
+                ],
+                cta: 'Explorar historial público',
+                href: '#historial',
+              },
+            ].map((s, i) => (
+              <Reveal key={s.role} delay={i * 0.08}>
+                <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-7 transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_24px_60px_-30px_rgba(15,23,42,0.25)]">
+                  {/* gradient accent bar */}
+                  <div aria-hidden className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${s.accent}`} />
+
+                  <div className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${s.accent} text-white shadow-md`}>
+                    <s.Icon size={20} strokeWidth={2.2} />
                   </div>
-                )}
-              </div>
+                  <p className="mb-1 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-slate-400">{s.role}</p>
+                  <h3 className="text-[19px] font-semibold leading-snug text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>
+                    {s.headline}
+                  </h3>
+                  <ul className="mt-5 flex-1 space-y-3">
+                    {s.bullets.map((b) => (
+                      <li key={b} className="flex items-start gap-2.5 text-[14px] text-slate-600">
+                        <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-500" strokeWidth={2.4} />
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={s.href} className="mt-6 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-primary transition group-hover:translate-x-0.5 hover:text-primary-container">
+                    {s.cta} <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -330,6 +426,26 @@ export default function LandingPage() {
               </a>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ─── 3.5 FAQ ──────────────────────────────────────────────────────── */}
+      <section id="faq" className="border-t border-slate-200/60 bg-slate-50/50 py-24">
+        <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
+          <Reveal>
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-900 md:text-[40px] md:leading-[1.1]"
+                  style={{ fontFamily: 'Geist, sans-serif' }}>
+                Lo que la gente nos pregunta
+              </h2>
+              <p className="mt-4 text-[15px] leading-relaxed text-slate-600">
+                Respuestas honestas a las dudas que aparecen antes de confiar en una plataforma así.
+              </p>
+            </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <FAQ />
+          </Reveal>
         </div>
       </section>
 
