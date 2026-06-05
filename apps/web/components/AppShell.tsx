@@ -6,6 +6,7 @@ import {
   Store, Wallet, Handshake, GitBranch, Radio, Settings, LogOut, Bell, Search, ChevronDown, Boxes, Home,
 } from 'lucide-react';
 import { useSession, type Me } from '../lib/api';
+import { useRoleGuard } from '../lib/role-guard';
 
 const TABS = [
   { href: '/', label: 'Inicio', Icon: Home, exact: true },
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
   const { token, me, loading, error, logout } = useSession();
   const pathname = usePathname();
   const [menu, setMenu] = useState(false);
+  const ok = useRoleGuard(me, ['comprador', 'recomprador', 'validador']);
 
   return (
     <div className="min-h-screen bg-[#fafcff] text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -72,7 +74,7 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
       </header>
 
       {/* Contenido */}
-      {loading || !token || !me ? (
+      {loading || !token || !me || !ok ? (
         <div className="flex min-h-[60vh] items-center justify-center">
           {error
             ? <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700">{error}</div>

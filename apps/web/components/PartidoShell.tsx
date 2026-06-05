@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '../lib/supabase/client';
 import type { Me } from '../lib/api';
+import { useRoleGuard } from '../lib/role-guard';
 
 const NAV = [
   { href: '/partido', label: 'Dashboard', Icon: LayoutDashboard, exact: true },
@@ -22,8 +23,17 @@ export function PartidoShell({ me, children }: { me: Me; children: ReactNode }) 
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const ok = useRoleGuard(me, ['emisor']);
 
   const logout = async () => { await supabase.auth.signOut(); router.replace('/login'); };
+
+  if (!ok) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-on-background" style={{ fontFamily: 'Inter, sans-serif' }}>
