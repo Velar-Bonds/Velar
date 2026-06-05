@@ -35,13 +35,17 @@ export default function EscrowsPage() {
     );
   }
 
+  // Token bloqueado ahora mismo en la canasta de escrow
+  const IN_ESCROW_STATUSES = ['en_escrow', 'pago_registrado', 'pago_validado'];
+  const enCanasta = transfers.filter((t) => IN_ESCROW_STATUSES.includes(t.status));
+  const liberadas = transfers.filter((t) => t.status === 'liberada');
+  const canceladas = transfers.filter((t) => t.status === 'cancelada');
   const withEscrow = transfers.filter((t) => t.escrow_contract_id);
-  const withoutEscrow = transfers.filter((t) => !t.escrow_contract_id);
 
-  // Las transferencias que están "en escrow" ahora mismo (token bloqueado en la canasta)
-  const enEscrowAhora = transfers.filter((t) => ['en_escrow', 'pago_registrado', 'pago_validado'].includes(t.status));
-
-  const base = tab === 'with' ? withEscrow : tab === 'without' ? withoutEscrow : transfers;
+  const base =
+    tab === 'with'    ? enCanasta :
+    tab === 'without' ? canceladas.concat(liberadas) :
+    transfers;
   const list = statusFilter ? base.filter((t) => t.status === statusFilter) : base;
   const statuses = Array.from(new Set(transfers.map((t) => t.status))).sort();
 
@@ -51,8 +55,8 @@ export default function EscrowsPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>Escrows on-chain</h1>
           <p className="text-sm text-on-surface-variant">
-            <span className="font-semibold text-emerald-700">{withEscrow.length}</span> con canasta Trustless Work
-            · <span className="font-semibold text-amber-700">{enEscrowAhora.length}</span> con token bloqueado ahora
+            <span className="font-semibold text-amber-700">{enCanasta.length}</span> token{enCanasta.length !== 1 ? 's' : ''} en canasta ahora
+            · <span className="font-semibold text-emerald-700">{withEscrow.length}</span> con Trustless Work
             · <span className="text-on-surface-variant">{transfers.length}</span> totales
           </p>
         </div>
@@ -81,9 +85,9 @@ export default function EscrowsPage() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex overflow-hidden rounded-xl border border-outline-variant/40 bg-white">
             {([
-              ['all',     'Todas',           transfers.length],
-              ['with',    'Con canasta',     withEscrow.length],
-              ['without', 'Sin canasta',     withoutEscrow.length],
+              ['all',     'Todas',          transfers.length],
+              ['with',    'En canasta',     enCanasta.length],
+              ['without', 'Cerradas',       liberadas.length + canceladas.length],
             ] as const).map(([key, label, count]) => (
               <button
                 key={key}
@@ -110,13 +114,13 @@ export default function EscrowsPage() {
           <div className="rounded-2xl border-2 border-dashed border-outline-variant/30 p-12 text-center text-on-surface-variant">
             <Shield size={32} className="mx-auto mb-3 text-outline" />
             <p className="font-medium">
-              {tab === 'with' && 'Todavía no hay canastas creadas en Trustless Work'}
-              {tab === 'without' && 'Todas las transferencias tienen canasta'}
+              {tab === 'with' && 'No hay tokens en canasta ahora mismo'}
+              {tab === 'without' && 'Todavía no hay transferencias cerradas'}
               {tab === 'all' && 'No hay transferencias todavía'}
             </p>
             <p className="mt-1 text-sm">
-              {tab === 'with' && 'Las próximas ventas que se acepten crearán automáticamente el contrato Soroban.'}
-              {tab === 'without' && 'Buenas noticias: cada venta nueva está siendo registrada on-chain.'}
+              {tab === 'with' && 'Cuando alguien acepte una oferta el token queda bloqueado en escrow hasta que se libere.'}
+              {tab === 'without' && 'Cuando una negociación se libere o cancele, aparecerá acá.'}
               {tab === 'all' && 'Cuando alguien acepte una oferta se creará un contrato escrow.'}
             </p>
           </div>
