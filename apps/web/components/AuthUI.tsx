@@ -1,7 +1,7 @@
 'use client';
 
 export function SocialButtons() {
-  const btn = 'flex h-12 w-full items-center justify-center gap-3 rounded-[14px] border border-[#d8e2f5] bg-white px-4 text-sm font-medium text-[#10235d] transition hover:bg-[#f8fbff] sm:h-[52px]';
+  const btn = 'group flex h-11 w-full items-center justify-center gap-3 rounded-[14px] border border-[#d8e2f5] bg-[linear-gradient(180deg,#ffffff,_#fbfdff)] px-4 text-sm font-medium text-[#10235d] shadow-[0_8px_16px_rgba(15,35,93,0.04)] transition hover:border-[#c5d8ff] hover:bg-[#f8fbff] hover:shadow-[0_14px_28px_rgba(31,99,255,0.08)] sm:h-12 lg:h-[50px]';
   return (
     <div className="space-y-3">
       <button type="button" className={btn}>
@@ -25,4 +25,4 @@ export const LockIcon = <svg width="18" height="18" viewBox="0 0 24 24" fill="no
 export const UserIcon = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>;
 
 export const inputClass =
-  'velar-input h-12 w-full rounded-[14px] border py-3 pl-11 pr-4 text-sm placeholder:text-[#94a3c4] outline-none transition sm:h-[54px]';
+  'velar-input h-11 w-full rounded-[14px] border bg-[linear-gradient(180deg,#ffffff,_#fcfdff)] py-3 pl-11 pr-4 text-sm placeholder:text-[#94a3c4] outline-none transition sm:h-12 lg:h-[50px]';

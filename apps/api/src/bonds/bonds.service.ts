@@ -15,6 +15,18 @@ import { RegisterBondInput, BondRequestInput, BondStatus, Role, AuditEventType }
 /** Roles de AUTORIDAD: ven todo y emiten bonos. Solo el TSE (y admin) emite. */
 export const AUTHORITY: Role[] = ['tse', 'admin'];
 
+type BondRow = {
+  token_id: string;
+  bond_id: string;
+  stellar_status?: string | null;
+  stellar_transaction_hash?: string | null;
+  stellar_ledger?: number | null;
+  stellar_issuer_public_key?: string | null;
+  stellar_owner_public_key?: string | null;
+  stellar_registered_at?: string | null;
+  stellar_error?: string | null;
+};
+
 @Injectable()
 export class BondsService {
   private readonly logger = new Logger(BondsService.name);
@@ -41,11 +53,70 @@ export class BondsService {
     if (data?.stellar_wallet) return data.stellar_wallet;
     try {
       const pk = await this.wallets.createWallet(data?.email ?? profileId);
-      await this.supabase.admin.from('profiles').update({ stellar_wallet: pk }).eq('id', profileId);
+      await this.supabase.admin.from('profiles').update({
+        stellar_wallet: pk,
+        stellar_wallet_status: 'created',
+        stellar_network: 'testnet',
+        stellar_created_at: new Date().toISOString(),
+      }).eq('id', profileId);
       return pk;
     } catch (e) {
       this.logger.warn(`ensureWallet falló: ${(e as Error).message}`);
       return null;
+    }
+  }
+
+  private async markStellarDisabled(tokenId: string) {
+    await this.supabase.admin
+      .from('bonds')
+      .update({ stellar_status: 'pending', stellar_error: 'Stellar no esta habilitado' })
+      .eq('token_id', tokenId);
+  }
+
+  private async issueApprovedBondOnchain(bond: BondRow, ownerId: string) {
+    if (!this.stellar.enabled) {
+      await this.markStellarDisabled(bond.token_id);
+      return undefined;
+    }
+
+    const ownerWallet = await this.ensureWallet(ownerId);
+    if (!ownerWallet) {
+      await this.supabase.admin
+        .from('bonds')
+        .update({ stellar_status: 'failed', stellar_error: 'El dueno no tiene wallet Stellar' })
+        .eq('token_id', bond.token_id);
+      return undefined;
+    }
+
+    await this.supabase.admin
+      .from('bonds')
+      .update({ stellar_status: 'submitted', stellar_error: null })
+      .eq('token_id', bond.token_id);
+
+    try {
+      const res = await this.stellar.issueBond(bond.bond_id, ownerWallet);
+      await this.supabase.admin
+        .from('bonds')
+        .update({
+          stellar_status: 'confirmed',
+          stellar_transaction_hash: res.txHash,
+          stellar_ledger: res.ledger,
+          stellar_asset_code: res.assetCode,
+          stellar_issuer_public_key: res.issuer,
+          stellar_owner_public_key: res.owner,
+          stellar_registered_at: new Date().toISOString(),
+          stellar_error: null,
+        })
+        .eq('token_id', bond.token_id);
+      return res;
+    } catch (e) {
+      const message = (e as Error).message;
+      await this.supabase.admin
+        .from('bonds')
+        .update({ stellar_status: 'failed', stellar_error: message })
+        .eq('token_id', bond.token_id);
+      this.logger.warn(`issueBond on-chain falló: ${message}`);
+      return undefined;
     }
   }
 
@@ -89,18 +160,8 @@ export class BondsService {
     });
 
     // Emite el TOKEN del bono on-chain (Stellar testnet) hacia la wallet del partido.
-    let txHash: string | undefined;
-    if (this.stellar.enabled) {
-      const ownerWallet = party.stellar_wallet ?? (await this.ensureWallet(owner));
-      if (ownerWallet) {
-        try {
-          const res = await this.stellar.issueBond(data.bond_id, ownerWallet);
-          txHash = res.txHash;
-        } catch (e) {
-          this.logger.warn(`issueBond on-chain falló (sigue en BD): ${(e as Error).message}`);
-        }
-      }
-    }
+    const stellarResult = await this.issueApprovedBondOnchain(data, owner);
+    const txHash = stellarResult?.txHash;
     await this.audit.emit({
       type: AuditEventType.BOND_ASIGNADO,
       bondTokenId: data.token_id,
@@ -155,14 +216,14 @@ export class BondsService {
       .insert({
         party_id: partyId,
         requested_by: actorId,
-        certificate_number: (input as any).certificateNumber ?? null,
+        certificate_number: input.certificateNumber ?? null,
         face_value: input.faceValue,
         currency: input.currency ?? 'CRC',
         interest_rate: input.interestRate ?? null,
         series: input.series ?? null,
         issue_date: input.issueDate ?? null,
         maturity_date: input.maturityDate ?? null,
-        notes: (input as any).notes ?? null,
+        notes: input.notes ?? null,
         status: 'pendiente',
       })
       .select()
@@ -210,12 +271,32 @@ export class BondsService {
       .single();
     if (bondErr) throw new BadRequestException(bondErr.message);
 
+    await this.audit.emit({
+      type: AuditEventType.BOND_EMITIDO,
+      bondTokenId: bond.token_id,
+      actorId,
+      payload: { bondId: bond.bond_id, issuerPartyId: bond.issuer_party_id, requestId },
+    });
+    const stellarResult = await this.issueApprovedBondOnchain(bond, owner.id);
+    await this.audit.emit({
+      type: AuditEventType.BOND_ASIGNADO,
+      bondTokenId: bond.token_id,
+      actorId,
+      payload: { owner: owner.id, party: req.party_id, requestId },
+      txHash: stellarResult?.txHash,
+    });
+
     await this.supabase.admin
       .from('bond_requests')
       .update({ status: 'aprobado', bond_token_id: bond.token_id, reviewed_by: actorId, reviewed_at: new Date().toISOString() })
       .eq('id', requestId);
 
-    return bond;
+    const { data: updatedBond } = await this.supabase.admin
+      .from('bonds')
+      .select('*')
+      .eq('token_id', bond.token_id)
+      .single();
+    return updatedBond ?? bond;
   }
 
   /** TSE rechaza una solicitud. */
@@ -235,7 +316,7 @@ export class BondsService {
     const { data } = await this.supabase.admin
       .from('bonds')
       .select('*, parties(*), profiles!bonds_current_owner_fkey(id, full_name, email)')
-      .eq('status', BondStatus.ACTIVO)
+      .eq('status', BondStatus.EN_VENTA)
       .not('current_owner', 'is', null)
       .neq('current_owner', actorId)
       .order('created_at', { ascending: false });
@@ -251,7 +332,7 @@ export class BondsService {
     if (error || !data) throw new NotFoundException('Bond not found');
     // Autoridad ve cualquiera; un usuario ve los suyos o los disponibles (activos de otros).
     if (!AUTHORITY.includes(actorRole)) {
-      const visible = data.current_owner === actorId || data.status === BondStatus.ACTIVO;
+      const visible = data.current_owner === actorId || [BondStatus.ACTIVO, BondStatus.EN_VENTA].includes(data.status);
       if (!visible) throw new ForbiddenException();
     }
     return data;
@@ -267,15 +348,27 @@ export class BondsService {
     if (!bond) throw new NotFoundException('Bono no encontrado');
     if (!this.stellar.enabled) throw new BadRequestException('Stellar no está habilitado');
 
-    const ownerWallet = (bond as any).profiles?.stellar_wallet ?? await this.ensureWallet(bond.current_owner);
+    const bondWithOwner = bond as BondRow & { current_owner: string; profiles?: { stellar_wallet?: string | null } | null };
+    const ownerWallet = bondWithOwner.profiles?.stellar_wallet ?? await this.ensureWallet(bondWithOwner.current_owner);
     if (!ownerWallet) throw new BadRequestException('El dueño no tiene wallet Stellar');
 
     try {
-      const { txHash } = await this.stellar.issueBond(bond.bond_id, ownerWallet);
+      const res = await this.stellar.issueBond(bond.bond_id, ownerWallet);
+      await this.supabase.admin.from('bonds').update({
+        stellar_status: 'confirmed',
+        stellar_transaction_hash: res.txHash,
+        stellar_ledger: res.ledger,
+        stellar_asset_code: res.assetCode,
+        stellar_issuer_public_key: res.issuer,
+        stellar_owner_public_key: res.owner,
+        stellar_registered_at: new Date().toISOString(),
+        stellar_error: null,
+      }).eq('token_id', tokenId);
+      const txHash = res.txHash;
       await this.audit.emit({ type: AuditEventType.BOND_ASIGNADO, bondTokenId: tokenId, actorId, payload: { onchain: true }, txHash });
       return { ok: true, txHash, explorerUrl: this.stellar.explorerUrl(bond.bond_id) };
-    } catch (e: any) {
-      throw new BadRequestException(`Error al emitir on-chain: ${e.message}`);
+    } catch (e) {
+      throw new BadRequestException(`Error al emitir on-chain: ${(e as Error).message}`);
     }
   }
 
@@ -300,7 +393,7 @@ export class BondsService {
       throw new BadRequestException(`No se puede publicar un bono con estado "${bond.status}"`);
     }
     const { data, error } = await this.supabase.admin
-      .from('bonds').update({ status: 'en_venta' }).eq('token_id', tokenId).select().single();
+      .from('bonds').update({ status: BondStatus.EN_VENTA }).eq('token_id', tokenId).select().single();
     if (error) throw new BadRequestException(error.message);
     return data;
   }
@@ -331,7 +424,7 @@ export class BondsService {
 
   /** Dueño actual del bono on-chain + link al activo en el explorador. */
   async onchainInfo(tokenId: string, actorId: string, actorRole: Role) {
-    const bond = await this.findOne(tokenId, actorId, actorRole);
+    const bond = await this.findOne(tokenId, actorId, actorRole) as BondRow;
     if (!this.stellar.enabled) return { enabled: false };
     const holder = await this.stellar.currentHolder(bond.bond_id).catch(() => null);
     return {
@@ -339,6 +432,16 @@ export class BondsService {
       assetCode: this.stellar.assetCodeFor(bond.bond_id),
       onchainHolder: holder,
       assetExplorer: this.stellar.explorerUrl(bond.bond_id),
+      stellarStatus: bond.stellar_status,
+      transactionHash: bond.stellar_transaction_hash,
+      ledger: bond.stellar_ledger,
+      issuer: bond.stellar_issuer_public_key,
+      owner: bond.stellar_owner_public_key,
+      registeredAt: bond.stellar_registered_at,
+      error: bond.stellar_error,
+      transactionExplorer: bond.stellar_transaction_hash
+        ? this.stellar.txExplorerUrl(bond.stellar_transaction_hash)
+        : null,
     };
   }
 

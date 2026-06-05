@@ -14,6 +14,7 @@ export function StellarExpertButton({ href, label = 'Ver en Stellar Expert', sma
 
 const STATUS: Record<string, { cls: string; label: string }> = {
   activo: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Disponible' },
+  en_venta: { cls: 'bg-purple-50 text-purple-700 border-purple-200', label: 'En venta' },
   en_escrow: { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'En canasta' },
   congelado: { cls: 'bg-red-50 text-red-600 border-red-200', label: 'Congelado' },
   emitido: { cls: 'bg-blue-50 text-primary border-blue-200', label: 'Emitido' },
@@ -21,6 +22,7 @@ const STATUS: Record<string, { cls: string; label: string }> = {
   cancelado: { cls: 'bg-gray-100 text-gray-500 border-gray-200', label: 'Cancelado' },
   // transfer states
   solicitada: { cls: 'bg-blue-50 text-primary border-blue-200', label: 'Solicitada' },
+  contraoferta: { cls: 'bg-indigo-50 text-indigo-700 border-indigo-200', label: 'Contraoferta' },
   pago_registrado: { cls: 'bg-purple-50 text-purple-600 border-purple-200', label: 'Pago registrado' },
   pago_validado: { cls: 'bg-teal-50 text-teal-600 border-teal-200', label: 'Pago validado' },
   liberada: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Completada' },

@@ -3,6 +3,7 @@ export declare const BondStatus: {
     readonly PENDIENTE: "pendiente";
     readonly APROBADO: "aprobado";
     readonly ACTIVO: "activo";
+    readonly EN_VENTA: "en_venta";
     readonly EN_ESCROW: "en_escrow";
     readonly TRANSFERIDO: "transferido";
     readonly CANCELADO: "cancelado";
@@ -26,6 +27,14 @@ export interface BondToken {
     series?: string | null;
     issueDate?: string | null;
     maturityDate?: string | null;
+    stellarStatus?: string | null;
+    stellarTransactionHash?: string | null;
+    stellarLedger?: number | null;
+    stellarAssetCode?: string | null;
+    stellarIssuerPublicKey?: string | null;
+    stellarOwnerPublicKey?: string | null;
+    stellarRegisteredAt?: string | null;
+    stellarError?: string | null;
     createdAt: string;
     updatedAt: string;
 }

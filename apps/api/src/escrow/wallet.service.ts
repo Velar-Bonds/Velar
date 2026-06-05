@@ -3,6 +3,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Keypair, Networks, TransactionBuilder } from '@stellar/stellar-sdk';
 
+export type CustodyWalletCreation = {
+  publicKey: string;
+  status: 'created' | 'funded' | 'failed';
+  network: 'testnet' | 'mainnet';
+  error?: string;
+};
+
 /**
  * Custodia asistida (SOLO testnet / demo).
  * Carga las llaves de apps/api/.stellar-wallets.json y firma XDR en nombre de
@@ -37,20 +44,32 @@ export class WalletService {
    * genera el par de llaves, la fondea con XLM (Friendbot, testnet) y la guarda.
    * Devuelve la dirección pública (que se guarda en profiles.stellar_wallet).
    */
-  async createWallet(label: string): Promise<string> {
+  async createWalletRecord(label: string): Promise<CustodyWalletCreation> {
     const kp = Keypair.random();
     const publicKey = kp.publicKey();
+    let status: CustodyWalletCreation['status'] = 'created';
+    let error: string | undefined;
     try {
-      const res = await fetch(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
-      if (!res.ok && res.status !== 400) throw new Error(`friendbot ${res.status}`);
+      if (process.env.STELLAR_ENABLE_FRIENDBOT !== 'false') {
+        const res = await fetch(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
+        if (!res.ok && res.status !== 400) throw new Error(`friendbot ${res.status}`);
+        status = 'funded';
+      }
     } catch (e) {
-      this.logger.warn(`Friendbot falló para ${label}: ${(e as Error).message}`);
+      error = (e as Error).message;
+      status = 'failed';
+      this.logger.warn(`Friendbot falló para ${label}: ${error}`);
     }
     this.store[`user:${label}:${publicKey.slice(0, 6)}`] = { publicKey, secret: kp.secret() };
     this.secretByPublic.set(publicKey, kp.secret());
     fs.writeFileSync(this.file, JSON.stringify(this.store, null, 2));
     this.logger.log(`Wallet de custodia creada para ${label}: ${publicKey}`);
-    return publicKey;
+    return { publicKey, status, network: 'testnet', error };
+  }
+
+  async createWallet(label: string): Promise<string> {
+    const wallet = await this.createWalletRecord(label);
+    return wallet.publicKey;
   }
 
   get enabled(): boolean {

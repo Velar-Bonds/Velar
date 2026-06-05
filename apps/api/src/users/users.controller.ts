@@ -13,7 +13,7 @@ export class UsersController {
   getMe(@CurrentUser() user: any) { return this.users.getProfile(user.id); }
 
   @Patch('me')
-  updateMe(@CurrentUser() user: any, @Body() body: { full_name?: string; stellar_wallet?: string }) {
+  updateMe(@CurrentUser() user: any, @Body() body: { full_name?: string }) {
     return this.users.updateProfile(user.id, body);
   }
 

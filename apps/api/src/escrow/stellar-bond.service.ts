@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  Asset, Horizon, Keypair, Networks, Operation, TransactionBuilder, BASE_FEE,
+  Asset, Horizon, Networks, Operation, TransactionBuilder, BASE_FEE,
 } from '@stellar/stellar-sdk';
 import { WalletService } from './wallet.service';
 
@@ -17,8 +17,21 @@ import { WalletService } from './wallet.service';
  * Custodia asistida: el backend firma con las llaves (WalletService). El usuario
  * no maneja wallets. No hay dinero involucrado: solo se mueve el token del bono.
  */
-const HORIZON = 'https://horizon-testnet.stellar.org';
-const NET = Networks.TESTNET;
+const NETWORK = process.env.STELLAR_NETWORK ?? 'testnet';
+const HORIZON = process.env.STELLAR_HORIZON_URL ?? 'https://horizon-testnet.stellar.org';
+const NET = NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
+const EXPLORER_NETWORK = NETWORK === 'mainnet' ? 'public' : 'testnet';
+
+type StellarBalance = {
+  asset_code?: string;
+  asset_issuer?: string;
+  balance?: string;
+};
+
+type StellarAssetAccount = {
+  account_id?: string;
+  balances: StellarBalance[];
+};
 
 @Injectable()
 export class StellarBondService {
@@ -47,13 +60,13 @@ export class StellarBondService {
 
   /** Explorador público para ver el activo del bono en la blockchain. */
   explorerUrl(bondId: string): string {
-    return `https://stellar.expert/explorer/testnet/asset/${this.assetCodeFor(bondId)}-${this.wallets.issuerAddress}`;
+    return `https://stellar.expert/explorer/${EXPLORER_NETWORK}/asset/${this.assetCodeFor(bondId)}-${this.wallets.issuerAddress}`;
   }
 
   private async hasTrustline(account: string, asset: Asset): Promise<boolean> {
     const acc = await this.server.loadAccount(account);
     return acc.balances.some(
-      (b: any) => b.asset_code === asset.getCode() && b.asset_issuer === asset.getIssuer(),
+      (b: StellarBalance) => b.asset_code === asset.getCode() && b.asset_issuer === asset.getIssuer(),
     );
   }
 
@@ -71,7 +84,7 @@ export class StellarBondService {
   }
 
   /** Paga 1 unidad del activo de `from` a `to`, firmado por `from` (custodia). */
-  private async payOne(from: string, to: string, asset: Asset): Promise<string> {
+  private async payOne(from: string, to: string, asset: Asset): Promise<{ txHash: string; ledger: number }> {
     const kp = this.wallets.keypairFor(from);
     const src = await this.server.loadAccount(from);
     const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
@@ -80,7 +93,7 @@ export class StellarBondService {
       .build();
     tx.sign(kp);
     const res = await this.server.submitTransaction(tx);
-    return res.hash;
+    return { txHash: res.hash, ledger: res.ledger };
   }
 
   /**
@@ -90,16 +103,16 @@ export class StellarBondService {
   async issueBond(bondId: string, ownerAddress: string) {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(ownerAddress, asset);
-    const txHash = await this.payOne(this.wallets.issuerAddress!, ownerAddress, asset);
+    const { txHash, ledger } = await this.payOne(this.wallets.issuerAddress!, ownerAddress, asset);
     this.logger.log(`Bono ${bondId} emitido on-chain → ${ownerAddress} (${txHash})`);
-    return { assetCode: asset.getCode(), issuer: asset.getIssuer(), txHash };
+    return { assetCode: asset.getCode(), issuer: asset.getIssuer(), owner: ownerAddress, txHash, ledger };
   }
 
   /** Mueve el token del dueño a la canasta de escrow (queda bloqueado). */
   async lockInEscrow(bondId: string, ownerAddress: string): Promise<string> {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(this.wallets.escrowAddress!, asset);
-    const txHash = await this.payOne(ownerAddress, this.wallets.escrowAddress!, asset);
+    const { txHash } = await this.payOne(ownerAddress, this.wallets.escrowAddress!, asset);
     this.logger.log(`Bono ${bondId} → escrow (${txHash})`);
     return txHash;
   }
@@ -108,7 +121,7 @@ export class StellarBondService {
   async releaseFromEscrow(bondId: string, newOwnerAddress: string): Promise<string> {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(newOwnerAddress, asset);
-    const txHash = await this.payOne(this.wallets.escrowAddress!, newOwnerAddress, asset);
+    const { txHash } = await this.payOne(this.wallets.escrowAddress!, newOwnerAddress, asset);
     this.logger.log(`Bono ${bondId} liberado de escrow → ${newOwnerAddress} (${txHash})`);
     return txHash;
   }
@@ -117,9 +130,9 @@ export class StellarBondService {
   async currentHolder(bondId: string): Promise<string | null> {
     const asset = this.assetFor(bondId);
     const accounts = await this.server.accounts().forAsset(asset).call();
-    const holder = accounts.records.find((a: any) =>
+    const holder = (accounts.records as StellarAssetAccount[]).find((a) =>
       a.balances.some(
-        (b: any) =>
+        (b: StellarBalance) =>
           b.asset_code === asset.getCode() &&
           b.asset_issuer === asset.getIssuer() &&
           parseFloat(b.balance) > 0,
@@ -130,6 +143,6 @@ export class StellarBondService {
 
   /** Link a una transacción Stellar en el explorador público. */
   txExplorerUrl(txHash: string): string {
-    return `https://stellar.expert/explorer/testnet/tx/${txHash}`;
+    return `https://stellar.expert/explorer/${EXPLORER_NETWORK}/tx/${txHash}`;
   }
 }

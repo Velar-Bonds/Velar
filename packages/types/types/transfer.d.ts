@@ -7,6 +7,7 @@ export declare const TransferStatus: {
     readonly SOLICITADA: "solicitada";
     /** Recomprador aceptó la intención de compra. */
     readonly ACEPTADA: "aceptada";
+    readonly CONTRAOFERTA: "contraoferta";
     /** Token bloqueado en canasta/escrow on-chain. */
     readonly EN_ESCROW: "en_escrow";
     /** Pago físico registrado, pendiente de validación. */
@@ -33,6 +34,10 @@ export interface Transfer {
     paymentEvidenceHash?: string | null;
     /** Validador que confirmó el pago. */
     validatedBy?: string | null;
+    amount?: number | null;
+    counterOfferAmount?: number | null;
+    sellerMessage?: string | null;
+    buyerMessage?: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -41,6 +46,8 @@ export interface RequestTransferInput {
     toOwner: string;
     /** Monto acordado de la recompra (off-chain). */
     amount?: number;
+    message?: string;
+    counterOfferAmount?: number;
 }
 export interface RegisterPaymentInput {
     transferId: string;

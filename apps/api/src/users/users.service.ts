@@ -1,20 +1,55 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
+import { WalletService } from '../escrow/wallet.service';
 import { Role } from '@velar/types';
+
+type ProfileRow = {
+  id: string;
+  email?: string | null;
+  stellar_wallet?: string | null;
+};
 
 @Injectable()
 export class UsersService {
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private wallets: WalletService,
+  ) {}
 
   async getProfile(userId: string) {
     const { data } = await this.supabase.admin
       .from('profiles').select('*, parties(*)').eq('id', userId).single();
-    return data;
+    if (!data || data.stellar_wallet) return data;
+    return this.ensureProfileWallet(data);
   }
 
-  async updateProfile(userId: string, updates: { full_name?: string; stellar_wallet?: string }) {
+  private async ensureProfileWallet(profile: ProfileRow) {
+    try {
+      const wallet = await this.wallets.createWalletRecord(profile.email ?? profile.id);
+      const patch = {
+        stellar_wallet: wallet.publicKey,
+        stellar_wallet_status: wallet.status,
+        stellar_network: wallet.network,
+        stellar_created_at: new Date().toISOString(),
+        stellar_wallet_error: wallet.error ?? null,
+      };
+      const { data, error } = await this.supabase.admin
+        .from('profiles').update(patch).eq('id', profile.id).select('*, parties(*)').single();
+      if (error) {
+        const fallback = { stellar_wallet: wallet.publicKey };
+        const { data: fallbackData } = await this.supabase.admin
+          .from('profiles').update(fallback).eq('id', profile.id).select('*, parties(*)').single();
+        return fallbackData ?? { ...profile, ...fallback };
+      }
+      return data;
+    } catch {
+      return profile;
+    }
+  }
+
+  async updateProfile(userId: string, updates: { full_name?: string }) {
     const { data, error } = await this.supabase.admin
-      .from('profiles').update(updates).eq('id', userId).select().single();
+      .from('profiles').update({ full_name: updates.full_name }).eq('id', userId).select().single();
     if (error) throw new BadRequestException(error.message);
     return data;
   }

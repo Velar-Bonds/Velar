@@ -87,15 +87,19 @@ body {
 
 .velar-auth-shell {
   background:
-    radial-gradient(circle at 4% 10%, rgba(37, 99, 235, 0.08), transparent 24rem),
-    radial-gradient(circle at 100% 0%, rgba(148, 188, 255, 0.28), transparent 30rem),
+    radial-gradient(circle at 6% 8%, rgba(37, 99, 235, 0.09), transparent 24rem),
+    radial-gradient(circle at 100% 0%, rgba(148, 188, 255, 0.3), transparent 30rem),
+    radial-gradient(circle at 50% 100%, rgba(37, 99, 235, 0.06), transparent 28rem),
     linear-gradient(135deg, #f6f9ff, #eff5ff 55%, #f7faff);
 }
 
 .velar-auth-card {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #d8e2f5;
-  box-shadow: 0 22px 50px rgba(15, 35, 93, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 251, 255, 0.96));
+  border: 1px solid rgba(205, 221, 248, 0.95);
+  box-shadow:
+    0 24px 60px rgba(15, 35, 93, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .velar-brand-text {
@@ -118,11 +122,14 @@ body {
   border-color: #d8e2f5;
   background: #ffffff;
   color: #10235d;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
 }
 
 .velar-input:focus {
   border-color: #1f63ff;
-  box-shadow: 0 0 0 3px rgba(31, 99, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 0 0 3px rgba(31, 99, 255, 0.12);
 }
 
 .mono-data {

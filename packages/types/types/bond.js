@@ -6,6 +6,7 @@ exports.BondStatus = {
     PENDIENTE: 'pendiente',
     APROBADO: 'aprobado',
     ACTIVO: 'activo',
+    EN_VENTA: 'en_venta',
     EN_ESCROW: 'en_escrow',
     TRANSFERIDO: 'transferido',
     CANCELADO: 'cancelado',
