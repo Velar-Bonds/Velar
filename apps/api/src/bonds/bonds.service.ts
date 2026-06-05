@@ -28,6 +28,17 @@ type BondRow = {
   stellar_error?: string | null;
 };
 
+function sorobanReadErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('Error(Contract, #2)')) {
+    return 'Contrato desplegado, pero initialize no terminó. La metadata on-chain todavía no está disponible.';
+  }
+  if (message.includes('No se pudo leer el contrato')) {
+    return 'No se pudo leer la metadata on-chain del contrato.';
+  }
+  return message.split('\n')[0].slice(0, 220);
+}
+
 @Injectable()
 export class BondsService {
   private readonly logger = new Logger(BondsService.name);
@@ -443,21 +454,62 @@ export class BondsService {
    */
   async readSorobanDetails(tokenId: string, _actorId: string, _actorRole: Role) {
     const { data: bond } = await this.supabase.admin
-      .from('bonds').select('soroban_contract_id, bond_id, parties(name, code)')
+      .from('bonds')
+      .select(`
+        soroban_contract_id,
+        soroban_init_tx_hash,
+        bond_id,
+        certificate_number,
+        series,
+        face_value,
+        currency,
+        interest_rate,
+        issue_date,
+        maturity_date,
+        document_hash,
+        current_owner,
+        status,
+        created_at,
+        parties(name, code),
+        profiles!bonds_current_owner_fkey(stellar_wallet)
+      `)
       .eq('token_id', tokenId).single();
     if (!bond) throw new NotFoundException('Bono no encontrado');
     if (!(bond as any).soroban_contract_id) {
       throw new BadRequestException('Este bono no tiene contrato Soroban desplegado');
     }
-    if (!this.soroban.enabled) {
-      throw new BadRequestException('Soroban no habilitado en el backend');
-    }
+
+    const fallback = (reason: string) => ({
+      source: 'database_fallback',
+      read_error: reason,
+      contract_id: (bond as any).soroban_contract_id,
+      init_tx_hash: (bond as any).soroban_init_tx_hash ?? null,
+      bond_id: (bond as any).bond_id,
+      certificate_number: (bond as any).certificate_number ?? null,
+      series: (bond as any).series ?? null,
+      face_value: (bond as any).face_value != null ? Number((bond as any).face_value) : null,
+      currency: (bond as any).currency ?? 'CRC',
+      interest_rate: (bond as any).interest_rate != null ? Number((bond as any).interest_rate) : null,
+      issue_date: (bond as any).issue_date ?? null,
+      maturity_date: (bond as any).maturity_date ?? null,
+      document_hash_hex: (bond as any).document_hash ?? null,
+      current_owner: (bond as any).profiles?.stellar_wallet ?? (bond as any).current_owner ?? null,
+      status: (bond as any).status ?? null,
+      created_at: (bond as any).created_at ?? null,
+      party_name: (bond as any).parties?.name ?? null,
+      party_code: (bond as any).parties?.code ?? null,
+    });
+
+    if (!this.soroban.enabled) return fallback('Soroban no habilitado en el backend');
 
     try {
       const raw: any = await this.soroban.readDetails((bond as any).soroban_contract_id);
       // Convertir datos crudos del contrato a formato amigable
       return {
+        source: 'soroban',
+        read_error: null,
         contract_id: (bond as any).soroban_contract_id,
+        init_tx_hash: (bond as any).soroban_init_tx_hash ?? null,
         bond_id: raw?.bond_id ?? bond.bond_id,
         certificate_number: raw?.certificate_number ?? null,
         series: raw?.series ?? null,
@@ -476,7 +528,7 @@ export class BondsService {
         party_code: (bond as any).parties?.code ?? null,
       };
     } catch (e) {
-      throw new BadRequestException(`No se pudo leer el contrato: ${(e as Error).message}`);
+      return fallback(sorobanReadErrorMessage(e));
     }
   }
 
