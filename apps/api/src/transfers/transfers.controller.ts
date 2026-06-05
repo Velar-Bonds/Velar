@@ -27,6 +27,21 @@ export class TransfersController {
     return this.transfers.acceptTransfer(id, user.id);
   }
 
+  @Patch(':id/reject')
+  reject(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.transfers.rejectTransfer(id, user.id);
+  }
+
+  @Patch(':id/counter')
+  counter(@Param('id') id: string, @Body() body: { amount: number; message?: string }, @CurrentUser() user: any) {
+    return this.transfers.counterOffer(id, Number(body.amount), body.message, user.id);
+  }
+
+  @Patch(':id/accept-counter')
+  acceptCounter(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.transfers.acceptCounterOffer(id, user.id);
+  }
+
   @Patch(':id/payment')
   registerPayment(
     @Param('id') id: string,

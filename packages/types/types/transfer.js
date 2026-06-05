@@ -10,6 +10,7 @@ exports.TransferStatus = {
     SOLICITADA: 'solicitada',
     /** Recomprador aceptó la intención de compra. */
     ACEPTADA: 'aceptada',
+    CONTRAOFERTA: 'contraoferta',
     /** Token bloqueado en canasta/escrow on-chain. */
     EN_ESCROW: 'en_escrow',
     /** Pago físico registrado, pendiente de validación. */

@@ -5,21 +5,59 @@ import { createClient } from './supabase/client';
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
+function buildApiUrl(path: string) {
+  return `${API_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+}
+
+function messageFromPayload(payload: unknown, fallback: string) {
+  const message = (payload as { message?: unknown })?.message;
+  if (Array.isArray(message)) return message.join(', ');
+  if (typeof message === 'string' && message.trim()) return message;
+  return fallback;
+}
+
+async function requestJson(method: string, path: string, body?: unknown, token?: string) {
+  const url = buildApiUrl(path);
+  let res: Response;
+
+  try {
+    res = await fetch(url, {
+      method,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error(`No se pudo conectar con la API en ${url}. Verifica que el backend este corriendo y que NEXT_PUBLIC_API_URL apunte a la URL correcta.`);
+  }
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(messageFromPayload(json, `Error ${res.status} en ${url}`));
+  return json;
+}
+
+/** Hace una request publica al backend. Lanza Error con el mensaje del backend. */
+export async function publicApiFetch(method: string, path: string, body?: unknown) {
+  return requestJson(method, path, body);
+}
+
 /** Hace una request autenticada al backend. Lanza Error con el mensaje del backend. */
 export async function apiFetch(token: string, method: string, path: string, body?: unknown) {
-  const res = await fetch(API_URL + path, {
-    method,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((json as any).message ?? `Error ${res.status}`);
-  return json;
+  return requestJson(method, path, body, token);
 }
 
 export type Me = {
   id: string; email: string; full_name?: string; role?: string;
   party_id?: string | null; stellar_wallet?: string | null;
+  stellar_wallet_status?: string | null; stellar_network?: string | null;
+  stellar_created_at?: string | null; stellar_wallet_error?: string | null;
+  parties?: {
+    stellar_wallet?: string | null; stellar_wallet_status?: string | null;
+    stellar_network?: string | null; stellar_created_at?: string | null;
+    stellar_wallet_error?: string | null;
+  } | null;
 };
 
 /**

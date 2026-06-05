@@ -41,17 +41,27 @@ export class TransfersService {
     if (NON_TRANSFERABLE_STATUSES.includes(bond.status)) {
       throw new BadRequestException(`El bono está "${bond.status}" y no se puede solicitar ahora`);
     }
+    if (bond.status !== BondStatus.EN_VENTA) {
+      throw new BadRequestException('El bono debe estar publicado en el marketplace para recibir ofertas');
+    }
     // Evitar dos solicitudes abiertas sobre el mismo bono.
     const { data: open } = await this.supabase.admin
       .from('transfers').select('id')
       .eq('bond_token_id', input.bondTokenId)
-      .in('status', ['solicitada', 'aceptada', 'en_escrow', 'pago_registrado', 'pago_validado'])
+      .in('status', ['solicitada', 'contraoferta', 'aceptada', 'en_escrow', 'pago_registrado', 'pago_validado'])
       .limit(1).maybeSingle();
     if (open) throw new BadRequestException('Ya hay una solicitud en curso para este bono');
 
     const { data: transfer, error } = await this.supabase.admin
       .from('transfers')
-      .insert({ bond_token_id: input.bondTokenId, from_owner: bond.current_owner, to_owner: actorId, status: TransferStatus.SOLICITADA, amount: input.amount ?? null })
+      .insert({
+        bond_token_id: input.bondTokenId,
+        from_owner: bond.current_owner,
+        to_owner: actorId,
+        status: TransferStatus.SOLICITADA,
+        amount: input.amount ?? null,
+        buyer_message: input.message ?? null,
+      })
       .select().single();
     if (error) throw new BadRequestException(error.message);
 
@@ -85,6 +95,92 @@ export class TransfersService {
       .from('transfers').update({ status: TransferStatus.EN_ESCROW }).eq('id', transferId).select().single();
 
     await this.audit.emit({ type: AuditEventType.ESCROW_BLOQUEADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { canasta: 'escrow' }, txHash });
+    return updated;
+  }
+
+  async rejectTransfer(transferId: string, actorId: string) {
+    const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.from_owner !== actorId) throw new ForbiddenException('Solo el vendedor puede rechazar la oferta');
+    if (![TransferStatus.SOLICITADA, TransferStatus.CONTRAOFERTA].includes(transfer.status)) {
+      throw new BadRequestException('La oferta no se puede rechazar en este estado');
+    }
+
+    await Promise.all([
+      this.supabase.admin.from('transfers').update({ status: TransferStatus.RECHAZADA }).eq('id', transferId),
+      this.supabase.admin.from('bonds').update({ status: BondStatus.EN_VENTA }).eq('token_id', transfer.bond_token_id),
+    ]);
+    await this.audit.emit({ type: AuditEventType.TRANSFER_RECHAZADA, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: {} });
+    return { success: true };
+  }
+
+  async counterOffer(transferId: string, amount: number, message: string | undefined, actorId: string) {
+    const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.from_owner !== actorId) throw new ForbiddenException('Solo el vendedor puede hacer contraoferta');
+    if (![TransferStatus.SOLICITADA, TransferStatus.CONTRAOFERTA].includes(transfer.status)) {
+      throw new BadRequestException('La oferta no acepta contraoferta en este estado');
+    }
+    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+      throw new BadRequestException('La contraoferta debe tener un monto positivo');
+    }
+
+    const { data: updated, error } = await this.supabase.admin
+      .from('transfers')
+      .update({
+        status: TransferStatus.CONTRAOFERTA,
+        counter_offer_amount: amount,
+        seller_message: message ?? null,
+      })
+      .eq('id', transferId)
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    await this.audit.emit({
+      type: AuditEventType.TRANSFER_ACEPTADA,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { counterOfferAmount: amount, message },
+    });
+    return updated;
+  }
+
+  async acceptCounterOffer(transferId: string, actorId: string) {
+    const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.to_owner !== actorId) throw new ForbiddenException('Solo el comprador puede aceptar la contraoferta');
+    if (transfer.status !== TransferStatus.CONTRAOFERTA) throw new BadRequestException('No hay contraoferta pendiente');
+    if (!transfer.counter_offer_amount) throw new BadRequestException('La contraoferta no tiene monto');
+
+    await this.supabase.admin
+      .from('transfers')
+      .update({ status: TransferStatus.ACEPTADA, amount: transfer.counter_offer_amount })
+      .eq('id', transferId);
+    await this.supabase.admin.from('bonds').update({ status: BondStatus.EN_ESCROW }).eq('token_id', transfer.bond_token_id);
+
+    const bond = await this.getBond(transfer.bond_token_id);
+    const fromWallet = await this.walletOf(transfer.from_owner);
+    let txHash: string | undefined;
+    if (this.stellar.enabled && fromWallet) {
+      try {
+        txHash = await this.stellar.lockInEscrow(bond.bond_id, fromWallet);
+      } catch (e) {
+        this.logger.warn(`lockInEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
+      }
+    }
+
+    const { data: updated } = await this.supabase.admin
+      .from('transfers').update({ status: TransferStatus.EN_ESCROW }).eq('id', transferId).select().single();
+
+    await this.audit.emit({
+      type: AuditEventType.ESCROW_BLOQUEADO,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { acceptedCounterOffer: transfer.counter_offer_amount },
+      txHash,
+    });
     return updated;
   }
 
@@ -153,11 +249,11 @@ export class TransfersService {
     const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
     if (!transfer) throw new NotFoundException();
     if (transfer.from_owner !== actorId && transfer.to_owner !== actorId) throw new ForbiddenException();
-    const cancellable = [TransferStatus.SOLICITADA, TransferStatus.ACEPTADA, TransferStatus.EN_ESCROW];
+    const cancellable = [TransferStatus.SOLICITADA, TransferStatus.CONTRAOFERTA, TransferStatus.ACEPTADA, TransferStatus.EN_ESCROW];
     if (!cancellable.includes(transfer.status)) throw new BadRequestException('Cannot cancel at this stage');
 
     await Promise.all([
-      this.supabase.admin.from('bonds').update({ status: BondStatus.ACTIVO }).eq('token_id', transfer.bond_token_id),
+      this.supabase.admin.from('bonds').update({ status: transfer.status === TransferStatus.EN_ESCROW ? BondStatus.ACTIVO : BondStatus.EN_VENTA }).eq('token_id', transfer.bond_token_id),
       this.supabase.admin.from('transfers').update({ status: TransferStatus.CANCELADA }).eq('id', transferId),
     ]);
     await this.audit.emit({ type: AuditEventType.TRANSFER_CANCELADA, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: {} });

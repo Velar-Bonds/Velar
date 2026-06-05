@@ -60,6 +60,7 @@ export class AuthService {
     try {
       // 2) Si es partido, crear/asegurar la fila en parties.
       let partyId: string | null = null;
+      let partyWallet: string | null = null;
       if (input.perspectiva === 'partido') {
         if (!input.nombrePartido || !input.codigo) {
           throw new BadRequestException('El partido requiere nombre y código');
@@ -76,22 +77,57 @@ export class AuthService {
             .from('parties').upsert({ code: input.codigo, name: input.nombrePartido }, { onConflict: 'code' }).select().single());
         }
         if (pErr) throw new BadRequestException(pErr.message);
-        partyId = party.id;
+        const partyRow = party as { id: string; stellar_wallet?: string | null };
+        partyId = partyRow.id;
+        partyWallet = partyRow.stellar_wallet ?? null;
       }
 
       // 3) Crear wallet de custodia (Stellar testnet).
-      let wallet: string | null = null;
-      if (this.wallets.enabled || true) {
+      let wallet: string | null = partyWallet;
+      let walletStatus: string | null = partyWallet ? 'funded' : null;
+      let walletNetwork: string | null = partyWallet ? 'testnet' : null;
+      let walletError: string | null = null;
+      let walletCreatedAt: string | null = partyWallet ? new Date().toISOString() : null;
+      if (!wallet) {
         try {
-          wallet = await this.wallets.createWallet(input.email);
+          const createdWallet = await this.wallets.createWalletRecord(input.email);
+          wallet = createdWallet.publicKey;
+          walletStatus = createdWallet.status;
+          walletNetwork = createdWallet.network;
+          walletError = createdWallet.error ?? null;
+          walletCreatedAt = new Date().toISOString();
         } catch (e) {
-          this.logger.warn(`No se pudo crear wallet: ${(e as Error).message}`);
+          walletStatus = 'failed';
+          walletError = (e as Error).message;
+          this.logger.warn(`No se pudo crear wallet: ${walletError}`);
+        }
+      }
+      if (partyId && wallet && !partyWallet) {
+        try {
+          await db.from('parties').update({
+            stellar_wallet: wallet,
+            stellar_wallet_status: walletStatus ?? 'created',
+            stellar_network: walletNetwork ?? 'testnet',
+            stellar_created_at: walletCreatedAt,
+            stellar_wallet_error: walletError,
+          }).eq('id', partyId);
+        } catch {
+          // Older schemas do not have party wallet metadata yet.
         }
       }
 
       // 4) Completar el profile (lo creó el trigger handle_new_user) con la info.
       const role = input.perspectiva === 'partido' ? 'emisor' : 'comprador';
-      const core = { role, full_name: this.fullName(input), party_id: partyId, stellar_wallet: wallet };
+      const core = {
+        role,
+        full_name: this.fullName(input),
+        party_id: partyId,
+        stellar_wallet: wallet,
+        stellar_wallet_status: walletStatus ?? (wallet ? 'created' : 'failed'),
+        stellar_network: walletNetwork ?? 'testnet',
+        stellar_created_at: walletCreatedAt,
+        stellar_wallet_error: walletError,
+      };
       const extra = {
         nombres: input.nombres ?? null,
         apellidos: input.apellidos ?? null,
@@ -103,7 +139,12 @@ export class AuthService {
       if (uErr && /column|schema cache/i.test(uErr.message)) {
         // La migración de campos de registro aún no se aplicó: guardamos lo básico.
         this.logger.warn('Campos de registro no existen aún (aplicá la migración). Guardo lo básico.');
-        ({ error: uErr } = await db.from('profiles').update(core).eq('id', userId));
+        ({ error: uErr } = await db.from('profiles').update({
+          role,
+          full_name: this.fullName(input),
+          party_id: partyId,
+          stellar_wallet: wallet,
+        }).eq('id', userId));
       }
       if (uErr) throw new BadRequestException(uErr.message);
 
