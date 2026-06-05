@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Wallet, TrendingUp, Boxes } from 'lucide-react';
+import { Wallet, TrendingUp, Boxes, ShoppingCart } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { StellarExpertButton, StatusBadge, EmptyState, fmtMoney } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
@@ -14,7 +14,17 @@ export default function MisBonosPage() {
 
 function Content({ token }: { token: string }) {
   const [bonds, setBonds] = useState<Bond[]>([]);
-  useEffect(() => { apiFetch(token, 'GET', '/bonds').then(setBonds).catch(() => {}); /* eslint-disable-next-line */ }, []);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState('');
+
+  const load = () => apiFetch(token, 'GET', '/bonds').then(setBonds).catch(() => {});
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+
+  async function publicar(tokenId: string) {
+    setBusy(tokenId); setMsg('');
+    try { await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`); setMsg('✅ Bono publicado en el marketplace.'); load(); }
+    catch (e: any) { setMsg('⚠️ ' + e.message); } finally { setBusy(null); }
+  }
 
   const total = bonds.reduce((s, b) => s + (Number(b.face_value) || 0), 0);
   const activos = bonds.filter((b) => b.status === 'activo').length;
@@ -29,6 +39,7 @@ function Content({ token }: { token: string }) {
     <>
       <h1 className="mb-1 text-3xl font-bold tracking-tight md:text-4xl" style={{ fontFamily: 'Geist' }}>Mis bonos</h1>
       <p className="mb-6 text-on-surface-variant">Los bonos que poseés, con su estado y verificación on-chain.</p>
+      {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
       <div className="velar-stagger mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map(([label, val, icon]) => (
@@ -45,18 +56,31 @@ function Content({ token }: { token: string }) {
         <div className="glass-card overflow-hidden rounded-2xl">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-outline-variant/30 bg-surface-container-low/60 text-[11px] uppercase tracking-wide text-on-surface-variant">
-              <tr><th className="px-5 py-3">Bono</th><th className="px-5 py-3">Emisor</th><th className="px-5 py-3">Valor</th><th className="px-5 py-3">Estado</th><th className="px-5 py-3 text-right">Blockchain</th></tr>
+              <tr><th className="px-5 py-3">Bono</th><th className="px-5 py-3">Emisor</th><th className="px-5 py-3">Valor</th><th className="px-5 py-3">Estado</th><th className="px-5 py-3 text-right">Acciones</th></tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/20">
-              {bonds.map((b) => (
-                <tr key={b.token_id} className="transition-colors hover:bg-primary-container/[0.03]">
-                  <td className="px-5 py-3 mono-data font-semibold text-primary-container">{b.bond_id}</td>
-                  <td className="px-5 py-3">{b.parties?.name ?? '—'}</td>
-                  <td className="px-5 py-3 mono-data font-semibold">{fmtMoney(b.face_value)}</td>
-                  <td className="px-5 py-3"><StatusBadge status={b.status} /></td>
-                  <td className="px-5 py-3 text-right"><StellarExpertButton href={bondAssetUrl(b.bond_id)} label="Ver en Stellar Expert" small /></td>
-                </tr>
-              ))}
+              {bonds.map((b) => {
+                const canPublish = ['activo', 'aprobado', 'emitido'].includes(b.status);
+                return (
+                  <tr key={b.token_id} className="transition-colors hover:bg-primary-container/[0.03]">
+                    <td className="px-5 py-3 mono-data font-semibold text-primary-container">{b.bond_id}</td>
+                    <td className="px-5 py-3">{b.parties?.name ?? '—'}</td>
+                    <td className="px-5 py-3 mono-data font-semibold">{fmtMoney(b.face_value)}</td>
+                    <td className="px-5 py-3"><StatusBadge status={b.status} /></td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {canPublish && (
+                          <button onClick={() => publicar(b.token_id)} disabled={busy === b.token_id}
+                            className="flex items-center gap-1.5 rounded-lg bg-primary-container px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primary-container/90 disabled:opacity-60">
+                            <ShoppingCart size={12} /> {busy === b.token_id ? 'Publicando…' : 'Publicar'}
+                          </button>
+                        )}
+                        <StellarExpertButton href={bondAssetUrl(b.bond_id)} label="Stellar" small />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
