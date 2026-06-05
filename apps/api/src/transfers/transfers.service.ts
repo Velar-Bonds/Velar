@@ -333,6 +333,100 @@ export class TransfersService {
     return { success: true, newOwner: transfer.to_owner, txHash, priceRecorded, twApproveTx };
   }
 
+  /** El dueño solicita al TSE que saque el bono del escrow (cancelación con disputa). */
+  async requestReturn(transferId: string, reason: string, actorId: string) {
+    const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException('Transferencia no encontrada');
+    if (transfer.from_owner !== actorId) {
+      throw new ForbiddenException('Solo el dueño del bono puede solicitar retirar del escrow');
+    }
+    const allowed = [TransferStatus.EN_ESCROW, TransferStatus.PAGO_REGISTRADO];
+    if (!allowed.includes(transfer.status)) {
+      throw new BadRequestException('Solo se puede solicitar retiro cuando el bono está en escrow');
+    }
+    if (transfer.return_requested_at && !transfer.return_rejected_at) {
+      throw new BadRequestException('Ya hay una solicitud de retiro pendiente');
+    }
+
+    const { data: updated, error } = await this.supabase.admin
+      .from('transfers').update({
+        return_requested_at: new Date().toISOString(),
+        return_requested_by: actorId,
+        return_reason: reason?.trim() || null,
+        return_rejected_at: null,
+        return_rejected_by: null,
+        return_tse_notes: null,
+      }).eq('id', transferId).select().single();
+    if (error) throw new BadRequestException(error.message);
+
+    await this.audit.emit({
+      type: AuditEventType.TRANSFER_CANCELADA,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { kind: 'return_requested', reason },
+    });
+    return updated;
+  }
+
+  /** TSE aprueba el retorno: mueve el token on-chain del escrow al dueño y cancela. */
+  async approveReturn(transferId: string, notes: string | undefined, actorId: string, actorRole: Role) {
+    if (!['tse', 'admin'].includes(actorRole)) {
+      throw new ForbiddenException('Solo el TSE puede aprobar el retorno');
+    }
+    const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException();
+    if (!transfer.return_requested_at) throw new BadRequestException('No hay solicitud de retorno pendiente');
+    if (transfer.return_approved_at) throw new BadRequestException('Ya fue aprobada');
+
+    const bond = await this.getBond(transfer.bond_token_id);
+    const ownerWallet = await this.walletOf(transfer.from_owner);
+
+    let returnTx: string | undefined;
+    if (this.stellar.enabled && ownerWallet) {
+      try {
+        returnTx = await this.stellar.returnFromEscrow(bond.bond_id, ownerWallet);
+      } catch (e) {
+        this.logger.warn(`returnFromEscrow falló: ${(e as Error).message}`);
+      }
+    }
+
+    await Promise.all([
+      this.supabase.admin.from('bonds').update({ status: BondStatus.ACTIVO }).eq('token_id', transfer.bond_token_id),
+      this.supabase.admin.from('transfers').update({
+        status: TransferStatus.CANCELADA,
+        return_approved_at: new Date().toISOString(),
+        return_approved_by: actorId,
+        return_tse_notes: notes?.trim() || null,
+      }).eq('id', transferId),
+    ]);
+
+    await this.audit.emit({
+      type: AuditEventType.TRANSFER_CANCELADA,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { kind: 'return_approved', returnTx },
+    });
+    return { success: true, returnTx };
+  }
+
+  /** TSE rechaza la solicitud de retorno (la negociación continúa normal). */
+  async rejectReturn(transferId: string, notes: string | undefined, actorId: string, actorRole: Role) {
+    if (!['tse', 'admin'].includes(actorRole)) throw new ForbiddenException('Solo el TSE');
+    const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer || !transfer.return_requested_at) throw new BadRequestException();
+
+    const { data: updated, error } = await this.supabase.admin
+      .from('transfers').update({
+        return_rejected_at: new Date().toISOString(),
+        return_rejected_by: actorId,
+        return_tse_notes: notes?.trim() || null,
+      }).eq('id', transferId).select().single();
+    if (error) throw new BadRequestException(error.message);
+    return updated;
+  }
+
   async cancelTransfer(transferId: string, actorId: string) {
     const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
     if (!transfer) throw new NotFoundException();

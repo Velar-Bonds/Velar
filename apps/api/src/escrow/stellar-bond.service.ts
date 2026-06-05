@@ -138,6 +138,15 @@ export class StellarBondService {
     return txHash;
   }
 
+  /** Devuelve el token desde la canasta de escrow al dueño original (cancelación). */
+  async returnFromEscrow(bondId: string, originalOwnerAddress: string): Promise<string> {
+    const asset = this.assetFor(bondId);
+    await this.ensureTrustline(originalOwnerAddress, asset);
+    const { txHash } = await this.payOne(this.wallets.escrowAddress!, originalOwnerAddress, asset, `return:${bondId}`.slice(0, 28));
+    this.logger.log(`Bono ${bondId} ← escrow (devuelto al dueño ${originalOwnerAddress}, tx ${txHash})`);
+    return txHash;
+  }
+
   /**
    * Libera el token de la canasta al nuevo dueño Y registra el precio pagado on-chain.
    *

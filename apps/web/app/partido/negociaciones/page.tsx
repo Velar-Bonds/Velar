@@ -46,9 +46,19 @@ export default function PartidoNegociacionesPage() {
 
   async function act(id: string, action: string) {
     if (!token) return;
+    let body: any = undefined;
+    if (action === 'request-return') {
+      const reason = window.prompt('Motivo del retiro (lo verá el TSE):');
+      if (!reason || !reason.trim()) return;
+      body = { reason: reason.trim() };
+    }
     setBusy(id); setMsg('');
-    try { await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`); setMsg('✅ Acción realizada'); load(token); }
-    catch (e: any) { setMsg('⚠️ ' + e.message); } finally { setBusy(null); }
+    try {
+      await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, body);
+      setMsg(action === 'request-return' ? '✅ Solicitud enviada al TSE' : '✅ Acción realizada');
+      load(token);
+    } catch (e: any) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(null); }
   }
 
   const soyVendedor = (t: Transfer) => t.from_owner === me.id;
@@ -58,7 +68,12 @@ export default function PartidoNegociacionesPage() {
     const acts: Array<[string, string, string]> = [];
     if (t.status === 'solicitada' && vendedor) acts.push(['Aceptar', 'accept', 'primary']);
     if (t.status === 'pago_registrado' && vendedor) acts.push(['Confirmar pago', 'release', 'primary']);
-    if (['solicitada', 'aceptada', 'en_escrow'].includes(t.status) && vendedor) acts.push(['Cancelar', 'cancel', 'danger']);
+    if (['solicitada', 'aceptada'].includes(t.status) && vendedor) acts.push(['Cancelar', 'cancel', 'danger']);
+    // En escrow: el dueño no puede cancelar solo. Pide retiro al TSE.
+    const hayRetornoPendiente = (t as any).return_requested_at && !(t as any).return_approved_at && !(t as any).return_rejected_at;
+    if (['en_escrow', 'pago_registrado'].includes(t.status) && vendedor && !hayRetornoPendiente) {
+      acts.push(['Pedir retiro al TSE', 'request-return', 'danger']);
+    }
     return acts;
   };
 

@@ -16,6 +16,7 @@ const NAV = [
   { href: '/tse/emision', label: 'Emisión', Icon: Send },
   { href: '/tse/registros', label: 'Registros', Icon: ScrollText },
   { href: '/tse/escrows', label: 'Escrows on-chain', Icon: Shield },
+  { href: '/tse/retiros', label: 'Retiros de escrow', Icon: Shield },
   { href: '/tse/analytics', label: 'Análisis', Icon: BarChart3 },
   { href: '/tse/reportes', label: 'Reportes', Icon: FileText },
   { href: '/tse/trazabilidad', label: 'Trazabilidad', Icon: Waypoints },
