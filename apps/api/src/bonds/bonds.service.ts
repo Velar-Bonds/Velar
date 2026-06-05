@@ -374,20 +374,14 @@ export class BondsService {
 
   /** El partido publica su bono en el marketplace (status activo → en_venta). */
   async publish(tokenId: string, actorId: string) {
-    // Obtener el bono + perfil del actor para verificar que pertenece al mismo partido
+    // Solo el DUEÑO ACTUAL puede publicar el bono al marketplace.
+    // Ni el partido emisor (si ya lo vendió) ni el TSE pueden publicarlo: solo trazabilidad.
     const { data: bond, error: findErr } = await this.supabase.admin
       .from('bonds').select('*, parties(*)').eq('token_id', tokenId).single();
     if (findErr || !bond) throw new NotFoundException('Bono no encontrado');
 
-    const { data: actor } = await this.supabase.admin
-      .from('profiles').select('party_id, role').eq('id', actorId).single();
-
-    const isOwner = bond.current_owner === actorId;
-    const isSameParty = actor?.party_id && actor.party_id === bond.issuer_party_id;
-    const isAuthority = ['tse', 'admin'].includes(actor?.role);
-
-    if (!isOwner && !isSameParty && !isAuthority) {
-      throw new ForbiddenException('Solo el partido emisor puede publicar este bono');
+    if (bond.current_owner !== actorId) {
+      throw new ForbiddenException('Solo el dueño actual del bono puede publicarlo al marketplace');
     }
     if (!['activo', 'aprobado', 'emitido'].includes(bond.status)) {
       throw new BadRequestException(`No se puede publicar un bono con estado "${bond.status}"`);
