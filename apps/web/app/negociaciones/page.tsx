@@ -27,9 +27,20 @@ function Content({ token, me }: { token: string; me: Me }) {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   async function act(id: string, action: string) {
+    let body: any = undefined;
+    if (action === 'payment') body = { evidence: 'comprobante-' + Date.now() };
+    if (action === 'request-return') {
+      const reason = window.prompt('Motivo del retiro (lo verá el TSE):');
+      if (!reason || !reason.trim()) return;
+      body = { reason: reason.trim() };
+    }
     setBusy(id); setMsg('');
-    try { await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, action === 'payment' ? { evidence: 'comprobante-' + Date.now() } : undefined); setMsg('✅ Acción realizada'); load(); }
-    catch (e: any) { setMsg('⚠️ ' + e.message); } finally { setBusy(null); }
+    try {
+      await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, body);
+      setMsg(action === 'request-return' ? '✅ Solicitud enviada al TSE' : '✅ Acción realizada');
+      load();
+    } catch (e: any) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(null); }
   }
 
   const actionFor = (t: Transfer): [string, string] | null => {
@@ -37,6 +48,9 @@ function Content({ token, me }: { token: string; me: Me }) {
     if (t.status === 'solicitada' && soyVendedor) return ['Aceptar venta', 'accept'];
     if (t.status === 'en_escrow' && soyComprador) return ['Registré el pago', 'payment'];
     if (t.status === 'pago_registrado' && soyVendedor) return ['Confirmar pago', 'release'];
+    if (['en_escrow', 'pago_registrado'].includes(t.status) && soyVendedor && !(t as any).return_requested_at) {
+      return ['Pedir retiro al TSE', 'request-return'];
+    }
     return null;
   };
 

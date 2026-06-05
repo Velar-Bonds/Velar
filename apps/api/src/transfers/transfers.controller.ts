@@ -65,4 +65,22 @@ export class TransfersController {
   cancel(@Param('id') id: string, @CurrentUser() user: any) {
     return this.transfers.cancelTransfer(id, user.id);
   }
+
+  /** Dueño solicita al TSE retirar el bono del escrow (cancelación con disputa). */
+  @Patch(':id/request-return')
+  requestReturn(@Param('id') id: string, @Body() body: { reason?: string }, @CurrentUser() user: any) {
+    return this.transfers.requestReturn(id, body?.reason ?? '', user.id);
+  }
+
+  /** TSE aprueba el retorno: devuelve el token on-chain al dueño. */
+  @Patch(':id/approve-return')
+  approveReturn(@Param('id') id: string, @Body() body: { notes?: string }, @CurrentUser() user: any) {
+    return this.transfers.approveReturn(id, body?.notes, user.id, user.profile?.role as Role);
+  }
+
+  /** TSE rechaza la solicitud de retorno. */
+  @Patch(':id/reject-return')
+  rejectReturn(@Param('id') id: string, @Body() body: { notes?: string }, @CurrentUser() user: any) {
+    return this.transfers.rejectReturn(id, body?.notes, user.id, user.profile?.role as Role);
+  }
 }
