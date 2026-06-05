@@ -2,257 +2,380 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import {
   ArrowRight,
+  ArrowUpRight,
   ShieldCheck,
-  Landmark,
   Eye,
   CheckCircle2,
+  Zap,
+  Globe,
+  FileSearch,
   Boxes,
-  Activity,
   ChevronRight,
-  ExternalLink,
 } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'VELAR · Trazabilidad pública de bonos políticos',
-  description: 'Plataforma de coordinación on-chain para emitir, custodiar y auditar bonos políticos en Stellar testnet. Cada movimiento es verificable por cualquier persona.',
+  description: 'Plataforma blockchain para emitir, validar y consultar bonos políticos con transparencia pública en Stellar testnet.',
 };
 
-const HOW_IT_WORKS = [
-  { n: '1', title: 'El partido solicita', body: 'Llena el certificado: monto, serie, vencimiento, tasa. Queda pendiente de revisión.', actor: 'Partido emisor' },
-  { n: '2', title: 'El TSE revisa', body: 'Valida el respaldo legal y aprueba o rechaza con motivo. Solo el TSE puede emitir.', actor: 'Tribunal Supremo de Elecciones' },
-  { n: '3', title: 'Bono on-chain', body: 'Stellar emite el token único del bono y lo asigna a la wallet de custodia del partido.', actor: 'Stellar Testnet' },
-  { n: '4', title: 'Negocio público', body: 'Compras, reventas y precios quedan registrados en cadena con un contrato de coordinación.', actor: 'Marketplace + Trustless Work' },
+const STEPS = [
+  { n: 1, name: 'Emisión',      desc: 'El TSE registra la emisión del bono político con todos sus detalles y condiciones.' },
+  { n: 2, name: 'Asignación',   desc: 'Los bonos se asignan a partidos políticos autorizados según resolución oficial.' },
+  { n: 3, name: 'Transferencia', desc: 'Cualquier movimiento queda registrado en cadena con trazabilidad completa.' },
+  { n: 4, name: 'Validación',   desc: 'Los nodos validadores verifican cada transacción según las reglas del protocolo.' },
+  { n: 5, name: 'Consulta',     desc: 'Información disponible para la ciudadanía en tiempo real a través del explorador.' },
 ];
 
-const STAKEHOLDERS = [
-  {
-    role: 'Para el partido',
-    Icon: Landmark,
-    color: 'text-primary',
-    headline: 'Financiá la campaña con respaldo verificable.',
-    bullets: [
-      'Solicitá bonos al TSE y seguí el estado en vivo',
-      'Publicá en el marketplace cuando estén aprobados',
-      'Cada movimiento queda firmado en tu wallet de custodia',
-    ],
-  },
-  {
-    role: 'Para el TSE',
-    Icon: ShieldCheck,
-    color: 'text-emerald-700',
-    headline: 'Supervisá el sistema completo sin recibir papeles.',
-    bullets: [
-      'Aprobá o rechazá solicitudes con motivo registrado',
-      'Visualizá análisis por partido, montos y reventas',
-      'Resolvé disputas retirando el bono del escrow',
-    ],
-  },
-  {
-    role: 'Para la ciudadanía',
-    Icon: Eye,
-    color: 'text-slate-700',
-    headline: 'Verificá quién financia qué, sin pedir permiso.',
-    bullets: [
-      'Consultá la trazabilidad de cualquier bono',
-      'Abrí cualquier transacción en Stellar Expert',
-      'El historial es público y no se puede alterar',
-    ],
-  },
+const QUICK_FEATURES = [
+  { Icon: ShieldCheck, title: 'Registro inmutable',          desc: 'Cada evento queda grabado en blockchain y no puede ser alterado.' },
+  { Icon: Zap,         title: 'Validación en tiempo real',   desc: 'Los datos se validan al instante y se sincronizan con todos los nodos.' },
+  { Icon: Globe,       title: 'Acceso público',              desc: 'Cualquier persona puede consultar la información de forma abierta.' },
+  { Icon: FileSearch,  title: 'Historial auditable',         desc: 'Historial completo, trazable y verificable para auditorías ciudadanas.' },
 ];
 
-const TRACE_EVENTS = [
-  { t: 'Aprobado por TSE', detail: 'Solicitud CERT-2026-014 → bono SOL-2026-018', hash: '0xa39…d2c1', when: 'hace 2 horas' },
-  { t: 'Emitido on-chain', detail: 'Token único asignado a Partido Aurora', hash: '0xf21…8c3a', when: 'hace 2 horas' },
-  { t: 'Publicado al mercado', detail: 'Precio inicial ₡5 000 000', hash: 'sin tx', when: 'hace 1 hora' },
-  { t: 'Comprado', detail: 'Partido Aurora → Juan Pérez · ₡4 800 000', hash: '0xb7d…1f5c', when: 'hace 38 min' },
+const AUDIT_ROWS = [
+  { evento: 'Emisión',       descripcion: 'Emisión de bonos políticos aprobada por el TSE',  bloque: '18 754 210', hash: '0x9a2f…8b7e1', tiempo: '14/05/2026 09:15:23' },
+  { evento: 'Asignación',    descripcion: 'Asignación a Partido Esperanza Nacional',          bloque: '18 754 221', hash: '0x3c91…d4a93', tiempo: '14/05/2026 09:21:47' },
+  { evento: 'Transferencia', descripcion: 'Transferencia a cuenta bancaria autorizada',       bloque: '18 754 245', hash: '0x7f3a…9c21d', tiempo: '14/05/2026 09:34:11' },
+  { evento: 'Validación',    descripcion: 'Validación por nodos de la red',                   bloque: '18 754 250', hash: '0x1b67…aa551', tiempo: '14/05/2026 09:34:18' },
+  { evento: 'Consulta',      descripcion: 'Consulta pública realizada desde el explorador',   bloque: '18 754 300', hash: '0x5d22…bb7c9', tiempo: '14/05/2026 09:45:02' },
 ];
 
-function StellarMark({ className = 'h-5 w-auto' }: { className?: string }) {
+const AUDIT_GUARANTEES = [
+  { Icon: Eye,         title: 'Transparente',  desc: 'Datos abiertos y verificables por cualquier ciudadano.' },
+  { Icon: ShieldCheck, title: 'Confiable',     desc: 'Infraestructura descentralizada con validadores independientes.' },
+  { Icon: CheckCircle2,title: 'Verificable',   desc: 'Cada registro incluye hash, bloque y sello de tiempo.' },
+];
+
+function VelarLogo({ size = 36 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <path
-        fill="currentColor"
-        d="M58 12.5 49.4 17 18.2 32.5 11.9 35.7 6 32.5l13.4-6.7L43.2 14.1l5.8-2.9L54 8.3l4 4.2zM6 19.5l4 4.1 8.6-4.3 13.1 6.6 17.7 8.9 4.7-2.4-19.8-10-22.4 11.3L6 25.7zm0 25 18.8 9.5 22.4-11.3 11-5.5-4-4.2-8.6 4.3-13.1-6.6L18.7 22.7l-4.7 2.4 19.8 10z"
-      />
-    </svg>
+    <div className="flex items-center gap-2.5">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-primary text-white shadow-sm">
+        <Boxes size={18} strokeWidth={2.3} />
+      </div>
+      <div className="leading-none">
+        <p className="text-[15px] font-bold tracking-tight text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>VELAR</p>
+        <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ledger</p>
+      </div>
+    </div>
   );
 }
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-white text-slate-900" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <svg width="22" height="22" viewBox="0 0 44 44" fill="none">
-              <path d="M9 10 L22 33 L35 10" stroke="#0047C1" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'Geist, sans-serif' }}>VELAR</span>
-          </Link>
-          <nav className="hidden items-center gap-7 text-sm text-slate-600 md:flex">
-            <a href="#como-funciona" className="hover:text-slate-900">Cómo funciona</a>
-            <a href="#trazabilidad" className="hover:text-slate-900">Trazabilidad</a>
-            <a href="#actores" className="hover:text-slate-900">Para quién</a>
+    <main className="min-h-screen bg-slate-50/40 text-slate-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+
+      {/* ─── NAVBAR ──────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-6 lg:px-10">
+          <Link href="/"><VelarLogo /></Link>
+          <nav className="hidden items-center gap-1 md:flex">
+            {[
+              ['Inicio', '#hero', true],
+              ['Proceso', '#proceso', false],
+              ['Historial', '#historial', false],
+              ['Consulta pública', '#consulta', false],
+              ['Seguridad', '#seguridad', false],
+              ['Documentación', '#docs', false],
+            ].map(([label, href, active]) => (
+              <a key={label as string} href={href as string}
+                className={`relative px-3.5 py-2 text-[14px] transition-colors ${active ? 'font-semibold text-primary' : 'font-medium text-slate-600 hover:text-slate-900'}`}>
+                {label}
+                {active ? <span className="absolute -bottom-[1px] left-3.5 right-3.5 h-[2px] rounded-full bg-primary" /> : null}
+              </a>
+            ))}
           </nav>
-          <div className="flex items-center gap-2">
-            <Link href="/login" className="hidden text-sm font-medium text-slate-600 hover:text-slate-900 sm:inline">Iniciar sesión</Link>
-            <Link href="/signup" className="inline-flex h-9 items-center gap-1.5 rounded-full bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800">
-              Crear cuenta <ChevronRight size={14} />
-            </Link>
-          </div>
+          <Link href="/login"
+            className="group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-white transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25">
+            Acceder a la plataforma
+            <ArrowRight size={15} className="transition group-hover:translate-x-0.5" />
+          </Link>
         </div>
       </header>
 
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-slate-200/60">
-        <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-12 px-6 pb-16 pt-16 lg:grid-cols-12 lg:gap-16 lg:pt-20">
-          <div className="lg:col-span-7">
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] font-medium text-slate-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Coordinación on-chain en Stellar testnet
-            </p>
-            <h1 className="text-balance text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 md:text-5xl lg:text-[64px] lg:leading-[1.02]" style={{ fontFamily: 'Geist, sans-serif' }}>
-              Bonos políticos<br />que se pueden<br /><span className="text-primary">auditar al instante.</span>
+      {/* ─── 1. HERO ─────────────────────────────────────────────────────── */}
+      <section id="hero" className="relative overflow-hidden">
+        {/* Decoración de fondo: blobs radiales suaves */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute -right-40 -top-32 h-[640px] w-[640px] rounded-full bg-gradient-to-br from-primary-container/30 via-blue-300/20 to-transparent blur-3xl" />
+          <div className="absolute right-1/3 top-1/4 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-sky-200/40 to-transparent blur-3xl" />
+        </div>
+
+        <div className="mx-auto grid max-w-[1320px] grid-cols-1 gap-12 px-6 pb-20 pt-16 lg:grid-cols-12 lg:gap-10 lg:px-10 lg:pt-24">
+          {/* Copy */}
+          <div className="lg:col-span-6">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.06] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Blockchain para la transparencia pública
+            </span>
+
+            <h1 className="mt-7 text-[44px] font-bold leading-[1.04] tracking-tight text-slate-900 md:text-5xl lg:text-[60px] lg:leading-[1.02]"
+                style={{ fontFamily: 'Geist, sans-serif' }}>
+              Trazabilidad<br />
+              verificable para la<br />
+              emisión de <span className="text-primary-container">bonos<br />políticos</span>
             </h1>
-            <p className="mt-6 max-w-[58ch] text-lg leading-relaxed text-slate-600">
-              VELAR coordina la emisión, custodia y reventa de bonos políticos con un registro
-              público inmutable. Lo que antes era un PDF en una caja, ahora es verificable en cadena.
+
+            <p className="mt-7 max-w-[54ch] text-[17px] leading-relaxed text-slate-600">
+              Registramos cada etapa del proceso de emisión de bonos políticos del TSE en blockchain,
+              garantizando transparencia, validación y acceso público a un historial inmutable y auditable.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/signup" className="inline-flex h-12 items-center gap-2 rounded-full bg-slate-900 px-6 text-[15px] font-semibold text-white transition hover:bg-slate-800 hover:shadow-lg">
-                Crear cuenta <ArrowRight size={16} />
+
+            <div className="mt-9 flex flex-wrap items-center gap-3">
+              <Link href="#historial"
+                className="group inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-[15px] font-semibold text-white shadow-lg shadow-primary/20 transition hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30">
+                Ver historial público
+                <ArrowRight size={16} className="transition group-hover:translate-x-0.5" />
               </Link>
-              <Link href="#trazabilidad" className="inline-flex h-12 items-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-[15px] font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
-                Ver trazabilidad pública
+              <Link href="#proceso"
+                className="inline-flex h-12 items-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-[15px] font-semibold text-slate-700 transition hover:border-primary-container/40 hover:bg-slate-50">
+                Explorar proceso
+                <ArrowUpRight size={15} />
               </Link>
             </div>
           </div>
 
-          <div className="relative lg:col-span-5">
-            <div className="relative rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-[0_18px_60px_-15px_rgba(15,23,42,0.18)]">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bono on-chain</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Confirmado
-                </span>
-              </div>
-              <p className="font-mono text-2xl font-bold text-primary" style={{ fontFamily: 'JetBrains Mono, monospace' }}>SOL-2026-018</p>
-              <p className="mt-1 text-sm text-slate-500">Emitido a Partido Aurora · Serie A</p>
+          {/* CARD FLOTANTE: Historial en tiempo real */}
+          <div className="relative lg:col-span-6">
+            <div className="relative">
+              {/* glow detrás del card */}
+              <div aria-hidden className="absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-primary-container/15 via-sky-200/20 to-transparent blur-2xl" />
 
-              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-200 pt-5 text-sm">
-                <div><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Monto</p><p className="mt-0.5 font-semibold">₡5 000 000</p></div>
-                <div><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Vencimiento</p><p className="mt-0.5 font-semibold">15 ene 2027</p></div>
-                <div><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tasa</p><p className="mt-0.5 font-semibold">6.5%</p></div>
-                <div><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Dueño actual</p><p className="mt-0.5 font-semibold">Juan Pérez</p></div>
-              </div>
-
-              <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-4">
-                <p className="font-mono text-[11px] text-slate-500">0xa39c1d2…7e021f</p>
-                <span className="inline-flex items-center gap-1 text-[12px] font-medium text-primary">Stellar Expert <ExternalLink size={11} /></span>
-              </div>
-            </div>
-
-            <div className="absolute -bottom-6 -left-6 hidden w-56 rounded-xl border border-slate-200 bg-white p-4 shadow-lg lg:block">
-              <div className="mb-2 flex items-center gap-2">
-                <Activity size={14} className="text-emerald-600" />
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Última venta</span>
-              </div>
-              <p className="font-mono text-sm font-bold">₡4 800 000</p>
-              <p className="text-[11px] text-slate-500">Aurora → Juan Pérez · hace 38 min</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ALIADOS */}
-      <section className="border-b border-slate-200/60 bg-slate-50/50 py-10">
-        <div className="mx-auto max-w-[1280px] px-6">
-          <p className="mb-6 text-center text-[12px] font-medium uppercase tracking-wide text-slate-500">
-            Construido sobre infraestructura pública
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6 opacity-70 grayscale">
-            <div className="flex items-center gap-2 text-slate-700"><StellarMark className="h-6 w-auto" /><span className="text-sm font-semibold">Stellar Testnet</span></div>
-            <div className="flex items-center gap-2 text-slate-700"><ShieldCheck size={20} /><span className="text-sm font-semibold">Trustless Work</span></div>
-            <div className="flex items-center gap-2 text-slate-700"><Landmark size={20} /><span className="text-sm font-semibold">Tribunal Supremo</span></div>
-            <div className="flex items-center gap-2 text-slate-700"><Boxes size={20} /><span className="text-sm font-semibold">Soroban Smart Contracts</span></div>
-          </div>
-        </div>
-      </section>
-
-      {/* COMO FUNCIONA */}
-      <section id="como-funciona" className="border-b border-slate-200/60 py-24">
-        <div className="mx-auto max-w-[1280px] px-6">
-          <div className="mb-14 max-w-2xl">
-            <h2 className="text-3xl font-bold leading-tight tracking-tight md:text-4xl" style={{ fontFamily: 'Geist, sans-serif' }}>
-              De la solicitud al ledger,<br />en cuatro pasos verificables.
-            </h2>
-            <p className="mt-4 text-slate-600">Ningún actor puede saltarse pasos. Cada estado queda registrado y firmado.</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 md:grid-cols-2 lg:grid-cols-4">
-            {HOW_IT_WORKS.map((step) => (
-              <div key={step.n} className="bg-white p-7">
-                <div className="mb-5 flex items-center justify-between">
-                  <span className="font-mono text-2xl font-bold text-primary" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{step.n}</span>
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{step.actor}</span>
+              <div className="relative overflow-hidden rounded-3xl border border-white/80 bg-white/95 p-7 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.25),0_8px_30px_-12px_rgba(21,94,239,0.18)] backdrop-blur-xl">
+                <div className="mb-6 flex items-center justify-between">
+                  <h3 className="text-[17px] font-semibold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>
+                    Historial en tiempo real
+                  </h3>
+                  <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-emerald-600">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    </span>
+                    En vivo
+                  </span>
                 </div>
-                <h3 className="mb-2 text-lg font-semibold leading-snug" style={{ fontFamily: 'Geist, sans-serif' }}>{step.title}</h3>
-                <p className="text-sm leading-relaxed text-slate-600">{step.body}</p>
+
+                {/* Stepper horizontal con línea conectora */}
+                <div className="relative mb-7">
+                  <div className="absolute left-3 right-3 top-3 h-px bg-gradient-to-r from-primary-container/30 via-primary-container to-slate-200" />
+                  <div className="relative flex justify-between">
+                    {['Emisión','Asignación','Transferencia','Validación','Consulta'].map((s, i) => {
+                      const active = i <= 2;
+                      const current = i === 2;
+                      return (
+                        <div key={s} className="flex flex-col items-center gap-2">
+                          <div className={`relative flex h-7 w-7 items-center justify-center rounded-full border-2 transition ${
+                            current
+                              ? 'border-primary bg-white shadow-lg shadow-primary/25'
+                              : active
+                                ? 'border-primary bg-primary text-white'
+                                : 'border-slate-300 bg-white'
+                          }`}>
+                            {current
+                              ? <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                              : active
+                                ? <CheckCircle2 size={14} strokeWidth={2.8} />
+                                : <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />}
+                          </div>
+                          <span className={`text-[10.5px] font-medium ${active ? 'text-slate-700' : 'text-slate-400'}`}>{s}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Transacción reciente */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+                  <p className="mb-4 text-[12px] font-semibold uppercase tracking-wide text-slate-500">
+                    Transacción reciente
+                  </p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {[
+                      ['ID de transacción', '0x7f3a…9c21d', true],
+                      ['Bloque',            '18 754 321',  true],
+                      ['Tiempo',            'Hace 2 min',  false],
+                      ['Estado',            'Confirmado',  false],
+                    ].map(([label, val, mono]) => (
+                      <div key={label as string}>
+                        <p className="text-[10.5px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+                        <p className={`mt-1 truncate text-[12.5px] font-semibold text-slate-900 ${mono ? 'font-mono' : ''}`}
+                           style={mono ? { fontFamily: 'JetBrains Mono, monospace' } : {}}>
+                          {label === 'Estado'
+                            ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {val}
+                              </span>
+                            : val}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <a href="#historial" className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:text-primary-container">
+                  Ver detalles <ArrowRight size={13} />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* STRIP de 4 cards flotantes bajo el hero */}
+        <div className="mx-auto -mt-2 max-w-[1320px] px-6 pb-16 lg:px-10">
+          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.10)] backdrop-blur md:grid-cols-2 lg:grid-cols-4 lg:gap-2">
+            {QUICK_FEATURES.map(({ Icon, title, desc }) => (
+              <div key={title} className="group flex items-start gap-4 rounded-2xl p-4 transition hover:bg-slate-50">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/[0.08] text-primary transition group-hover:bg-primary group-hover:text-white">
+                  <Icon size={18} strokeWidth={2.2} />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">{title}</p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{desc}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* TRAZABILIDAD */}
-      <section id="trazabilidad" className="border-b border-slate-200/60 bg-gradient-to-b from-slate-50/60 to-white py-24">
-        <div className="mx-auto max-w-[1280px] px-6">
-          <div className="grid grid-cols-1 gap-14 lg:grid-cols-5 lg:gap-20">
-            <div className="lg:col-span-3">
-              <h2 className="mb-4 text-3xl font-bold leading-tight tracking-tight md:text-4xl" style={{ fontFamily: 'Geist, sans-serif' }}>
-                Cada bono cuenta<br />su propia historia.
-              </h2>
-              <p className="mb-8 max-w-md text-slate-600">
-                Así se ve el historial de un bono recién emitido. Cualquiera puede abrir cada paso en Stellar Expert.
-              </p>
-              <div className="space-y-3">
-                {TRACE_EVENTS.map((e, i) => (
-                  <div key={i} className="group flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-primary/40 hover:shadow-sm">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                      <CheckCircle2 size={16} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <p className="font-semibold text-slate-900">{e.t}</p>
-                        <span className="shrink-0 text-[11px] text-slate-400">{e.when}</span>
-                      </div>
-                      <p className="text-sm text-slate-600">{e.detail}</p>
-                      <p className="mt-1 font-mono text-[11px] text-slate-400">{e.hash}</p>
-                    </div>
+      {/* ─── 2. PROCESO: 5 cards conectadas por flechas ──────────────────── */}
+      <section id="proceso" className="border-t border-slate-200/60 bg-white py-24">
+        <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
+          <div className="mx-auto mb-14 max-w-2xl text-center">
+            <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-primary">
+              Proceso de emisión
+            </p>
+            <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-900 md:text-[40px] md:leading-[1.1]"
+                style={{ fontFamily: 'Geist, sans-serif' }}>
+              Un flujo transparente, paso a paso
+            </h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-slate-600">
+              Cada etapa del ciclo de vida del bono político queda registrada, validada y disponible para consulta.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:gap-0">
+            {STEPS.map((s, i) => (
+              <div key={s.n} className="relative lg:px-2">
+                <div className="group relative h-full rounded-2xl border border-slate-200 bg-white p-6 transition hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_18px_40px_-18px_rgba(21,94,239,0.25)]">
+                  <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white shadow-md shadow-primary/25">
+                    {s.n}
                   </div>
-                ))}
+                  <p className="font-semibold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>{s.name}</p>
+                  <p className="mt-2 text-[13px] leading-relaxed text-slate-500">{s.desc}</p>
+                </div>
+                {/* Flecha entre cards (excepto la última) */}
+                {i < STEPS.length - 1 && (
+                  <div aria-hidden className="pointer-events-none absolute right-[-12px] top-1/2 hidden -translate-y-1/2 text-slate-300 lg:block">
+                    <ChevronRight size={22} strokeWidth={1.5} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 3. HISTORIAL AUDITABLE (dark card) ──────────────────────────── */}
+      <section id="historial" className="py-20">
+        <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-[#0a1530] p-8 text-slate-100 lg:p-12">
+            {/* glow decorativo dentro de la card */}
+            <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary-container/30 blur-3xl" />
+
+            <div className="relative grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
+              {/* Izquierda: características */}
+              <div className="lg:col-span-4">
+                <h2 className="text-3xl font-bold leading-tight tracking-tight text-white md:text-[36px]"
+                    style={{ fontFamily: 'Geist, sans-serif' }}>
+                  Historial auditable
+                </h2>
+                <p className="mt-4 text-[14.5px] leading-relaxed text-slate-400">
+                  Explora eventos reales registrados en blockchain y verifica la integridad de cada movimiento.
+                </p>
+
+                <div className="mt-8 space-y-3">
+                  {AUDIT_GUARANTEES.map(({ Icon, title, desc }) => (
+                    <div key={title} className="rounded-xl border border-slate-700/60 bg-slate-800/40 p-4 backdrop-blur">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-container/15 text-primary-container">
+                          <Icon size={16} strokeWidth={2.3} />
+                        </div>
+                        <p className="font-semibold text-white">{title}</p>
+                      </div>
+                      <p className="mt-2 text-[13px] leading-relaxed text-slate-400">{desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Derecha: tabla */}
+              <div className="lg:col-span-8">
+                <div className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/60 backdrop-blur">
+                  <div className="grid grid-cols-[140px_1fr_110px_130px_140px_110px] gap-3 border-b border-slate-700/60 px-5 py-3 text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">
+                    <span>Evento</span>
+                    <span>Descripción</span>
+                    <span>Bloque</span>
+                    <span>Hash</span>
+                    <span>Tiempo</span>
+                    <span>Estado</span>
+                  </div>
+                  {AUDIT_ROWS.map((r) => (
+                    <div key={r.hash} className="grid grid-cols-[140px_1fr_110px_130px_140px_110px] items-center gap-3 border-b border-slate-800/80 px-5 py-3.5 text-[13px] transition hover:bg-slate-800/40 last:border-0">
+                      <span className="inline-flex items-center gap-2 font-medium text-white">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary-container" />
+                        {r.evento}
+                      </span>
+                      <span className="truncate text-slate-400">{r.descripcion}</span>
+                      <span className="font-mono text-slate-300" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{r.bloque}</span>
+                      <span className="font-mono text-slate-300" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{r.hash}</span>
+                      <span className="text-slate-500">{r.tiempo}</span>
+                      <span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Confirmado
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 text-center">
+                  <a href="#consulta" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-primary-container hover:text-white">
+                    Ver historial completo en el explorador <ArrowRight size={14} />
+                  </a>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <div className="lg:col-span-2">
-              <div className="sticky top-24 rounded-2xl border border-slate-900/90 bg-slate-900 p-7 text-slate-100">
-                <h3 className="text-xl font-semibold leading-tight" style={{ fontFamily: 'Geist, sans-serif' }}>Lo que VELAR garantiza</h3>
-                <p className="mt-2 text-sm text-slate-400">Cuatro propiedades técnicas, no promesas.</p>
-                <ul className="mt-6 space-y-4">
-                  {[
-                    ['Inmutable', 'Stellar firma cada transacción y la red la confirma. Reescribir el historial es matemáticamente inviable.'],
-                    ['Verificable', 'Cualquier persona puede abrir el bono en stellar.expert y leer su recorrido.'],
-                    ['Auditable', 'El TSE consulta agregados, partidos y disputas desde un solo panel.'],
-                    ['Independiente', 'Si VELAR desaparece, los registros siguen en la red Stellar.'],
-                  ].map(([h, b]) => (
-                    <li key={h} className="border-l-2 border-emerald-400 pl-4">
-                      <p className="text-sm font-semibold text-white">{h}</p>
-                      <p className="mt-1 text-sm leading-relaxed text-slate-400">{b}</p>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/signup" className="mt-7 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300">
-                  Empezá a registrar bonos <ArrowRight size={14} />
+      {/* ─── 4. CTA FINAL ────────────────────────────────────────────────── */}
+      <section id="consulta" className="bg-gradient-to-b from-white to-slate-100 py-24">
+        <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-10 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.18)] lg:p-14">
+            <div aria-hidden className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary-container/10 blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute -bottom-32 right-1/3 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
+
+            <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-12">
+              <div className="lg:col-span-7">
+                <h2 className="text-[34px] font-bold leading-[1.1] tracking-tight text-slate-900 md:text-[44px]"
+                    style={{ fontFamily: 'Geist, sans-serif' }}>
+                  Transparencia que fortalece<br />la democracia
+                </h2>
+                <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-slate-600">
+                  Un sistema abierto, seguro y basado en blockchain para garantizar la confianza ciudadana.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 lg:col-span-5 lg:justify-end">
+                <Link href="/marketplace"
+                  className="group inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-[14.5px] font-semibold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30">
+                  Explorar historial público
+                  <ArrowRight size={15} className="transition group-hover:translate-x-0.5" />
+                </Link>
+                <Link href="#seguridad"
+                  className="inline-flex h-12 items-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-[14.5px] font-semibold text-slate-700 transition hover:border-primary/30 hover:bg-slate-50">
+                  Conocer más sobre seguridad
+                  <ArrowUpRight size={14} />
                 </Link>
               </div>
             </div>
@@ -260,95 +383,57 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* STAKEHOLDERS */}
-      <section id="actores" className="border-b border-slate-200/60 py-24">
-        <div className="mx-auto max-w-[1280px] px-6">
-          <div className="mb-14 grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-end">
+      {/* ─── FOOTER ──────────────────────────────────────────────────────── */}
+      <footer className="border-t border-slate-200 bg-slate-900 py-16 text-slate-300">
+        <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <h2 className="text-3xl font-bold leading-tight tracking-tight md:text-4xl" style={{ fontFamily: 'Geist, sans-serif' }}>
-                Un mismo registro,<br />tres formas de usarlo.
-              </h2>
-            </div>
-            <p className="text-slate-600 lg:pb-2">
-              VELAR no le sirve solo a partidos o auditores. La transparencia tiene sentido
-              cuando es accesible para todos los lados.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            {STAKEHOLDERS.map((s) => (
-              <div key={s.role} className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-7 transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg">
-                <div className={`mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-50 ${s.color}`}>
-                  <s.Icon size={20} strokeWidth={2.2} />
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-primary text-white">
+                  <Boxes size={18} strokeWidth={2.3} />
                 </div>
-                <p className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-slate-400">{s.role}</p>
-                <h3 className="text-xl font-semibold leading-tight" style={{ fontFamily: 'Geist, sans-serif' }}>{s.headline}</h3>
-                <ul className="mt-5 flex-1 space-y-3">
-                  {s.bullets.map((b) => (
-                    <li key={b} className="flex items-start gap-2.5 text-sm text-slate-600">
-                      <CheckCircle2 size={14} className={`mt-0.5 shrink-0 ${s.color}`} strokeWidth={2.5} />
-                      <span>{b}</span>
+                <p className="text-[15px] font-bold tracking-tight text-white" style={{ fontFamily: 'Geist, sans-serif' }}>VELAR</p>
+              </div>
+              <p className="mt-5 max-w-sm text-[13.5px] leading-relaxed text-slate-400">
+                Plataforma blockchain para la trazabilidad, transparencia y validación de bonos políticos del TSE.
+              </p>
+              <div className="mt-6 flex items-center gap-2">
+                {['X','GH','IN'].map((tag) => (
+                  <a key={tag} href="#" className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-[10px] font-bold text-slate-400 transition hover:border-primary-container hover:text-white">
+                    {tag}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {[
+              { title: 'Producto', items: ['Proceso','Historial','Consulta pública','Seguridad'] },
+              { title: 'Recursos', items: ['Documentación','API','Guías','Preguntas frecuentes'] },
+              { title: 'Legal',    items: ['Términos de uso','Política de privacidad','Transparencia','Avisos legales'] },
+            ].map((col) => (
+              <div key={col.title}>
+                <p className="mb-4 text-[12px] font-semibold uppercase tracking-wide text-slate-500">{col.title}</p>
+                <ul className="space-y-2.5">
+                  {col.items.map((it) => (
+                    <li key={it}>
+                      <a href="#" className="text-[14px] text-slate-400 transition hover:text-white">{it}</a>
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* METRICAS */}
-      <section className="border-b border-slate-200/60 py-24">
-        <div className="mx-auto max-w-[1280px] px-6">
-          <p className="text-center text-[12px] font-semibold uppercase tracking-wide text-slate-400">
-            Estado de la red en este momento
-          </p>
-          <div className="mt-10 grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-4">
-            {[
-              ['152', 'bonos emitidos'],
-              ['₡2.4B', 'volumen movido'],
-              ['98', 'transferencias'],
-              ['3', 'partidos activos'],
-            ].map(([n, l]) => (
-              <div key={l} className="text-center">
-                <p className="font-mono text-5xl font-bold tracking-tight text-slate-900 md:text-6xl" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{n}</p>
-                <p className="mt-2 text-sm text-slate-500">{l}</p>
-              </div>
-            ))}
+          <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-slate-800 pt-6 sm:flex-row">
+            <p className="text-[12.5px] text-slate-500">© 2026 VELAR Ledger · Todos los derechos reservados</p>
+            <div className="flex flex-wrap items-center gap-4 text-[12.5px] text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Red blockchain pública
+              </span>
+              <span>· Datos abiertos</span>
+              <span>· Código abierto</span>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* CTA FINAL */}
-      <section className="bg-slate-900 py-24 text-slate-100">
-        <div className="mx-auto max-w-[1280px] px-6 text-center">
-          <h2 className="mx-auto max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight md:text-5xl" style={{ fontFamily: 'Geist, sans-serif' }}>
-            La trazabilidad ya no necesita<br /><span className="text-emerald-400">cajas de papel.</span>
-          </h2>
-          <p className="mx-auto mt-5 max-w-xl text-slate-400">
-            Creá tu cuenta y registrá el primer bono. Toda la red Stellar testnet es testigo.
-          </p>
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/signup" className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-[15px] font-semibold text-slate-900 transition hover:bg-slate-200">
-              Crear cuenta <ArrowRight size={16} />
-            </Link>
-            <Link href="/marketplace" className="inline-flex h-12 items-center gap-2 rounded-full border border-slate-700 bg-transparent px-6 text-[15px] font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800">
-              Explorar el marketplace
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-slate-200 bg-white py-10">
-        <div className="mx-auto flex max-w-[1280px] flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-          <div className="flex items-center gap-2 text-slate-500">
-            <svg width="18" height="18" viewBox="0 0 44 44" fill="none">
-              <path d="M9 10 L22 33 L35 10" stroke="#0047C1" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="text-sm font-semibold text-slate-700">VELAR</span>
-            <span className="text-sm">· Plataforma institucional</span>
-          </div>
-          <p className="text-xs text-slate-400">Proyecto académico · Bonos demostrativos en Stellar Testnet</p>
         </div>
       </footer>
     </main>
