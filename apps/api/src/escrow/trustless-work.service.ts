@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
 import { Networks, TransactionBuilder } from '@stellar/stellar-sdk';
 import { WalletService } from './wallet.service';
+import { StellarBondService } from './stellar-bond.service';
 
 /**
  * Trustless Work usado como CANASTA DE COORDINACIÓN on-chain (no maneja dinero).
@@ -21,7 +22,11 @@ export class TrustlessWorkService {
   private readonly apiKey = process.env.TRUSTLESS_WORK_API_KEY ?? '';
   private readonly platformAddress = process.env.TRUSTLESS_WORK_PLATFORM_ADDRESS ?? '';
 
-  constructor(private wallets: WalletService) {}
+  constructor(
+    private wallets: WalletService,
+    @Inject(forwardRef(() => StellarBondService))
+    private stellar: StellarBondService,
+  ) {}
 
   get enabled(): boolean {
     return !!(this.base && this.apiKey && this.platformAddress);
@@ -101,6 +106,14 @@ export class TrustlessWorkService {
       },
       signer: this.platformAddress,
     };
+
+    // Trustless Work valida que el receiver tenga trustline al asset antes de
+    // crear el escrow. Aseguramos la trustline VCRC en su custodia.
+    try {
+      await this.stellar.ensureVcrcTrustline(input.sellerAddress);
+    } catch (e) {
+      this.logger.warn(`No se pudo crear trustline VCRC para receiver: ${(e as Error).message}`);
+    }
 
     const deployRes = await this.call<{ unsignedTransaction: string }>('/deployer/single-release', body);
     const submitRes = await this.signAndSubmit(deployRes.unsignedTransaction);

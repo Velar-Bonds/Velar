@@ -80,6 +80,12 @@ export class StellarBondService {
     );
   }
 
+  /** Variante pública de `ensureTrustline` para asset VCRC. */
+  async ensureVcrcTrustline(account: string): Promise<void> {
+    const vcrc = new Asset('VCRC', this.wallets.issuerAddress!);
+    return this.ensureTrustline(account, vcrc);
+  }
+
   /** Asegura que `account` confíe en el activo (changeTrust), firmado en custodia. */
   private async ensureTrustline(account: string, asset: Asset): Promise<void> {
     if (await this.hasTrustline(account, asset)) return;
