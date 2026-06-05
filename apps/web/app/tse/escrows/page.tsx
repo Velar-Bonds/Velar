@@ -19,7 +19,8 @@ const STATUS_LBL: Record<string, [string, string, any]> = {
 export default function EscrowsPage() {
   const { token, me, loading, error } = useSession();
   const [transfers, setTransfers] = useState<any[]>([]);
-  const [showAll, setShowAll] = useState(false);
+  const [tab, setTab] = useState<'all' | 'with' | 'without'>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('');
 
   useEffect(() => {
     if (!token) return;
@@ -36,18 +37,25 @@ export default function EscrowsPage() {
 
   const withEscrow = transfers.filter((t) => t.escrow_contract_id);
   const withoutEscrow = transfers.filter((t) => !t.escrow_contract_id);
-  const list = showAll ? transfers : withEscrow;
+
+  // Las transferencias que están "en escrow" ahora mismo (token bloqueado en la canasta)
+  const enEscrowAhora = transfers.filter((t) => ['en_escrow', 'pago_registrado', 'pago_validado'].includes(t.status));
+
+  const base = tab === 'with' ? withEscrow : tab === 'without' ? withoutEscrow : transfers;
+  const list = statusFilter ? base.filter((t) => t.status === statusFilter) : base;
+  const statuses = Array.from(new Set(transfers.map((t) => t.status))).sort();
 
   return (
     <TSEShell me={me}>
-      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-20 items-center border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>Escrows on-chain</h1>
-          <p className="text-sm text-on-surface-variant">{withEscrow.length} canastas creadas en Trustless Work · {withoutEscrow.length} sin canasta</p>
+          <p className="text-sm text-on-surface-variant">
+            <span className="font-semibold text-emerald-700">{withEscrow.length}</span> con canasta Trustless Work
+            · <span className="font-semibold text-amber-700">{enEscrowAhora.length}</span> con token bloqueado ahora
+            · <span className="text-on-surface-variant">{transfers.length}</span> totales
+          </p>
         </div>
-        <button onClick={() => setShowAll(!showAll)} className="btn-ghost">
-          {showAll ? 'Solo con escrow' : 'Mostrar todos'}
-        </button>
       </header>
 
       <div className="mx-auto w-full max-w-[1200px] p-8 pb-20">
@@ -69,12 +77,48 @@ export default function EscrowsPage() {
           </div>
         </div>
 
+        {/* Tabs + filtros */}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex overflow-hidden rounded-xl border border-outline-variant/40 bg-white">
+            {([
+              ['all',     'Todas',           transfers.length],
+              ['with',    'Con canasta',     withEscrow.length],
+              ['without', 'Sin canasta',     withoutEscrow.length],
+            ] as const).map(([key, label, count]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold transition ${
+                  tab === key
+                    ? 'bg-primary-container text-white'
+                    : 'bg-white text-on-surface-variant hover:bg-surface-container-low'
+                }`}
+              >
+                {label}
+                <span className={`rounded-full px-1.5 text-[10px] ${tab === key ? 'bg-white/20' : 'bg-surface-container'}`}>{count}</span>
+              </button>
+            ))}
+          </div>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="field-input w-auto bg-white text-xs">
+            <option value="">Todos los estados</option>
+            {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+
         {/* Lista */}
         {list.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-outline-variant/30 p-12 text-center text-on-surface-variant">
             <Shield size={32} className="mx-auto mb-3 text-outline" />
-            <p className="font-medium">No hay escrows todavía</p>
-            <p className="mt-1 text-sm">Cuando alguien acepte una oferta se creará un contrato escrow en Trustless Work.</p>
+            <p className="font-medium">
+              {tab === 'with' && 'Todavía no hay canastas creadas en Trustless Work'}
+              {tab === 'without' && 'Todas las transferencias tienen canasta'}
+              {tab === 'all' && 'No hay transferencias todavía'}
+            </p>
+            <p className="mt-1 text-sm">
+              {tab === 'with' && 'Las próximas ventas que se acepten crearán automáticamente el contrato Soroban.'}
+              {tab === 'without' && 'Buenas noticias: cada venta nueva está siendo registrada on-chain.'}
+              {tab === 'all' && 'Cuando alguien acepte una oferta se creará un contrato escrow.'}
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
