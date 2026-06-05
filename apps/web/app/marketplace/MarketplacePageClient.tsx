@@ -1,285 +1,72 @@
 'use client';
-import { useEffect, useReducer, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Activity,
-  BadgeCheck,
-  Bell,
-  ChevronDown,
-  FileText,
-  Handshake,
-  Lock,
-  LogOut,
-  Search,
-  Send,
-  ShieldCheck,
-  ShoppingBag,
-  SlidersHorizontal,
-  Tag,
-  Wallet,
-  Waypoints,
-  Zap,
-} from 'lucide-react';
-import { createClient } from '../../lib/supabase/client';
+import { useEffect, useState } from 'react';
+import { Store, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { AppShell } from '../../components/AppShell';
+import { StellarExpertButton, StatusBadge, EmptyState, fmtMoney } from '../../components/ui';
+import { apiFetch } from '../../lib/api';
+import { stellarExpert } from '../../lib/stellar';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-const fmt = (n: number | null | undefined) => (n == null ? '—' : '$' + Number(n).toLocaleString('es-CR'));
-const initials = (name?: string) => (name ?? '?').split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase();
+const ISSUER = 'GDJMYOQUSNS4LWVENGQYFFUULNEYAGJBOIGAVENSRY3GI3S2P2HW2VK5';
+const assetCode = (bondId: string) => bondId.replace(/[^A-Za-z0-9]/g, '').slice(0, 12) || 'BOND';
 
-type Bond = {
-  token_id: string; bond_id: string; status: string; face_value: number | null;
-  parties?: { code?: string; name?: string }; profiles?: { full_name?: string };
-};
+type Bond = { token_id: string; bond_id: string; status: string; face_value: number | null; parties?: { code?: string; name?: string }; profiles?: { full_name?: string } };
 
-const supabase = createClient();
-
-const tabs: Array<{ Icon: LucideIcon; label: string; active?: boolean }> = [
-  { Icon: ShoppingBag, label: 'Marketplace', active: true },
-  { Icon: Wallet, label: 'Mis bonos' },
-  { Icon: Handshake, label: 'Negociaciones' },
-  { Icon: Waypoints, label: 'Trazabilidad' },
-  { Icon: Activity, label: 'Eventos en vivo' },
-];
-
-const eventIcons: Record<string, LucideIcon> = {
-  solicitada: Send,
-  aceptada: Handshake,
-  en_escrow: Lock,
-  pago_registrado: FileText,
-  liberada: BadgeCheck,
-};
-
-const quickActions = [
-  { Icon: Wallet, label: 'Ver mis bonos' },
-  { Icon: Tag, label: 'Publicar para venta' },
-] as const;
-
-type MarketplaceState = {
-  me: any;
-  available: Bond[];
-  myBonds: Bond[];
-  transfers: any[];
-  msg: string;
-};
-
-const initialMarketplaceState: MarketplaceState = {
-  me: null,
-  available: [],
-  myBonds: [],
-  transfers: [],
-  msg: '',
-};
-
-function marketplaceReducer(state: MarketplaceState, patch: Partial<MarketplaceState>) {
-  return { ...state, ...patch };
+export default function MarketplacePageClient() {
+  return <AppShell>{({ token }) => <Content token={token} />}</AppShell>;
 }
 
-async function api(method: string, path: string, tok: string, body?: any) {
-  const r = await fetch(API_URL + path, { method, headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.message ?? 'Error');
-  return j;
-}
+function Content({ token }: { token: string }) {
+  const [bonds, setBonds] = useState<Bond[]>([]);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
 
-export default function MarketplacePage() {
-  const router = useRouter();
-  const tokenRef = useRef<string | null>(null);
-  const [state, setState] = useReducer(marketplaceReducer, initialMarketplaceState);
-  const { me, available, myBonds, transfers, msg } = state;
+  const load = () => apiFetch(token, 'GET', '/bonds/available').then(setBonds).catch((e) => setMsg(e.message));
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
-  async function load(tok: string) {
-    try {
-      const [meRes, avail, mine, trs] = await Promise.all([
-        api('GET', '/users/me', tok), api('GET', '/bonds/available', tok).catch(() => []),
-        api('GET', '/bonds', tok).catch(() => []), api('GET', '/transfers', tok).catch(() => []),
-      ]);
-      setState({ me: meRes, available: avail, myBonds: mine, transfers: trs });
-    } catch (e: any) { setState({ msg: e.message }); }
-  }
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const t = data.session?.access_token;
-      if (!t) return;
-      tokenRef.current = t; load(t);
-    });
-  }, []);
   async function comprar(id: string) {
-    const token = tokenRef.current;
-    if (!token) return;
-    try { await api('POST', '/transfers', token, { bondTokenId: id, amount: 0 }); setState({ msg: '✅ Solicitud de compra enviada.' }); load(token); }
-    catch (e: any) { setState({ msg: '⚠️ ' + e.message }); }
+    setBusy(id); setMsg('');
+    try { await apiFetch(token, 'POST', '/transfers', { bondTokenId: id, amount: 0 }); setMsg('✅ Solicitud enviada. El dueño debe aceptar.'); load(); }
+    catch (e: any) { setMsg('⚠️ ' + e.message); } finally { setBusy(null); }
   }
-
-  const valorCartera = myBonds.reduce((s, b) => s + (Number(b.face_value) || 0), 0);
-  const enNeg = transfers.filter((t) => ['solicitada', 'aceptada', 'en_escrow', 'pago_registrado', 'pago_validado'].includes(t.status));
 
   return (
-    <div className="min-h-screen bg-[#FAFCFF] text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Top nav */}
-      <header className="glass-nav fixed top-0 z-50 w-full border-b border-outline-variant/20" style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)' }}>
-        <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-5 md:px-10">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-gradient-to-br from-primary-container to-blue-400 shadow-sm">
-              <ShieldCheck aria-hidden="true" className="h-4.5 w-4.5 text-white" strokeWidth={2.2} />
-            </div>
-            <span className="text-[24px] font-bold leading-none tracking-tighter text-on-surface" style={{ fontFamily: 'Geist' }}>VELAR</span>
-          </div>
-          <div className="mx-8 hidden max-w-2xl flex-1 md:block">
-            <div className="relative">
-              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-outline" strokeWidth={2.1} />
-              <input aria-label="Buscar bonos, emisores, IDs y transacciones" className="block w-full rounded-full border border-outline-variant/40 bg-white/50 py-2 pl-10 pr-3 text-sm placeholder-outline focus:border-primary-container focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary-container" placeholder="Buscar bonos, emisores, IDs, transacciones…" />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="button" aria-label="Notificaciones" className="relative rounded-full p-2 text-on-surface-variant transition-colors hover:bg-primary-container/5 hover:text-primary-container">
-              <Bell aria-hidden="true" className="h-5 w-5" strokeWidth={2.1} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-error" />
-            </button>
-            <div className="mx-1 hidden h-6 w-px bg-outline-variant/30 sm:block" />
-            <button type="button" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }} className="flex items-center gap-3 rounded-full border border-transparent p-1.5 transition-colors hover:border-outline-variant/20 hover:bg-surface-container-low">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-xs text-white">{initials(me?.full_name)}</div>
-              <span className="hidden text-sm font-medium text-on-surface md:block">{me?.full_name ?? '…'}</span>
-              <LogOut aria-hidden="true" className="hidden h-4 w-4 text-on-surface-variant md:block" strokeWidth={2.1} />
-            </button>
-          </div>
-        </div>
-        <div className="hidden border-t border-outline-variant/20 bg-white/50 md:block">
-          <div className="mx-auto flex h-12 max-w-[1440px] items-center justify-center gap-8 px-10">
-            {tabs.map(({ Icon, label, active }) => (
-              <button type="button" key={label} className={`flex h-full items-center gap-2 border-b-2 pb-[2px] transition-colors ${active ? 'border-primary-container font-bold text-primary-container' : 'border-transparent text-on-surface-variant hover:border-outline-variant/30 hover:text-primary-container'}`}>
-                <Icon aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={active ? 2.3 : 2.1} />
-                <span className="text-sm font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1440px] space-y-6 px-4 pb-24 pt-[140px] md:px-10">
+    <>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-on-surface" style={{ fontFamily: 'Geist' }}>Marketplace de bonos</h1>
-          <p className="mt-1 text-on-surface-variant">Explore y negocie instrumentos de deuda institucional con transparencia radical.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-on-surface md:text-4xl" style={{ fontFamily: 'Geist' }}>Marketplace de bonos</h1>
+          <p className="mt-1 text-on-surface-variant">Explorá y comprá instrumentos de deuda institucional con trazabilidad verificable.</p>
         </div>
-        {msg && <div className="rounded-xl border border-[#D5E3FF] bg-white px-4 py-2 text-sm">{msg}</div>}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-          {/* Left: filters + cards */}
-          <div className="space-y-6 lg:col-span-8">
-            <div className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-xl p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                {['Estado', 'Valor', 'Tipo', 'Riesgo', 'Emisor'].map((f) => (
-                  <button type="button" key={f} className="flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-white px-3 py-1.5 text-sm font-medium text-on-surface transition-colors hover:border-primary-container/50 hover:bg-surface-container-low">
-                    <span className="text-on-surface-variant">{f}</span> Todos<ChevronDown aria-hidden="true" className="h-4 w-4 text-outline" strokeWidth={2.1} />
-                  </button>
-                ))}
-                <button type="button" className="flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-white px-3 py-1.5 text-sm font-medium text-primary-container">
-                  Más filtros
-                  <SlidersHorizontal aria-hidden="true" className="h-4 w-4" strokeWidth={2.1} />
-                </button>
-              </div>
-              <button type="button" className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-on-surface-variant hover:bg-surface-container-low">
-                Ordenar: <span className="font-semibold text-on-surface">Más recientes</span>
-                <ChevronDown aria-hidden="true" className="h-4 w-4" strokeWidth={2.1} />
-              </button>
-            </div>
+        <button className="flex w-max items-center gap-2 rounded-xl border border-outline-variant/40 bg-white px-3 py-2 text-sm font-medium text-on-surface transition hover:border-primary-container/50"><SlidersHorizontal size={16} /> Filtros</button>
+      </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {available.length === 0 && <div className="glass-card col-span-2 rounded-2xl p-8 text-center text-sm text-on-surface-variant">No hay bonos en venta ahora mismo.</div>}
-              {available.map((b) => (
-                <div key={b.token_id} className="group glass-card relative space-y-5 overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_24px_48px_rgba(21,94,239,0.08)]">
-                  <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-primary-container to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-high text-primary-container">
-                        <FileText aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                      </div>
-                      <div><div className="text-sm font-semibold text-primary-container" style={{ fontFamily: 'JetBrains Mono' }}>{b.bond_id}</div><h3 className="mt-0.5 font-bold text-on-surface">{b.parties?.name ?? 'Bono político'}</h3></div>
-                    </div>
-                    <div className="inline-flex items-center gap-1.5 rounded-md border border-green-100 bg-green-50 px-2 py-1 text-xs font-semibold text-green-700"><div className="h-1.5 w-1.5 rounded-full bg-green-500" /> Disponible</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><div className="mb-1 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Precio</div><div className="text-xl font-bold text-on-surface">{fmt(b.face_value)}</div></div>
-                    <div><div className="mb-1 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Vendedor</div><div className="truncate text-sm font-medium text-on-surface">{b.profiles?.full_name ?? '—'}</div></div>
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-outline-variant/20 pt-2 text-xs text-on-surface-variant">
-                    <div className="flex items-center gap-1"><ShieldCheck aria-hidden="true" className="h-[14px] w-[14px]" strokeWidth={2.2} /> NODO VELAR</div>
-                    <div className="ml-auto flex items-center gap-1"><BadgeCheck aria-hidden="true" className="h-[14px] w-[14px] text-green-500" strokeWidth={2.2} /> Verificado</div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 pt-2">
-                    <button type="button" className="rounded-lg border border-primary-container px-3 py-2 text-sm font-medium text-primary-container transition-colors hover:bg-primary-container/5">Ver detalle</button>
-                    <button type="button" className="rounded-lg border border-primary-container px-3 py-2 text-sm font-medium text-primary-container transition-colors hover:bg-primary-container/5">Negociar</button>
-                    <button type="button" onClick={() => comprar(b.token_id)} className="rounded-lg bg-primary-container px-3 py-2 text-sm font-medium text-white transition-all hover:bg-[#0B5CFF] hover:shadow-[0_0_15px_rgba(21,94,239,0.3)]">Comprar</button>
-                  </div>
+      {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
+
+      {bonds.length === 0 ? (
+        <EmptyState icon={<Store size={26} />} title="No hay bonos en venta" desc="Cuando un partido ponga bonos a la venta, aparecerán acá para que los compres." />
+      ) : (
+        <div className="velar-stagger grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {bonds.map((b) => (
+            <div key={b.token_id} className="velar-hover-card glass-card group relative overflow-hidden rounded-2xl p-6">
+              <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-primary-container to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-high text-primary-container"><ShieldCheck size={20} /></span>
+                  <div><div className="mono-data text-sm font-semibold text-primary-container">{b.bond_id}</div><h3 className="mt-0.5 font-bold text-on-surface">{b.parties?.name ?? 'Bono político'}</h3></div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right column */}
-          <div className="space-y-6 lg:col-span-4">
-            <div className="glass-card space-y-4 rounded-2xl p-5">
-              <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-2 text-lg text-on-surface" style={{ fontFamily: 'Geist' }}>Eventos en vivo<span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" /></span></h3>
+                <StatusBadge status={b.status} />
               </div>
-              <div className="space-y-2">
-                {transfers.slice(0, 5).map((t) => (
-                  <div key={t.id} className="group flex cursor-pointer items-start gap-3 rounded-xl p-2 transition-colors hover:bg-surface-container-low">
-                    {(() => {
-                      const EventIcon = eventIcons[t.status] ?? Zap;
-                      return (
-                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-surface-container text-primary-container">
-                          <EventIcon aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                        </div>
-                      );
-                    })()}
-                    <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-on-surface">{t.bonds?.bond_id ?? 'Bono'}</div><div className="truncate text-xs text-on-surface-variant">{t.from_profile?.full_name ?? '?'} → {t.to_profile?.full_name ?? '?'} · {t.status}</div></div>
-                  </div>
-                ))}
-                {transfers.length === 0 && <div className="px-2 text-xs text-on-surface-variant">Sin actividad todavía.</div>}
+              <div className="mt-5 grid grid-cols-2 gap-4">
+                <div><div className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Valor</div><div className="mono-data text-xl font-bold text-on-surface">{fmtMoney(b.face_value)}</div></div>
+                <div><div className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Vendedor</div><div className="truncate text-sm font-medium text-on-surface">{b.profiles?.full_name ?? '—'}</div></div>
+              </div>
+              <div className="mt-5 flex items-center gap-2 border-t border-outline-variant/20 pt-4">
+                <button onClick={() => comprar(b.token_id)} disabled={busy === b.token_id} className="velar-primary-button flex flex-1 items-center justify-center rounded-xl py-2.5 text-sm font-semibold transition disabled:opacity-60">{busy === b.token_id ? 'Enviando…' : 'Comprar'}</button>
+                <StellarExpertButton href={stellarExpert.asset(assetCode(b.bond_id), ISSUER)} label="Stellar" small />
               </div>
             </div>
-
-            <div className="glass-card space-y-4 rounded-2xl p-5">
-              <h3 className="text-lg text-on-surface" style={{ fontFamily: 'Geist' }}>Resumen del comprador</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col items-center justify-center rounded-xl border border-[#D5E3FF]/60 bg-white p-3 text-center">
-                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary-container/10 text-primary-container">
-                    <Wallet aria-hidden="true" className="h-4.5 w-4.5" strokeWidth={2.1} />
-                  </div>
-                  <div className="mb-1 text-2xl font-bold leading-none text-on-surface">{myBonds.length}</div><div className="mb-1 text-xs text-on-surface-variant">Bonos en cartera</div><div className="mt-auto text-sm font-bold text-on-surface">{fmt(valorCartera)}</div>
-                </div>
-                <div className="flex flex-col items-center justify-center rounded-xl border border-[#D5E3FF]/60 bg-white p-3 text-center">
-                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-                    <Handshake aria-hidden="true" className="h-4.5 w-4.5" strokeWidth={2.1} />
-                  </div>
-                  <div className="mb-1 text-2xl font-bold leading-none text-on-surface">{enNeg.length}</div><div className="mb-1 text-xs text-on-surface-variant">En negociación</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-card space-y-4 rounded-2xl p-5">
-              <h3 className="text-lg text-on-surface" style={{ fontFamily: 'Geist' }}>Mis acciones rápidas</h3>
-              <div className="flex flex-col gap-2">
-                {quickActions.map(({ Icon, label }) => (
-                  <button type="button" key={label} className="group flex w-full items-center gap-3 rounded-xl border border-transparent p-3 text-left transition-all hover:border-primary-container/20 hover:bg-surface-container-low">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D5E3FF] bg-white text-primary-container shadow-sm transition-transform group-hover:scale-105">
-                      <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={2.1} />
-                    </div>
-                    <span className="text-sm font-medium text-on-surface">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
-      </main>
-
-      <footer className="mt-auto w-full border-t border-outline-variant/30 bg-surface-container-low py-8">
-        <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-2 px-10 md:flex-row">
-          <div className="text-2xl font-bold text-on-surface" style={{ fontFamily: 'Geist' }}>VELAR</div>
-          <div className="text-xs uppercase tracking-wide text-on-surface-variant">© 2026 VELAR · Protocolo de transparencia radical</div>
-        </div>
-      </footer>
-    </div>
+      )}
+    </>
   );
 }

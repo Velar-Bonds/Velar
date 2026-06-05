@@ -127,7 +127,7 @@ export default function SignUpPage() {
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 {perspectiva === 'usuario' ? (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <Field label="Nombres" icon={UserIcon}>
                         <input required aria-label="Nombres" value={f.nombres ?? ''} onChange={setField('nombres')} placeholder="Maria" className={inputClass} />
                       </Field>
@@ -138,7 +138,7 @@ export default function SignUpPage() {
                     <Field label="Identificacion" icon={UserIcon}>
                       <input required aria-label="Identificacion" value={f.identificacion ?? ''} onChange={setField('identificacion')} placeholder="1-2345-6789" className={inputClass} />
                     </Field>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <Field label="Telefono" icon={UserIcon}>
                         <input aria-label="Telefono" value={f.telefono ?? ''} onChange={setField('telefono')} placeholder="8888-0000" className={inputClass} />
                       </Field>
@@ -149,7 +149,7 @@ export default function SignUpPage() {
                   </>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <Field label="Nombre del partido" icon={UserIcon}>
                         <input required aria-label="Nombre del partido" value={f.nombrePartido ?? ''} onChange={setField('nombrePartido')} placeholder="Partido X" className={inputClass} />
                       </Field>
