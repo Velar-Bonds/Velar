@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { AuditService } from '../audit/audit.service';
 import { StellarBondService } from '../escrow/stellar-bond.service';
+import { TrustlessWorkService } from '../escrow/trustless-work.service';
 import {
   AuditEventType, BondStatus, NON_TRANSFERABLE_STATUSES,
   RequestTransferInput, Role, TransferStatus,
@@ -18,6 +19,7 @@ export class TransfersService {
     private supabase: SupabaseService,
     private audit: AuditService,
     private stellar: StellarBondService,
+    private trustlessWork: TrustlessWorkService,
   ) {}
 
   private async getBond(tokenId: string) {
@@ -82,6 +84,7 @@ export class TransfersService {
     // Mueve el TOKEN del bono a la canasta de escrow on-chain (queda bloqueado).
     const bond = await this.getBond(transfer.bond_token_id);
     const fromWallet = await this.walletOf(transfer.from_owner);
+    const toWallet = await this.walletOf(transfer.to_owner);
     let txHash: string | undefined;
     if (this.stellar.enabled && fromWallet) {
       try {
@@ -91,10 +94,40 @@ export class TransfersService {
       }
     }
 
-    const { data: updated } = await this.supabase.admin
-      .from('transfers').update({ status: TransferStatus.EN_ESCROW }).eq('id', transferId).select().single();
+    // En paralelo: crea escrow Trustless Work como registro on-chain del trade.
+    // No maneja dinero — solo coordina el lifecycle. Si falla, el flujo sigue.
+    let twContractId: string | undefined;
+    let twDeployTx: string | undefined;
+    if (this.trustlessWork.enabled && fromWallet && toWallet) {
+      try {
+        const r = await this.trustlessWork.createCoordinationEscrow({
+          bondId: bond.bond_id,
+          sellerAddress: fromWallet,
+          buyerAddress: toWallet,
+          amountCRC: Number(transfer.amount) || 0,
+          transferId: transfer.id,
+        });
+        twContractId = r.contractId;
+        twDeployTx = r.deployTx;
+      } catch (e) {
+        this.logger.warn(`TrustlessWork create falló (sigue el flujo): ${(e as Error).message}`);
+      }
+    }
 
-    await this.audit.emit({ type: AuditEventType.ESCROW_BLOQUEADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { canasta: 'escrow' }, txHash });
+    const { data: updated } = await this.supabase.admin
+      .from('transfers').update({
+        status: TransferStatus.EN_ESCROW,
+        escrow_contract_id: twContractId ?? null,
+      }).eq('id', transferId).select().single();
+
+    await this.audit.emit({
+      type: AuditEventType.ESCROW_BLOQUEADO,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { canasta: 'escrow', twContractId, twDeployTx },
+      txHash,
+    });
     return updated;
   }
 
@@ -161,6 +194,7 @@ export class TransfersService {
 
     const bond = await this.getBond(transfer.bond_token_id);
     const fromWallet = await this.walletOf(transfer.from_owner);
+    const toWallet = await this.walletOf(transfer.to_owner);
     let txHash: string | undefined;
     if (this.stellar.enabled && fromWallet) {
       try {
@@ -170,15 +204,35 @@ export class TransfersService {
       }
     }
 
+    // Trustless Work como canasta de coordinación on-chain (no dinero).
+    let twContractId: string | undefined;
+    if (this.trustlessWork.enabled && fromWallet && toWallet) {
+      try {
+        const r = await this.trustlessWork.createCoordinationEscrow({
+          bondId: bond.bond_id,
+          sellerAddress: fromWallet,
+          buyerAddress: toWallet,
+          amountCRC: Number(transfer.amount) || 0,
+          transferId: transfer.id,
+        });
+        twContractId = r.contractId;
+      } catch (e) {
+        this.logger.warn(`TrustlessWork create falló (sigue el flujo): ${(e as Error).message}`);
+      }
+    }
+
     const { data: updated } = await this.supabase.admin
-      .from('transfers').update({ status: TransferStatus.EN_ESCROW }).eq('id', transferId).select().single();
+      .from('transfers').update({
+        status: TransferStatus.EN_ESCROW,
+        escrow_contract_id: twContractId ?? null,
+      }).eq('id', transferId).select().single();
 
     await this.audit.emit({
       type: AuditEventType.ESCROW_BLOQUEADO,
       bondTokenId: transfer.bond_token_id,
       transferId,
       actorId,
-      payload: { acceptedCounterOffer: transfer.counter_offer_amount },
+      payload: { acceptedCounterOffer: transfer.counter_offer_amount, twContractId },
       txHash,
     });
     return updated;
@@ -194,10 +248,29 @@ export class TransfersService {
     // El token sigue bloqueado en la canasta hasta que el validador confirme.
     const evidenceHash = crypto.createHash('sha256').update(evidenceContent).digest('hex');
 
+    // Trustless Work: marca el milestone como completed (huella on-chain del paso).
+    let twMilestoneTx: string | undefined;
+    if (this.trustlessWork.enabled && transfer.escrow_contract_id) {
+      try {
+        twMilestoneTx = await this.trustlessWork.markMilestoneCompleted(
+          transfer.escrow_contract_id,
+          `evidence:${evidenceHash.slice(0, 16)}`,
+        );
+      } catch (e) {
+        this.logger.warn(`TrustlessWork markMilestone falló: ${(e as Error).message}`);
+      }
+    }
+
     const { data: updated } = await this.supabase.admin
       .from('transfers').update({ status: TransferStatus.PAGO_REGISTRADO, payment_evidence_hash: evidenceHash }).eq('id', transferId).select().single();
 
-    await this.audit.emit({ type: AuditEventType.PAGO_REGISTRADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { evidenceHash } });
+    await this.audit.emit({
+      type: AuditEventType.PAGO_REGISTRADO,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { evidenceHash, twMilestoneTx },
+    });
     return updated;
   }
 
@@ -242,12 +315,22 @@ export class TransfersService {
       }
     }
 
+    // Trustless Work: aprueba el milestone (cierra el lifecycle del escrow on-chain).
+    let twApproveTx: string | undefined;
+    if (this.trustlessWork.enabled && transfer.escrow_contract_id) {
+      try {
+        twApproveTx = await this.trustlessWork.approveMilestone(transfer.escrow_contract_id);
+      } catch (e) {
+        this.logger.warn(`TrustlessWork approveMilestone falló: ${(e as Error).message}`);
+      }
+    }
+
     await Promise.all([
       this.supabase.admin.from('bonds').update({ current_owner: transfer.to_owner, status: BondStatus.ACTIVO }).eq('token_id', transfer.bond_token_id),
       this.supabase.admin.from('transfers').update({ status: TransferStatus.LIBERADA }).eq('id', transferId),
     ]);
-    await this.audit.emit({ type: AuditEventType.TOKEN_LIBERADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { newOwner: transfer.to_owner, priceRecorded }, txHash });
-    return { success: true, newOwner: transfer.to_owner, txHash, priceRecorded };
+    await this.audit.emit({ type: AuditEventType.TOKEN_LIBERADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { newOwner: transfer.to_owner, priceRecorded, twApproveTx }, txHash });
+    return { success: true, newOwner: transfer.to_owner, txHash, priceRecorded, twApproveTx };
   }
 
   async cancelTransfer(transferId: string, actorId: string) {
