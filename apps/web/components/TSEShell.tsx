@@ -40,7 +40,7 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAFCFF] text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Sidebar */}
-      <aside className="sticky top-0 z-40 flex h-full w-64 shrink-0 flex-col justify-between border-r border-surface-variant/40 bg-white/80 backdrop-blur-md">
+      <aside className="sticky top-0 z-40 flex h-full w-64 shrink-0 flex-col justify-between overflow-y-auto border-r border-surface-variant/40 bg-white/80 backdrop-blur-md">
         <div className="px-5 py-7">
           <Link href="/tse" className="mb-10 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
