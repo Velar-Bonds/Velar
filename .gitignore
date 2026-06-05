@@ -151,3 +151,10 @@ apps/api/src/**/*.js.map
 
 # Stellar custody keys (NUNCA commitear)
 apps/api/.stellar-wallets.json
+
+# Rust / Cargo artifacts
+contracts/**/target/
+target/
+**/*.rs.bk
+Cargo.lock
+
