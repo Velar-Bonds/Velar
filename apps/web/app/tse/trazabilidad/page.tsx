@@ -67,6 +67,7 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
       status: t.status,
       amount: t.amount,
       tx: t.escrow_contract_id,
+      escrowContractId: t.escrow_contract_id,
     }));
 
   const seedMovs = bond ? (SEED_TRACEABILITY[bond.bond_id] ?? []) : [];
@@ -164,7 +165,15 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
                                   {showsCurrent && <span className="ml-2 text-xs font-normal text-emerald-600">(dueño actual)</span>}
                                 </p>
                                 {m.amount && <p className="text-xs font-medium text-on-surface-variant">{fmtMoney(m.amount)}</p>}
-                                {m.tx && <p className="font-mono text-[11px] text-on-surface-variant">{m.tx}</p>}
+                                {(m as any).escrowContractId && (
+                                  <a
+                                    href={`https://stellar.expert/explorer/testnet/contract/${(m as any).escrowContractId}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 transition hover:bg-emerald-100"
+                                  >
+                                    🛡 Canasta on-chain ↗
+                                  </a>
+                                )}
                               </div>
                               <div className="text-right">
                                 <p className="text-xs text-on-surface-variant">{fmtDate(m.since)}</p>
