@@ -85,7 +85,7 @@ export class TransfersService {
     let txHash: string | undefined;
     if (this.stellar.enabled && fromWallet) {
       try {
-        txHash = await this.stellar.lockInEscrow(bond.bond_id, fromWallet);
+        txHash = await this.stellar.lockInEscrow(bond.bond_id, fromWallet, Number(transfer.amount) || undefined);
       } catch (e) {
         this.logger.warn(`lockInEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
       }
@@ -164,7 +164,7 @@ export class TransfersService {
     let txHash: string | undefined;
     if (this.stellar.enabled && fromWallet) {
       try {
-        txHash = await this.stellar.lockInEscrow(bond.bond_id, fromWallet);
+        txHash = await this.stellar.lockInEscrow(bond.bond_id, fromWallet, Number(transfer.amount) || undefined);
       } catch (e) {
         this.logger.warn(`lockInEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
       }
@@ -231,7 +231,7 @@ export class TransfersService {
     const toWallet = await this.walletOf(transfer.to_owner);
     if (this.stellar.enabled && toWallet) {
       try {
-        txHash = await this.stellar.releaseFromEscrow(bond.bond_id, toWallet);
+        txHash = await this.stellar.releaseFromEscrow(bond.bond_id, toWallet, Number(transfer.amount) || undefined);
       } catch (e) {
         this.logger.warn(`releaseFromEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
       }
@@ -263,12 +263,22 @@ export class TransfersService {
   async findMyTransfers(actorId: string, actorRole: Role) {
     let q = this.supabase.admin
       .from('transfers')
-      .select('*, bonds(bond_id, status, face_value), from_profile:profiles!transfers_from_owner_fkey(id, full_name, email), to_profile:profiles!transfers_to_owner_fkey(id, full_name, email)')
+      .select('*, bonds!inner(bond_id, status, face_value, issuer_party_id), from_profile:profiles!transfers_from_owner_fkey(id, full_name, email), to_profile:profiles!transfers_to_owner_fkey(id, full_name, email)')
       .order('created_at', { ascending: false });
 
     if (!['tse', 'admin'].includes(actorRole)) {
       if (actorRole === 'validador') {
         q = q.in('status', ['pago_registrado', 'pago_validado']);
+      } else if (actorRole === 'emisor') {
+        // El partido emisor ve transferencias de los bonos que él emitió,
+        // aunque ya no sea dueño actual (trazabilidad de su propio bono).
+        const { data: profile } = await this.supabase.admin
+          .from('profiles').select('party_id').eq('id', actorId).single();
+        if (profile?.party_id) {
+          q = q.eq('bonds.issuer_party_id', profile.party_id);
+        } else {
+          q = q.or(`from_owner.eq.${actorId},to_owner.eq.${actorId}`);
+        }
       } else {
         q = q.or(`from_owner.eq.${actorId},to_owner.eq.${actorId}`);
       }
