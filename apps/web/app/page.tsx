@@ -14,7 +14,6 @@ import {
   Landmark,
   Users,
 } from 'lucide-react';
-import { LandingNav } from './_components/LandingNav';
 import { Reveal } from './_components/Reveal';
 import { FAQ } from './_components/FAQ';
 
@@ -70,8 +69,35 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-slate-50/40 text-slate-900" style={{ fontFamily: 'Inter, sans-serif' }}>
 
-      {/* ─── NAVBAR (client component con state activo) ──────────────────── */}
-      <LandingNav />
+      {/* ─── NAVBAR (Server Component estático, navegación HTML pura) ───── */}
+      <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-6 lg:px-10">
+          <a href="/" className="flex items-center gap-2.5 no-underline">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-primary text-white shadow-sm">
+              <Boxes size={18} strokeWidth={2.3} />
+            </div>
+            <div className="leading-none">
+              <p className="text-[15px] font-bold tracking-tight text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>VELAR</p>
+              <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ledger</p>
+            </div>
+          </a>
+
+          <nav className="hidden items-center gap-1 md:flex">
+            <a href="#hero" className="px-3.5 py-2 text-[14px] font-medium text-slate-600 no-underline hover:text-primary">Inicio</a>
+            <a href="#proceso" className="px-3.5 py-2 text-[14px] font-medium text-slate-600 no-underline hover:text-primary">Proceso</a>
+            <a href="#historial" className="px-3.5 py-2 text-[14px] font-medium text-slate-600 no-underline hover:text-primary">Historial</a>
+            <a href="/explorer" className="px-3.5 py-2 text-[14px] font-medium text-slate-600 no-underline hover:text-primary">Explorador</a>
+          </nav>
+
+          <a
+            href="/login"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-white no-underline transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25"
+          >
+            Acceder a la plataforma
+            <ArrowRight size={15} />
+          </a>
+        </div>
+      </header>
 
       {/* ─── 1. HERO ─────────────────────────────────────────────────────── */}
       <section id="hero" className="relative overflow-hidden">
