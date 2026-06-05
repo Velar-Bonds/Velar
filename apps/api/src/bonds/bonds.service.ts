@@ -9,6 +9,7 @@ import { Logger } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { AuditService } from '../audit/audit.service';
 import { StellarBondService } from '../escrow/stellar-bond.service';
+import { SorobanBondService } from '../escrow/soroban-bond.service';
 import { WalletService } from '../escrow/wallet.service';
 import { RegisterBondInput, BondRequestInput, BondStatus, Role, AuditEventType } from '@velar/types';
 
@@ -36,7 +37,48 @@ export class BondsService {
     private audit: AuditService,
     private stellar: StellarBondService,
     private wallets: WalletService,
+    private soroban: SorobanBondService,
   ) {}
+
+  /**
+   * Despliega el bono como contrato Soroban si está habilitado.
+   * Si falla o no está habilitado, no rompe el flujo (Classic Asset sigue).
+   * Guarda contractId + initTxHash en la fila del bono.
+   */
+  private async deploySorobanIfEnabled(bond: any, partyId: string, partyOwnerWallet: string | null) {
+    if (!this.soroban.enabled || !partyOwnerWallet) return;
+    try {
+      const docHash = bond.document_hash?.startsWith('manual-')
+        ? '0'.repeat(64) // placeholder cuando no hay PDF real
+        : (bond.document_hash ?? '0'.repeat(64));
+
+      const r = await this.soroban.deployBond({
+        partyOwner: partyOwnerWallet,
+        partyId,
+        bondId: bond.bond_id,
+        certificateNumber: bond.certificate_number ?? '',
+        series: bond.series ?? 'A',
+        faceValue: Number(bond.face_value) || 0,
+        currency: bond.currency ?? 'CRC',
+        interestRateBps: Math.round(Number(bond.interest_rate ?? 0) * 100),
+        issueDate: bond.issue_date ? Math.floor(new Date(bond.issue_date).getTime() / 1000) : Math.floor(Date.now() / 1000),
+        maturityDate: bond.maturity_date ? Math.floor(new Date(bond.maturity_date).getTime() / 1000) : 0,
+        documentHash: docHash.slice(0, 64),
+      });
+
+      await this.supabase.admin
+        .from('bonds')
+        .update({
+          soroban_contract_id: r.contractId,
+          soroban_init_tx_hash: r.initTxHash,
+        })
+        .eq('token_id', bond.token_id);
+
+      this.logger.log(`Bono ${bond.bond_id} ahora vive como Soroban ${r.contractId}`);
+    } catch (e) {
+      this.logger.warn(`Soroban deploy falló (sigue Classic): ${(e as Error).message}`);
+    }
+  }
 
   /** Cuenta (profile emisor) del partido, dueña inicial de los bonos a su nombre. */
   private async partyOwner(partyId: string) {
@@ -162,6 +204,8 @@ export class BondsService {
     // Emite el TOKEN del bono on-chain (Stellar testnet) hacia la wallet del partido.
     const stellarResult = await this.issueApprovedBondOnchain(data, owner);
     const txHash = stellarResult?.txHash;
+    // Si Soroban está habilitado, también despliega el contrato del bono.
+    await this.deploySorobanIfEnabled(data, input.issuerPartyId, party.stellar_wallet ?? null);
     await this.audit.emit({
       type: AuditEventType.BOND_ASIGNADO,
       bondTokenId: data.token_id,
@@ -278,6 +322,7 @@ export class BondsService {
       payload: { bondId: bond.bond_id, issuerPartyId: bond.issuer_party_id, requestId },
     });
     const stellarResult = await this.issueApprovedBondOnchain(bond, owner.id);
+    await this.deploySorobanIfEnabled(bond, req.party_id, owner.stellar_wallet ?? null);
     await this.audit.emit({
       type: AuditEventType.BOND_ASIGNADO,
       bondTokenId: bond.token_id,
