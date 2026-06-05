@@ -4,6 +4,8 @@
 
 > Trazabilidad, custodia y auditoría en tiempo real sobre Stellar — para el TSE, partidos y ciudadanos.
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template)
+
 ---
 
 ## Stack tecnológico
@@ -149,6 +151,7 @@ npm run demo:register     # registra partido + usuario nuevos y corre el flujo
 | Documento | Contenido |
 |---|---|
 | [`docs/WEB3.md`](docs/WEB3.md) | Conceptos Web3 aplicados: Stellar, Soroban, escrow, wallets, tokens |
+| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Deploy en Railway — pasos, variables de entorno, troubleshooting |
 | [`docs/DEMO.md`](docs/DEMO.md) | Cómo levantar, probar y ver el token moverse |
 | [`docs/BACKEND.md`](docs/BACKEND.md) | Arquitectura y módulos del backend |
 | [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md) | Contrato de API para el equipo de frontend |
