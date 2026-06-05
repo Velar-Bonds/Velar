@@ -1,3 +1,4 @@
+![Texto descriptivo](docs/banner.png)
 # VELAR
 
 **Infraestructura blockchain para el traspaso digital de propiedad de bonos de partidos políticos.**
