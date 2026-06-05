@@ -11,6 +11,7 @@ type Bond = {
   token_id: string; bond_id: string; status: string; face_value: number | null; currency?: string;
   certificate_number?: string; series?: string; interest_rate?: number | null;
   issue_date?: string; maturity_date?: string; created_at?: string;
+  soroban_contract_id?: string | null; soroban_init_tx_hash?: string | null;
   parties?: { name?: string; code?: string };
   profiles?: { full_name?: string };
   issuer_party_id?: string;
@@ -28,6 +29,7 @@ const CHIP: Record<string, string> = {
 const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const fmtMoney = (n: number | null, cur = 'CRC') =>
   n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
+const shortContract = (id?: string | null) => id ? `${id.slice(0, 2)}…${id.slice(-4)}` : '';
 
 export default function RegistrosPage() {
   const { token, me, loading, error } = useSession();
@@ -155,6 +157,7 @@ export default function RegistrosPage() {
               {filtered.length === 0 && <tr><td colSpan={9} className="py-10 text-center text-on-surface-variant">Sin bonos con estos filtros.</td></tr>}
               {filtered.map((b) => {
                 const isExp = expanded === b.token_id;
+                const hasSoroban = Boolean(b.soroban_contract_id);
                 return (
                   <Fragment key={b.token_id}>
                     <tr className="bg-white/60 transition-colors hover:bg-primary/[0.02]">
@@ -170,7 +173,20 @@ export default function RegistrosPage() {
                       <td className="px-5 py-3.5 text-on-surface-variant">{b.series ?? '—'} {b.certificate_number ? `· ${b.certificate_number}` : ''}</td>
                       <td className="px-5 py-3.5">{b.interest_rate != null ? `${b.interest_rate}%` : '—'}</td>
                       <td className="px-5 py-3.5 text-on-surface-variant">{fmtDate(b.maturity_date)}</td>
-                      <td className="px-5 py-3.5"><span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${CHIP[b.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>{b.status}</span></td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${CHIP[b.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>{b.status}</span>
+                          {hasSoroban && (
+                            <Link
+                              href={`/tse/bono/${b.token_id}`}
+                              title={`Ver certificado Soroban ${b.soroban_contract_id}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-violet-300 bg-violet-100 px-2.5 py-0.5 text-[11px] font-bold text-violet-800 shadow-sm shadow-violet-100 transition hover:border-violet-400 hover:bg-violet-200"
+                            >
+                              🪙 NFT <span className="font-mono font-semibold">{shortContract(b.soroban_contract_id)}</span>
+                            </Link>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link href={`/tse/trazabilidad?bono=${b.bond_id}`} className="rounded-lg border border-outline-variant/40 px-2.5 py-1 text-xs font-medium text-on-surface-variant transition hover:border-primary hover:text-primary">
@@ -186,13 +202,13 @@ export default function RegistrosPage() {
                               <a href={bondAssetUrl(b.bond_id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded-lg border border-outline-variant/40 px-2 py-1 text-xs text-on-surface-variant hover:text-primary" title="Ver asset Classic en Stellar Expert">
                                 <ExternalLink size={11} />
                               </a>
-                              {(b as any).soroban_contract_id && (
+                              {hasSoroban && (
                                 <Link
                                   href={`/tse/bono/${b.token_id}`}
                                   title="Ver certificado on-chain legible"
-                                  className="flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 transition hover:bg-purple-100"
+                                  className="flex items-center gap-1 rounded-lg border border-violet-300 bg-violet-100 px-2.5 py-1 text-xs font-bold text-violet-800 transition hover:bg-violet-200"
                                 >
-                                  🪙 NFT
+                                  🪙 NFT <span className="font-mono">{shortContract(b.soroban_contract_id)}</span>
                                 </Link>
                               )}
                             </>
@@ -220,14 +236,19 @@ export default function RegistrosPage() {
                               </div>
                             ))}
                           </div>
-                          {(b as any).soroban_contract_id && (
-                            <div className="mt-4 rounded-xl border border-purple-200 bg-purple-50/60 p-4">
-                              <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-purple-700">
+                          {hasSoroban && (
+                            <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/80 p-4">
+                              <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
                                 🪙 Soroban NFT (Web3)
                               </p>
-                              <p className="break-all font-mono text-xs text-purple-900">{(b as any).soroban_contract_id}</p>
-                              <a href={`https://stellar.expert/explorer/testnet/contract/${(b as any).soroban_contract_id}`} target="_blank" rel="noopener noreferrer"
-                                className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 hover:text-purple-900">
+                              <p className="break-all font-mono text-xs text-violet-950">{b.soroban_contract_id}</p>
+                              {b.soroban_init_tx_hash === 'deployed-only' && (
+                                <p className="mt-2 text-[11px] text-violet-800">
+                                  Contrato desplegado. Metadata Soroban pendiente de inicializar.
+                                </p>
+                              )}
+                              <a href={`https://stellar.expert/explorer/testnet/contract/${b.soroban_contract_id}`} target="_blank" rel="noopener noreferrer"
+                                className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-violet-700 hover:text-violet-950">
                                 Ver contrato en Stellar Expert <ExternalLink size={10} />
                               </a>
                             </div>

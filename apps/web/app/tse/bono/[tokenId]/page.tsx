@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, ExternalLink, ShieldCheck, Calendar, DollarSign, Percent, FileText,
-  User, Hash, Boxes, CheckCircle2,
+  User, Hash, Boxes, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { TSEShell } from '../../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../../lib/api';
@@ -22,7 +22,24 @@ const STATUS_LABELS: Record<string, string> = {
   Frozen: 'Congelado',
   Sold: 'Vendido',
   Cancelled: 'Cancelado',
+  activo: 'Activo',
+  en_venta: 'En venta',
+  en_escrow: 'En custodia',
+  vendido: 'Vendido',
+  emitido: 'Emitido',
+  congelado: 'Congelado',
 };
+
+function friendlySorobanReadError(message?: string) {
+  if (!message) return 'Metadata pendiente de inicialización.';
+  if (message.includes('Error(Contract, #2)')) {
+    return 'Contrato desplegado, pero initialize no terminó. La metadata on-chain todavía no está disponible.';
+  }
+  if (message.includes('HostError')) {
+    return 'La red Soroban devolvió un error al leer la metadata del contrato.';
+  }
+  return message.split('\n')[0].slice(0, 180);
+}
 
 export default function BonoDetallePage() {
   const { token, me, loading, error } = useSession();
@@ -34,9 +51,40 @@ export default function BonoDetallePage() {
 
   useEffect(() => {
     if (!token || !tokenId) return;
+    setErr('');
     apiFetch(token, 'GET', `/bonds/${tokenId}/soroban-details`)
       .then(setData)
-      .catch((e: any) => setErr(e.message));
+      .catch(async (e: any) => {
+        try {
+          const bond = await apiFetch(token, 'GET', `/bonds/${tokenId}`);
+          if (!bond?.soroban_contract_id) {
+            setErr(e.message);
+            return;
+          }
+          setData({
+            source: 'database_fallback',
+            read_error: friendlySorobanReadError(e.message),
+            contract_id: bond.soroban_contract_id,
+            init_tx_hash: bond.soroban_init_tx_hash ?? null,
+            bond_id: bond.bond_id,
+            certificate_number: bond.certificate_number ?? null,
+            series: bond.series ?? null,
+            face_value: bond.face_value != null ? Number(bond.face_value) : null,
+            currency: bond.currency ?? 'CRC',
+            interest_rate: bond.interest_rate != null ? Number(bond.interest_rate) : null,
+            issue_date: bond.issue_date ?? null,
+            maturity_date: bond.maturity_date ?? null,
+            document_hash_hex: bond.document_hash ?? null,
+            current_owner: bond.profiles?.stellar_wallet ?? bond.current_owner ?? null,
+            status: bond.status ?? null,
+            created_at: bond.created_at ?? null,
+            party_name: bond.parties?.name ?? null,
+            party_code: bond.parties?.code ?? null,
+          });
+        } catch {
+          setErr(e.message);
+        }
+      });
   }, [token, tokenId]);
 
   if (loading || !token || !me) {
@@ -68,7 +116,7 @@ export default function BonoDetallePage() {
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-primary">
-                  Certificado on-chain
+                  {data.source === 'soroban' ? 'Certificado on-chain' : 'Contrato Soroban desplegado'}
                 </p>
                 <h1 className="mt-1 font-mono text-4xl font-bold tracking-tight text-slate-900" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
                   {data.bond_id}
@@ -76,14 +124,29 @@ export default function BonoDetallePage() {
                 <p className="mt-2 text-on-surface-variant">{data.party_name ?? 'Partido sin nombre'}</p>
               </div>
               <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                data.status === 'Active' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
-                data.status === 'Frozen' ? 'border-red-200 bg-red-50 text-red-700' :
-                data.status === 'InEscrow' ? 'border-amber-200 bg-amber-50 text-amber-700' :
+                data.status === 'Active' || data.status === 'activo' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
+                data.status === 'Frozen' || data.status === 'congelado' ? 'border-red-200 bg-red-50 text-red-700' :
+                data.status === 'InEscrow' || data.status === 'en_escrow' ? 'border-amber-200 bg-amber-50 text-amber-700' :
                 'border-slate-200 bg-slate-50 text-slate-700'
               }`}>
                 <ShieldCheck size={14} /> {STATUS_LABELS[data.status] ?? data.status ?? 'Sin estado'}
               </span>
             </div>
+
+            {data.source !== 'soroban' && (
+              <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-700" />
+                  <div>
+                    <p className="font-semibold">El contrato existe, pero la metadata Soroban aun no se pudo leer.</p>
+                    <p className="mt-1 text-amber-800">
+                      Mostramos los datos registrados por VELAR y el contract ID para verificación pública.
+                      Motivo técnico: {friendlySorobanReadError(data.read_error)}.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Card del certificado */}
             <div className="glass-card mb-6 rounded-3xl border-2 border-primary/10 bg-gradient-to-br from-white to-slate-50 p-8">
@@ -95,7 +158,7 @@ export default function BonoDetallePage() {
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">VELAR Bond</p>
                     <p className="text-lg font-bold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>
-                      Soroban Smart Contract
+                      {data.source === 'soroban' ? 'Soroban Smart Contract' : 'Soroban Contract ID'}
                     </p>
                   </div>
                 </div>
@@ -145,9 +208,9 @@ export default function BonoDetallePage() {
                 <div className="flex-1">
                   <p className="font-semibold text-emerald-900">¿Cómo verificar que estos datos son reales?</p>
                   <p className="mt-1 text-sm text-emerald-800/80">
-                    Todos estos campos vienen leídos directamente del contrato Soroban en Stellar testnet.
-                    No salen de la base de datos de VELAR — salen de la red pública. Si VELAR desapareciera,
-                    estos datos siguen siendo consultables por cualquier persona usando solo el contract ID.
+                    {data.source === 'soroban'
+                      ? 'Todos estos campos vienen leídos directamente del contrato Soroban en Stellar testnet. No salen de la base de datos de VELAR; salen de la red pública.'
+                      : 'El contract ID viene del despliegue Soroban en Stellar testnet. La metadata legible se muestra desde VELAR porque initialize/details aun no esta disponible para este contrato.'}
                   </p>
                   <p className="mt-3 font-mono text-[11px] text-emerald-700">
                     Contract: <span className="break-all">{data.contract_id}</span>

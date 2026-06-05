@@ -158,14 +158,24 @@ export class SorobanBondService {
 
     const preparedInit = await this.server.prepareTransaction(initTx);
     preparedInit.sign(sourceKp);
-    const initRes = await this.server.sendTransaction(preparedInit);
-    if (initRes.status === 'ERROR') {
-      throw new Error(`Soroban initialize falló: ${JSON.stringify(initRes.errorResult)}`);
-    }
-    await this.pollUntilSuccess(initRes.hash);
-    this.logger.log(`Bono ${input.bondId} inicializado on-chain (${initRes.hash})`);
 
-    return { contractId, initTxHash: initRes.hash };
+    let initTxHash: string | undefined;
+    try {
+      const initRes = await this.server.sendTransaction(preparedInit);
+      if (initRes.status === 'ERROR') {
+        throw new Error(`Soroban initialize falló: ${JSON.stringify(initRes.errorResult)}`);
+      }
+      await this.pollUntilSuccess(initRes.hash);
+      initTxHash = initRes.hash;
+      this.logger.log(`Bono ${input.bondId} inicializado on-chain (${initTxHash})`);
+    } catch (e) {
+      // El contrato se desplegó pero initialize falló. Devolvemos el contractId
+      // igual para que se guarde en BD y el chip aparezca. El init se puede
+      // re-intentar después o el contrato puede usarse solo para auditoría.
+      this.logger.warn(`initialize falló pero contrato ${contractId} fue desplegado: ${(e as Error).message}`);
+    }
+
+    return { contractId, initTxHash: initTxHash ?? `deployed-only` };
   }
 
   /** Lee los atributos del bono directamente del contrato (gratis, simulación). */
