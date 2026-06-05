@@ -129,8 +129,39 @@ En `/tse/registros`:
 
 - ✅ Contrato Rust completo y testeado (`contracts/velar-bond/`)
 - ✅ `SorobanBondService` en NestJS
-- ✅ Integración en `BondsService.approveRequest`
-- ✅ Migración SQL para `soroban_contract_id` y campos relacionados
-- ✅ Chips visuales en TSE
-- ⏳ **Falta:** compilar el WASM y subirlo a testnet
-  (correr `./scripts/soroban-deploy-wasm.sh`)
+- ✅ Integración en `BondsService.approveRequest` (best-effort, no bloquea
+  el flujo si Soroban falla)
+- ✅ Migración SQL para `soroban_contract_id`, `soroban_init_tx_hash`,
+  `soroban_deployed_at`, `soroban_error`
+- ✅ Chip morado **🪙 NFT** en `/tse/registros` cuando el bono tiene contract
+- ✅ Card morada con contractId completo y link a Stellar Expert en el
+  detalle expandido
+- ✅ Link directo desde `/explorer` (página pública) a cada NFT Soroban
+- ✅ Script `./scripts/soroban-deploy-wasm.sh` compila + sube el WASM
+- ⏳ **Para activarlo en runtime:** correr el script y pegar las dos env vars
+  (`SOROBAN_VELAR_BOND_WASM_HASH`, `SOROBAN_TSE_ADDRESS`) en `apps/api/.env`.
+  Sin esas env vars el sistema sigue funcionando con solo Classic Asset.
+
+## Lecciones aprendidas durante la implementación
+
+Errores con los que peleamos al compilar el contrato (todos arreglados):
+
+1. **`#[contracttype]` no soporta discriminants explícitos** en enums.
+   Los `Status::Active = 0` causaban E0277 en cadena. Eliminados los `= N`.
+
+2. **`Error` necesita `#[contracterror]`**, no `#[contracttype]`. Y debe
+   tener `#[repr(u32)]`. Sin eso 10 errores de traits en cadena.
+
+3. **Soroban limita las funciones a 10 parámetros máximo.** Como
+   `initialize` necesitaba 12 (TSE + 11 atributos del bono), pasamos a
+   `initialize(tse, args: InitArgs)` donde `InitArgs` es un struct con
+   `#[contracttype]`.
+
+4. **El WASM se compila en `contracts/velar-bond/target/...`** (relativo al
+   crate), no en un workspace target. El script lo busca ahí.
+
+5. **`trustline.symbol`** en la API de Trustless Work, NO `trustline.assetCode`.
+
+6. **Header `x-api-key`** en Trustless Work, NO `Authorization: Bearer`.
+
+7. **`amount` y `platformFee` como `number`** en JSON, NO strings.
