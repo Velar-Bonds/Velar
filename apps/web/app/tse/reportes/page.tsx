@@ -134,7 +134,35 @@ export default function TSEReportesPage() {
               <p className="whitespace-pre-wrap rounded-xl border border-outline-variant/20 bg-surface-container-low/30 p-3 text-sm">{sel.description}</p>
             </div>
 
-            {sel.bond_token_ids?.length > 0 && (
+            {sel.bond_token_ids?.length > 0 && (() => {
+              const selBonds = sel.bond_token_ids.map((tid: string) => allBonds.find((x: any) => x.token_id === tid)).filter(Boolean);
+              const valorFacial = selBonds.reduce((s: number, b: any) => s + (Number(b.face_value) || 0), 0);
+              const liberadas = allTransfers.filter((t: any) => sel.bond_token_ids.includes(t.bond_token_id) && t.status === 'liberada');
+              const valorReventas = liberadas.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0);
+              const diff = valorReventas - valorFacial;
+              const diffPct = valorFacial > 0 ? (diff / valorFacial) * 100 : 0;
+              return <>
+              <div className="mb-4 grid grid-cols-3 gap-2">
+                <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-primary/70">Valor facial total</p>
+                  <p className="mt-1 text-lg font-bold text-primary">{fmtCRC(valorFacial)}</p>
+                  <p className="text-[10px] text-primary/60">{selBonds.length} bono{selBonds.length !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700/70">Valor de reventas</p>
+                  <p className="mt-1 text-lg font-bold text-emerald-700">{fmtCRC(valorReventas)}</p>
+                  <p className="text-[10px] text-emerald-700/60">{liberadas.length} venta{liberadas.length !== 1 ? 's' : ''}</p>
+                </div>
+                <div className={`rounded-xl border px-4 py-3 ${diff >= 0 ? 'border-emerald-100 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">Diferencia</p>
+                  <p className={`mt-1 text-lg font-bold ${diff >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {diff >= 0 ? '+' : ''}{fmtCRC(diff)}
+                  </p>
+                  <p className={`text-[10px] ${diff >= 0 ? 'text-emerald-700/60' : 'text-red-600/60'}`}>
+                    {diff >= 0 ? '+' : ''}{diffPct.toFixed(1)}% vs facial
+                  </p>
+                </div>
+              </div>
               <div className="mb-4">
                 <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
                   <Coins size={12} /> Bonos asociados ({sel.bond_token_ids.length})
@@ -238,7 +266,8 @@ export default function TSEReportesPage() {
                   })}
                 </div>
               </div>
-            )}
+              </>;
+            })()}
 
             <div className="mb-5">
               <label className="field-label">Comentarios del TSE</label>
@@ -251,13 +280,17 @@ export default function TSEReportesPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setSel(null)} className="btn-ghost">Cerrar</button>
-              <button onClick={() => review('observado')} disabled={busy} className={`btn-action btn-warn ${busy ? 'btn-loading' : ''}`}>
-                <AlertCircle size={13} /> Observar
+            <div className="-mx-6 -mb-6 mt-6 flex flex-col items-center justify-end gap-2 rounded-b-2xl border-t border-outline-variant/20 bg-surface-container-low/50 px-6 py-4 sm:flex-row">
+              <button onClick={() => setSel(null)} className="btn-ghost w-full sm:w-auto">
+                <X size={14} /> Cerrar
               </button>
-              <button onClick={() => review('aprobado')} disabled={busy} className={`btn-action btn-success ${busy ? 'btn-loading' : ''}`}>
-                <CheckCircle size={13} /> Aprobar
+              <button onClick={() => review('observado')} disabled={busy}
+                className={`btn-action btn-warn w-full sm:w-auto ${busy ? 'btn-loading' : ''}`}>
+                {busy ? <><span className="btn-spinner" /> Procesando…</> : <><AlertCircle size={14} /> Observar reporte</>}
+              </button>
+              <button onClick={() => review('aprobado')} disabled={busy}
+                className={`btn-action btn-success w-full sm:w-auto ${busy ? 'btn-loading' : ''}`}>
+                {busy ? <><span className="btn-spinner" /> Procesando…</> : <><CheckCircle size={14} /> Aprobar reporte</>}
               </button>
             </div>
           </div>
