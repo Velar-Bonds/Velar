@@ -135,8 +135,9 @@ export default function RegistrosPage() {
 
         {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
-        <div className="glass-card overflow-hidden rounded-2xl">
-          <table className="w-full text-left text-sm">
+        <div className="glass-card rounded-2xl">
+          <div className="overflow-x-auto rounded-2xl">
+            <table className="w-full min-w-[1200px] text-left text-sm">
             <thead className="border-b border-surface-variant/30 bg-surface-container-low/50 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
               <tr>
                 <th className="px-5 py-3">ID del bono</th>
@@ -240,6 +241,7 @@ export default function RegistrosPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </TSEShell>
