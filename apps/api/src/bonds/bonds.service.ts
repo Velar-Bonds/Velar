@@ -437,6 +437,49 @@ export class BondsService {
     }
   }
 
+  /**
+   * Lee los datos del contrato Soroban directamente de la cadena y los devuelve
+   * en formato legible (no crudo como en Stellar Expert).
+   */
+  async readSorobanDetails(tokenId: string, _actorId: string, _actorRole: Role) {
+    const { data: bond } = await this.supabase.admin
+      .from('bonds').select('soroban_contract_id, bond_id, parties(name, code)')
+      .eq('token_id', tokenId).single();
+    if (!bond) throw new NotFoundException('Bono no encontrado');
+    if (!(bond as any).soroban_contract_id) {
+      throw new BadRequestException('Este bono no tiene contrato Soroban desplegado');
+    }
+    if (!this.soroban.enabled) {
+      throw new BadRequestException('Soroban no habilitado en el backend');
+    }
+
+    try {
+      const raw: any = await this.soroban.readDetails((bond as any).soroban_contract_id);
+      // Convertir datos crudos del contrato a formato amigable
+      return {
+        contract_id: (bond as any).soroban_contract_id,
+        bond_id: raw?.bond_id ?? bond.bond_id,
+        certificate_number: raw?.certificate_number ?? null,
+        series: raw?.series ?? null,
+        face_value: raw?.face_value != null ? Number(raw.face_value) : null,
+        currency: typeof raw?.currency === 'string' ? raw.currency : 'CRC',
+        interest_rate: raw?.interest_rate_bps != null ? Number(raw.interest_rate_bps) / 100 : null,
+        issue_date: raw?.issue_date ? new Date(Number(raw.issue_date) * 1000).toISOString() : null,
+        maturity_date: raw?.maturity_date ? new Date(Number(raw.maturity_date) * 1000).toISOString() : null,
+        document_hash_hex: raw?.document_hash
+          ? Buffer.from(raw.document_hash).toString('hex')
+          : null,
+        current_owner: raw?.current_owner ?? null,
+        status: raw?.status ?? null,
+        created_at: raw?.created_at ? new Date(Number(raw.created_at) * 1000).toISOString() : null,
+        party_name: (bond as any).parties?.name ?? null,
+        party_code: (bond as any).parties?.code ?? null,
+      };
+    } catch (e) {
+      throw new BadRequestException(`No se pudo leer el contrato: ${(e as Error).message}`);
+    }
+  }
+
   /** El partido publica su bono en el marketplace (status activo → en_venta). */
   async publish(tokenId: string, actorId: string) {
     // Solo el DUEÑO ACTUAL puede publicar el bono al marketplace.

@@ -66,6 +66,12 @@ export class BondsController {
     return this.bonds.publish(tokenId, user.id);
   }
 
+  /** Lee el contrato Soroban del bono directamente de la cadena y lo devuelve legible. */
+  @Get(':tokenId/soroban-details')
+  sorobanDetails(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
+    return this.bonds.readSorobanDetails(tokenId, user.id, user.profile?.role as Role);
+  }
+
   @Patch(':tokenId/freeze')
   freeze(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.freeze(tokenId, user.id, user.profile?.role as Role);

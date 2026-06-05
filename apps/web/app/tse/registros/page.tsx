@@ -187,14 +187,13 @@ export default function RegistrosPage() {
                                 <ExternalLink size={11} />
                               </a>
                               {(b as any).soroban_contract_id && (
-                                <a
-                                  href={`https://stellar.expert/explorer/testnet/contract/${(b as any).soroban_contract_id}`}
-                                  target="_blank" rel="noopener noreferrer"
-                                  title={`Soroban NFT: ${(b as any).soroban_contract_id}`}
+                                <Link
+                                  href={`/tse/bono/${b.token_id}`}
+                                  title="Ver certificado on-chain legible"
                                   className="flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 transition hover:bg-purple-100"
                                 >
                                   🪙 NFT
-                                </a>
+                                </Link>
                               )}
                             </>
                           )}
