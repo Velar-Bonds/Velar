@@ -50,12 +50,8 @@ export function LandingNav() {
         </nav>
 
         <a
-          href="/login"
-          onClick={(e) => {
-            e.preventDefault();
-            window.location.href = '/login';
-          }}
-          className="group inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-white transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25"
+          href="/ir-login"
+          className="group inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-white no-underline transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25"
         >
           Acceder a la plataforma
           <ArrowRight size={15} className="transition group-hover:translate-x-0.5" />
