@@ -57,8 +57,8 @@ function Content({ token, me }: { token: string; me: Me }) {
         <div className="flex items-center gap-3">
           {t.amount ? <span className="mono-data text-sm font-semibold">{fmtMoney(t.amount)}</span> : null}
           <StatusBadge status={t.status} />
-          {a && <button onClick={() => act(t.id, a[1])} disabled={busy === t.id} className="velar-primary-button rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60">{a[0]}</button>}
-          {cancelable && <button onClick={() => act(t.id, 'cancel')} disabled={busy === t.id} className="rounded-lg border border-outline-variant/40 px-3 py-1.5 text-xs font-medium text-on-surface-variant transition hover:bg-surface-container-low">Cancelar</button>}
+          {a && <button onClick={() => act(t.id, a[1])} disabled={busy === t.id} className={`btn-action ${busy === t.id ? 'btn-loading' : ''}`}>{busy === t.id ? <><span className="btn-spinner" /> Procesando…</> : a[0]}</button>}
+          {cancelable && <button onClick={() => act(t.id, 'cancel')} disabled={busy === t.id} className="btn-ghost">Cancelar</button>}
         </div>
       </div>
     );
