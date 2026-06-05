@@ -12,6 +12,7 @@ import {
   Boxes,
   ChevronRight,
 } from 'lucide-react';
+import { LandingNav } from './_components/LandingNav';
 
 export const metadata: Metadata = {
   title: 'VELAR · Trazabilidad pública de bonos políticos',
@@ -65,33 +66,8 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-slate-50/40 text-slate-900" style={{ fontFamily: 'Inter, sans-serif' }}>
 
-      {/* ─── NAVBAR ──────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-6 lg:px-10">
-          <Link href="/"><VelarLogo /></Link>
-          <nav className="hidden items-center gap-1 md:flex">
-            {[
-              ['Inicio', '#hero', true],
-              ['Proceso', '#proceso', false],
-              ['Historial', '#historial', false],
-              ['Consulta pública', '#consulta', false],
-              ['Seguridad', '#seguridad', false],
-              ['Documentación', '#docs', false],
-            ].map(([label, href, active]) => (
-              <a key={label as string} href={href as string}
-                className={`relative px-3.5 py-2 text-[14px] transition-colors ${active ? 'font-semibold text-primary' : 'font-medium text-slate-600 hover:text-slate-900'}`}>
-                {label}
-                {active ? <span className="absolute -bottom-[1px] left-3.5 right-3.5 h-[2px] rounded-full bg-primary" /> : null}
-              </a>
-            ))}
-          </nav>
-          <Link href="/login"
-            className="group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-white transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25">
-            Acceder a la plataforma
-            <ArrowRight size={15} className="transition group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-      </header>
+      {/* ─── NAVBAR (client component con state activo) ──────────────────── */}
+      <LandingNav />
 
       {/* ─── 1. HERO ─────────────────────────────────────────────────────── */}
       <section id="hero" className="relative overflow-hidden">
@@ -141,7 +117,17 @@ export default function LandingPage() {
               {/* glow detrás del card */}
               <div aria-hidden className="absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-primary-container/15 via-sky-200/20 to-transparent blur-2xl" />
 
-              <div className="relative overflow-hidden rounded-3xl border border-white/80 bg-white/95 p-7 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.25),0_8px_30px_-12px_rgba(21,94,239,0.18)] backdrop-blur-xl">
+              <div
+                className="relative isolate overflow-hidden rounded-3xl border border-white/60 p-7 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.25),0_8px_30px_-12px_rgba(21,94,239,0.18),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+                style={{
+                  background:
+                    'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.25)), rgba(241,245,255,0.45)',
+                }}
+              >
+                {/* highlight superior interno (refracción glass) */}
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                {/* highlight radial top-left */}
+                <div aria-hidden className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/40 blur-2xl" />
                 <div className="mb-6 flex items-center justify-between">
                   <h3 className="text-[17px] font-semibold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>
                     Historial en tiempo real
@@ -275,75 +261,73 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── 3. HISTORIAL AUDITABLE (dark card) ──────────────────────────── */}
+      {/* ─── 3. HISTORIAL AUDITABLE (dark, full-width, centrado) ─────────── */}
       <section id="historial" className="py-20">
         <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
           <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-[#0a1530] p-8 text-slate-100 lg:p-12">
-            {/* glow decorativo dentro de la card */}
+            {/* glows decorativos */}
             <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary-container/30 blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute -left-32 bottom-0 h-72 w-72 rounded-full bg-sky-500/20 blur-3xl" />
 
-            <div className="relative grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
-              {/* Izquierda: características */}
-              <div className="lg:col-span-4">
-                <h2 className="text-3xl font-bold leading-tight tracking-tight text-white md:text-[36px]"
-                    style={{ fontFamily: 'Geist, sans-serif' }}>
-                  Historial auditable
-                </h2>
-                <p className="mt-4 text-[14.5px] leading-relaxed text-slate-400">
-                  Explora eventos reales registrados en blockchain y verifica la integridad de cada movimiento.
-                </p>
+            {/* Header centrado */}
+            <div className="relative mx-auto mb-10 max-w-2xl text-center">
+              <h2 className="text-3xl font-bold leading-tight tracking-tight text-white md:text-[40px]"
+                  style={{ fontFamily: 'Geist, sans-serif' }}>
+                Historial auditable
+              </h2>
+              <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
+                Explora eventos reales registrados en blockchain y verifica la integridad de cada movimiento.
+              </p>
+            </div>
 
-                <div className="mt-8 space-y-3">
-                  {AUDIT_GUARANTEES.map(({ Icon, title, desc }) => (
-                    <div key={title} className="rounded-xl border border-slate-700/60 bg-slate-800/40 p-4 backdrop-blur">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-container/15 text-primary-container">
-                          <Icon size={16} strokeWidth={2.3} />
-                        </div>
-                        <p className="font-semibold text-white">{title}</p>
-                      </div>
-                      <p className="mt-2 text-[13px] leading-relaxed text-slate-400">{desc}</p>
+            {/* Garantías horizontales (3 columnas, full-width) */}
+            <div className="relative mb-8 grid grid-cols-1 gap-3 md:grid-cols-3">
+              {AUDIT_GUARANTEES.map(({ Icon, title, desc }) => (
+                <div key={title} className="rounded-xl border border-slate-700/60 bg-slate-800/40 p-4 backdrop-blur">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-container/15 text-primary-container">
+                      <Icon size={16} strokeWidth={2.3} />
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Derecha: tabla */}
-              <div className="lg:col-span-8">
-                <div className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/60 backdrop-blur">
-                  <div className="grid grid-cols-[140px_1fr_110px_130px_140px_110px] gap-3 border-b border-slate-700/60 px-5 py-3 text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">
-                    <span>Evento</span>
-                    <span>Descripción</span>
-                    <span>Bloque</span>
-                    <span>Hash</span>
-                    <span>Tiempo</span>
-                    <span>Estado</span>
+                    <p className="font-semibold text-white">{title}</p>
                   </div>
-                  {AUDIT_ROWS.map((r) => (
-                    <div key={r.hash} className="grid grid-cols-[140px_1fr_110px_130px_140px_110px] items-center gap-3 border-b border-slate-800/80 px-5 py-3.5 text-[13px] transition hover:bg-slate-800/40 last:border-0">
-                      <span className="inline-flex items-center gap-2 font-medium text-white">
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary-container" />
-                        {r.evento}
-                      </span>
-                      <span className="truncate text-slate-400">{r.descripcion}</span>
-                      <span className="font-mono text-slate-300" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{r.bloque}</span>
-                      <span className="font-mono text-slate-300" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{r.hash}</span>
-                      <span className="text-slate-500">{r.tiempo}</span>
-                      <span>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Confirmado
-                        </span>
-                      </span>
-                    </div>
-                  ))}
+                  <p className="mt-2 text-[13px] leading-relaxed text-slate-400">{desc}</p>
                 </div>
+              ))}
+            </div>
 
-                <div className="mt-5 text-center">
-                  <a href="#consulta" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-primary-container hover:text-white">
-                    Ver historial completo en el explorador <ArrowRight size={14} />
-                  </a>
-                </div>
+            {/* Tabla full-width */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/60 backdrop-blur">
+              <div className="hidden grid-cols-[160px_1fr_140px_160px_180px_140px] gap-3 border-b border-slate-700/60 px-6 py-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid">
+                <span>Evento</span>
+                <span>Descripción</span>
+                <span>Bloque</span>
+                <span>Hash</span>
+                <span>Tiempo</span>
+                <span>Estado</span>
               </div>
+              {AUDIT_ROWS.map((r) => (
+                <div key={r.hash} className="grid grid-cols-1 items-center gap-3 border-b border-slate-800/80 px-6 py-4 text-[13.5px] transition hover:bg-slate-800/40 last:border-0 md:grid-cols-[160px_1fr_140px_160px_180px_140px]">
+                  <span className="inline-flex items-center gap-2 font-medium text-white">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary-container" />
+                    {r.evento}
+                  </span>
+                  <span className="text-slate-400">{r.descripcion}</span>
+                  <span className="font-mono text-slate-300" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{r.bloque}</span>
+                  <span className="font-mono text-slate-300" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{r.hash}</span>
+                  <span className="text-slate-500">{r.tiempo}</span>
+                  <span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Confirmado
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="relative mt-7 text-center">
+              <a href="#consulta" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-primary-container hover:text-white">
+                Ver historial completo en el explorador <ArrowRight size={14} />
+              </a>
             </div>
           </div>
         </div>
@@ -398,11 +382,22 @@ export default function LandingPage() {
                 Plataforma blockchain para la trazabilidad, transparencia y validación de bonos políticos del TSE.
               </p>
               <div className="mt-6 flex items-center gap-2">
-                {['X','GH','IN'].map((tag) => (
-                  <a key={tag} href="#" className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-[10px] font-bold text-slate-400 transition hover:border-primary-container hover:text-white">
-                    {tag}
-                  </a>
-                ))}
+                {/* X (Twitter) */}
+                <a href="#" aria-label="X / Twitter" className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition hover:border-primary-container hover:text-white">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+                {/* GitHub */}
+                <a href="#" aria-label="GitHub" className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition hover:border-primary-container hover:text-white">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.13c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.69 5.4-5.25 5.68.41.36.78 1.07.78 2.16v3.21c0 .31.21.66.79.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+                </a>
+                {/* LinkedIn */}
+                <a href="#" aria-label="LinkedIn" className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition hover:border-primary-container hover:text-white">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.95v5.66H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.59 0 4.26 2.36 4.26 5.43v6.31zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>
+                </a>
+                {/* Instagram */}
+                <a href="#" aria-label="Instagram" className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition hover:border-primary-container hover:text-white">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.42.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.42 2.23.06 1.26.07 1.64.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.42 2.23a3.7 3.7 0 0 1-.9 1.38c-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.42-1.26.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.42a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.42-2.23-.06-1.26-.07-1.64-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.42-2.23.22-.56.48-.96.9-1.38a3.7 3.7 0 0 1 1.38-.9c.42-.16 1.06-.36 2.23-.42 1.26-.06 1.64-.07 4.85-.07zm0 5.84a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 1.4a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2zm5.1-1.96a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9z"/></svg>
+                </a>
               </div>
             </div>
 
