@@ -96,8 +96,8 @@ export default function PartidoNegociacionesPage() {
             <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>{lbl}</span>
             {acts.map(([label, action, variant]) => (
               <button key={action} onClick={() => act(t.id, action)} disabled={busy === t.id}
-                className={`btn-action ${variant === 'primary' ? '' : 'btn-danger'} ${busy === t.id ? 'btn-loading' : ''}`}>
-                {busy === t.id ? <><span className="btn-spinner" /> {label}…</> : label}
+                className={`${variant === 'primary' ? 'btn-action btn-success' : 'btn-ghost btn-ghost-danger'} ${busy === t.id ? 'btn-loading' : ''}`}>
+                {busy === t.id ? <span className="btn-spinner" /> : label}
               </button>
             ))}
           </div>

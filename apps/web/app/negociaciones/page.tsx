@@ -69,8 +69,8 @@ function Content({ token, me }: { token: string; me: Me }) {
         <div className="flex items-center gap-3">
           {t.amount ? <span className="mono-data text-sm font-semibold">{fmtMoney(t.amount)}</span> : null}
           <StatusBadge status={t.status} />
-          {a && <button onClick={() => act(t.id, a[1])} disabled={busy === t.id} className={`btn-action ${busy === t.id ? 'btn-loading' : ''}`}>{busy === t.id ? <><span className="btn-spinner" /> Procesando…</> : a[0]}</button>}
-          {cancelable && <button onClick={() => act(t.id, 'cancel')} disabled={busy === t.id} className="btn-ghost">Cancelar</button>}
+          {a && <button onClick={() => act(t.id, a[1])} disabled={busy === t.id} className={`btn-action ${busy === t.id ? 'btn-loading' : ''}`}>{busy === t.id ? <span className="btn-spinner" /> : a[0]}</button>}
+          {cancelable && <button onClick={() => act(t.id, 'cancel')} disabled={busy === t.id} className="btn-ghost btn-ghost-danger">Cancelar</button>}
         </div>
       </div>
     );
