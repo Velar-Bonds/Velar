@@ -142,3 +142,46 @@ body {
 
 @keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0); } }
 .animate-float { animation: float 4s ease-in-out infinite; }
+
+/* Microinteracciones / entrada */
+@keyframes velar-fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.velar-fade-in { animation: velar-fade-up .4s ease both; }
+.velar-stagger > * { animation: velar-fade-up .45s ease both; }
+.velar-stagger > *:nth-child(2) { animation-delay: .05s; }
+.velar-stagger > *:nth-child(3) { animation-delay: .1s; }
+.velar-stagger > *:nth-child(4) { animation-delay: .15s; }
+.velar-stagger > *:nth-child(5) { animation-delay: .2s; }
+.velar-stagger > *:nth-child(6) { animation-delay: .25s; }
+
+.velar-hover-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.velar-hover-card:hover { transform: translateY(-3px); box-shadow: 0 24px 48px rgba(21,94,239,0.10); }
+
+@media (prefers-reduced-motion: reduce) {
+  .velar-fade-in, .velar-stagger > *, .animate-float { animation: none; }
+  .velar-hover-card { transition: none; }
+}
+
+/* Form helpers */
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-on-surface-variant);
+}
+.field-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  background: white;
+}
+.field-input:focus {
+  border-color: var(--color-primary-container);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary-container) 15%, transparent);
+}

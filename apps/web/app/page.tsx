@@ -72,17 +72,9 @@ export default function LandingPage() {
             <div className="flex flex-shrink-0 items-center gap-2">
               <Image alt="VELAR" className="h-9 w-auto" src="/velar-logo.png" width={512} height={341} />
             </div>
-            <nav className="hidden space-x-8 md:flex">
-              <Link className="text-sm font-medium text-primary" href="/">Inicio</Link>
-              <Link className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="/marketplace">Marketplace</Link>
-              <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#proceso">Proceso</a>
-              <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#historial">Historial</a>
-              <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#historial">Consulta pública</a>
-              <a className="text-sm font-medium text-on-surface-variant transition-colors hover:text-primary" href="#seguridad">Seguridad</a>
-            </nav>
-            <div className="hidden items-center md:flex">
-              <Link className="flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:bg-primary-container hover:shadow-lg" href="/login">
-                Acceder a la plataforma <Arrow />
+            <div className="flex items-center">
+              <Link className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:bg-primary-container hover:shadow-lg" href="/login">
+                Acceder <Arrow />
               </Link>
             </div>
           </div>

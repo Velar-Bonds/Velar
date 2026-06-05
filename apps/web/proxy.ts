@@ -25,7 +25,7 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  const PROTECTED = ['/marketplace', '/partido', '/tse', '/admin'];
+  const PROTECTED = ['/marketplace', '/partido', '/tse', '/admin', '/mis-bonos', '/negociaciones', '/trazabilidad', '/en-vivo', '/configuracion'];
   const isProtected = PROTECTED.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
   if (!user && isProtected) {
@@ -42,5 +42,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/marketplace/:path*', '/partido/:path*', '/tse/:path*', '/admin/:path*', '/login'],
+  matcher: ['/marketplace/:path*', '/partido/:path*', '/tse/:path*', '/admin/:path*', '/mis-bonos/:path*', '/negociaciones/:path*', '/trazabilidad/:path*', '/en-vivo/:path*', '/configuracion/:path*', '/login'],
 };

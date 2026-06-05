@@ -143,6 +143,7 @@ vite.config.ts.timestamp-*
 .vite/
 
 .DS_Store
+.codegraph/
 
 # Compiled JS leaking into NestJS source (debe ir solo a dist/)
 apps/api/src/**/*.js

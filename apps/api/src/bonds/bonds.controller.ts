@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/co
 import { BondsService } from './bonds.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { RegisterBondInput, Role } from '@velar/types';
+import { RegisterBondInput, BondRequestInput, Role } from '@velar/types';
 
 @Controller('bonds')
 @UseGuards(AuthGuard)
@@ -16,7 +16,29 @@ export class BondsController {
 
   @Get()
   findAll(@CurrentUser() user: any) {
-    return this.bonds.findAll(user.id, user.profile?.role as Role);
+    return this.bonds.findAll(user.id, user.profile?.role as Role, user.profile?.party_id);
+  }
+
+  @Get('requests')
+  findRequests(@CurrentUser() user: any) {
+    return this.bonds.findRequests(user.id, user.profile?.role as Role, user.profile?.party_id);
+  }
+
+  @Post('requests')
+  createRequest(@Body() body: BondRequestInput, @CurrentUser() user: any) {
+    const partyId = user.profile?.party_id;
+    if (!partyId) throw new Error('No tenés un partido asociado');
+    return this.bonds.requestBond(body, user.id, partyId);
+  }
+
+  @Patch('requests/:id/approve')
+  approveRequest(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.bonds.approveRequest(id, user.id, user.profile?.role as Role);
+  }
+
+  @Patch('requests/:id/reject')
+  rejectRequest(@Param('id') id: string, @Body() body: { reason?: string }, @CurrentUser() user: any) {
+    return this.bonds.rejectRequest(id, body.reason ?? '', user.id, user.profile?.role as Role);
   }
 
   @Get('available')
@@ -32,6 +54,16 @@ export class BondsController {
   @Get(':tokenId/onchain')
   onchain(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.onchainInfo(tokenId, user.id, user.profile?.role as Role);
+  }
+
+  @Patch(':tokenId/issue-onchain')
+  issueOnchain(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
+    return this.bonds.issueOnchain(tokenId, user.id, user.profile?.role as Role);
+  }
+
+  @Patch(':tokenId/publish')
+  publish(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
+    return this.bonds.publish(tokenId, user.id);
   }
 
   @Patch(':tokenId/freeze')

@@ -82,13 +82,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="velar-auth-shell h-[100dvh] w-full overflow-hidden px-3 py-2 sm:px-4 sm:py-3">
-      <div className="mx-auto flex h-full max-w-[1500px] flex-col gap-3 lg:flex-row">
+    <div className="velar-auth-shell min-h-[100dvh] w-full px-3 py-4 sm:px-4 sm:py-6 lg:h-[100dvh] lg:overflow-hidden lg:py-3">
+      <div className="mx-auto flex min-h-full max-w-[1500px] flex-col gap-4 lg:h-full lg:flex-row lg:gap-3">
         <AuthBranding />
 
-        <section className="flex h-full w-full items-center justify-center px-3 py-3 lg:w-[45%] lg:px-6 xl:px-10">
-          <div className="velar-auth-card flex h-full w-full max-w-[680px] rounded-[24px] p-6 sm:p-8 lg:max-h-full lg:p-9">
-            <div className="mx-auto flex h-full w-full max-w-[540px] flex-col justify-center">
+        <section className="flex w-full items-center justify-center py-2 sm:py-4 lg:h-full lg:w-[45%] lg:px-6 lg:py-3 xl:px-10">
+          <div className="velar-auth-card flex w-full max-w-[680px] rounded-[24px] p-6 sm:p-8 lg:h-full lg:max-h-full lg:p-9">
+            <div className="mx-auto flex w-full max-w-[540px] flex-col justify-center lg:h-full">
               <div className="mb-6 text-center lg:mb-7">
                 <h2 className="velar-brand-text text-[2rem] font-extrabold tracking-[-0.03em] text-[#10235d] sm:text-4xl">Iniciar sesion</h2>
                 <p className="mt-1.5 text-sm text-[#667698] sm:text-[15px]">Accede a tu cuenta para continuar.</p>
