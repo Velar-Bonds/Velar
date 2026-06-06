@@ -3,14 +3,12 @@ import { ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Store, Wallet, Handshake, GitBranch, Radio, Settings, LogOut, Bell, Search, Home,
+  Store, Wallet, Handshake, GitBranch, Radio, Settings, LogOut, Bell, Search, ChevronDown, Boxes,
 } from 'lucide-react';
 import { useSession, type Me } from '../lib/api';
 import { useRoleGuard } from '../lib/role-guard';
-import { VelarBrand } from './VelarBrand';
 
 const TABS = [
-  { href: '/', label: 'Inicio', Icon: Home, exact: true },
   { href: '/marketplace', label: 'Marketplace', Icon: Store },
   { href: '/mis-bonos', label: 'Mis bonos', Icon: Wallet },
   { href: '/negociaciones', label: 'Negociaciones', Icon: Handshake },
@@ -31,8 +29,9 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
       {/* Navbar global */}
       <header className="sticky top-0 z-50 border-b border-outline-variant/20 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto flex h-[68px] max-w-[1440px] items-center justify-between gap-4 px-4 md:px-8">
-          <Link href="/marketplace" className="flex shrink-0 items-center" aria-label="VELAR">
-            <VelarBrand size="sm" />
+          <Link href="/marketplace" className="flex shrink-0 items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-blue-400 text-white shadow-sm"><Boxes size={18} /></span>
+            <span className="text-xl font-bold tracking-tight text-on-surface" style={{ fontFamily: 'Geist' }}>VELAR</span>
           </Link>
 
           <div className="relative mx-4 hidden max-w-xl flex-1 md:block">
@@ -46,7 +45,7 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
               <button onClick={() => setMenu((m) => !m)} className="flex items-center gap-2 rounded-full border border-transparent p-1 pr-2 transition hover:border-outline-variant/30 hover:bg-surface-container-low">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-xs font-semibold text-white">{initials(me?.full_name)}</span>
                 <span className="hidden text-sm font-medium md:block">{me?.full_name ?? '…'}</span>
-                <span className="hidden text-xs text-on-surface-variant md:block">Menú</span>
+                <ChevronDown size={16} className="text-outline" />
               </button>
               {menu && (
                 <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-outline-variant/30 bg-white shadow-xl">

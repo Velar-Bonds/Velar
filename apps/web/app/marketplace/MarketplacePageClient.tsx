@@ -1,15 +1,17 @@
 'use client';
+import { notify } from '../../components/Toast';
 
 import { useCallback, useEffect, useState } from 'react';
 import { Handshake, ShieldCheck, SlidersHorizontal, Store } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { EmptyState, fmtMoney, StatusBadge, StellarExpertButton } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
-import { assetCodeFor, stellarExpert } from '../../lib/stellar';
+import { bondExplorerUrl } from '../../lib/stellar';
 
 type Bond = {
   token_id: string;
   bond_id: string;
+  soroban_contract_id?: string | null;
   status: string;
   face_value: number | null;
   stellar_status?: string | null;
@@ -35,11 +37,11 @@ function Content({ token }: { token: string }) {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [offerAmounts, setOfferAmounts] = useState<Record<string, string>>({});
   const [offerMessages, setOfferMessages] = useState<Record<string, string>>({});
-  const [msg, setMsg] = useState('');
+  
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    apiFetch(token, 'GET', '/bonds/available').then(setBonds).catch((e) => setMsg(e.message));
+    apiFetch(token, 'GET', '/bonds/available').then(setBonds).catch((e) => notify.err(e.message));
     apiFetch(token, 'GET', '/transfers').then(setTransfers).catch(() => undefined);
   }, [token]);
 
@@ -47,13 +49,13 @@ function Content({ token }: { token: string }) {
 
   async function requestPurchase(id: string, amount: number | null, message?: string) {
     setBusy(id);
-    setMsg('');
+    
     try {
       await apiFetch(token, 'POST', '/transfers', { bondTokenId: id, amount, message });
-      setMsg('Oferta enviada. El vendedor puede aceptar, rechazar o contraofertar.');
+      notify.ok('Oferta enviada. El vendedor puede aceptar, rechazar o contraofertar.');
       load();
     } catch (e: any) {
-      setMsg('Atencion: ' + e.message);
+      notify.err(e.message);
     } finally {
       setBusy(null);
     }
@@ -69,7 +71,6 @@ function Content({ token }: { token: string }) {
         <button type="button" className="flex w-max items-center gap-2 rounded-xl border border-outline-variant/40 bg-white px-3 py-2 text-sm font-medium text-on-surface transition hover:border-primary-container/50"><SlidersHorizontal size={16} /> Filtros</button>
       </div>
 
-      {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
       {bonds.length === 0 ? (
         <EmptyState icon={<Store size={26} />} title="No hay bonos en venta" desc="Cuando un partido publique bonos aprobados, apareceran aca." />
@@ -159,7 +160,7 @@ function Content({ token }: { token: string }) {
                     >
                       {busy === bond.token_id ? <span className="btn-spinner" /> : 'Comprar al precio'}
                     </button>
-                    {issuer && <StellarExpertButton href={stellarExpert.asset(assetCodeFor(bond.bond_id), issuer)} label="Stellar" small />}
+                    <StellarExpertButton href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} label="Stellar" small />
                   </div>
                 </div>
               </div>

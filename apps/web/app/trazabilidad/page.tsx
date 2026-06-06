@@ -4,7 +4,7 @@ import { GitBranch, ArrowRight, Boxes } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { StellarExpertButton, StatusBadge, EmptyState, fmtDate } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
-import { bondAssetUrl } from '../../lib/stellar';
+import { bondExplorerUrl } from '../../lib/stellar';
 
 type Bond = { token_id: string; bond_id: string; status: string };
 type Transfer = { id: string; status: string; bond_token_id: string; created_at?: string; from_profile?: { full_name?: string }; to_profile?: { full_name?: string } };
@@ -55,7 +55,7 @@ function Content({ token }: { token: string }) {
             <div className="glass-card rounded-2xl p-6">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div><div className="text-xs uppercase tracking-wide text-on-surface-variant">Bono</div><div className="mono-data text-lg font-bold text-primary-container">{bond?.bond_id}</div></div>
-                {bond && <StellarExpertButton href={bondAssetUrl(bond.bond_id)} label="Ver transacciones en Stellar Expert" />}
+                {bond && <StellarExpertButton href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} label="Ver transacciones en Stellar Expert" />}
               </div>
 
               {movs.length === 0 ? (
@@ -64,10 +64,10 @@ function Content({ token }: { token: string }) {
                 <div className="relative space-y-5 before:absolute before:bottom-2 before:left-[18px] before:top-2 before:w-0.5 before:bg-outline-variant/40">
                   {movs.map((t) => (
                     <div key={t.id} className="relative flex gap-4">
-                      <span className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary-container/20 bg-primary-container/10 text-primary-container"></span>
+                      <span className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary-container/20 bg-primary-container/10 text-primary-container"><ArrowRight size={16} /></span>
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-sm font-semibold">{t.from_profile?.full_name ?? 'Sin dato'} <span className="text-on-surface-variant"> a </span> {t.to_profile?.full_name ?? 'Sin dato'}</div>
+                          <div className="text-sm font-semibold">{t.from_profile?.full_name ?? '—'} <span className="text-on-surface-variant mx-1">a</span> {t.to_profile?.full_name ?? '—'}</div>
                           <span className="text-xs text-on-surface-variant">{fmtDate(t.created_at)}</span>
                         </div>
                         <div className="mt-1"><StatusBadge status={t.status} /></div>

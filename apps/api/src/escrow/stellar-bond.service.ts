@@ -22,6 +22,11 @@ const HORIZON = process.env.STELLAR_HORIZON_URL ?? 'https://horizon-testnet.stel
 const NET = NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
 const EXPLORER_NETWORK = NETWORK === 'mainnet' ? 'public' : 'testnet';
 
+// USDC en Stellar testnet (Circle)
+const USDC_ISSUER_TESTNET = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+const USDC_ISSUER_MAINNET = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
+const USDC_ISSUER = NETWORK === 'mainnet' ? USDC_ISSUER_MAINNET : USDC_ISSUER_TESTNET;
+
 type StellarBalance = {
   asset_code?: string;
   asset_issuer?: string;
@@ -80,10 +85,58 @@ export class StellarBondService {
     );
   }
 
-  /** Variante pública de `ensureTrustline` para asset VCRC. */
+  /** Asegura trustline al asset VCRC (usado por TW antes del deploy). */
   async ensureVcrcTrustline(account: string): Promise<void> {
     const vcrc = new Asset('VCRC', this.wallets.issuerAddress!);
     return this.ensureTrustline(account, vcrc);
+  }
+
+  /** Asegura trustline al token del bono (usado por TW antes de liberar al comprador). */
+  async ensureBondTrustline(account: string, bondId: string): Promise<void> {
+    return this.ensureTrustline(account, this.assetFor(bondId));
+  }
+
+  usdcAsset(): Asset {
+    return new Asset('USDC', USDC_ISSUER);
+  }
+
+  get usdcIssuer(): string {
+    return USDC_ISSUER;
+  }
+
+  /** Asegura trustline USDC en la cuenta indicada. */
+  async ensureUsdcTrustline(account: string): Promise<void> {
+    return this.ensureTrustline(account, this.usdcAsset());
+  }
+
+  /**
+   * Envía USDC de la wallet platform al comprador para que pueda fondear el escrow.
+   * En testnet la platform recibe USDC del faucet de Circle; en prod esto sería
+   * el comprador depositando USDC real antes de la oferta.
+   */
+  async provisionUsdc(buyerAddress: string, amount: number): Promise<string> {
+    const usdc = this.usdcAsset();
+    await this.ensureTrustline(buyerAddress, usdc);
+    const kp = this.wallets.keypairFor(this.wallets.issuerAddress!);
+    // La cuenta issuer/platform actúa como reserva de USDC para testnet
+    const src = await this.server.loadAccount(this.wallets.issuerAddress!);
+    const hasTrustline = await this.hasTrustline(this.wallets.issuerAddress!, usdc);
+    if (!hasTrustline) {
+      throw new Error('La cuenta plataforma no tiene USDC. Correr npm run provision:usdc');
+    }
+    const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
+      .addOperation(Operation.payment({
+        destination: buyerAddress,
+        asset: usdc,
+        amount: amount.toFixed(7),
+      }))
+      .addMemo(Memo.text('escrow:provision'))
+      .setTimeout(60)
+      .build();
+    tx.sign(kp);
+    const res = await this.server.submitTransaction(tx);
+    this.logger.log(`USDC provisionado: ${amount} USDC → ${buyerAddress} (${res.hash})`);
+    return res.hash;
   }
 
   /** Asegura que `account` confíe en el activo (changeTrust), firmado en custodia. */
@@ -128,7 +181,42 @@ export class StellarBondService {
     return { assetCode: asset.getCode(), issuer: asset.getIssuer(), owner: ownerAddress, txHash, ledger };
   }
 
-  /** Mueve el token del dueño a la canasta de escrow (queda bloqueado). */
+  /**
+   * Registra el precio de venta on-chain emitiendo VCRC al vendedor.
+   * El movimiento del token del bono lo hace Trustless Work (releaseFunds).
+   */
+  async recordPrice(
+    bondId: string,
+    amount: number,
+    sellerAddress: string,
+  ): Promise<{ txHash: string; priceRecorded: boolean }> {
+    const vcrc = this.paymentAsset();
+    const wantsPrice = !!sellerAddress && amount > 0 && sellerAddress !== this.wallets.issuerAddress;
+    if (!wantsPrice) return { txHash: '', priceRecorded: false };
+    try {
+      await this.ensureTrustline(sellerAddress, vcrc);
+    } catch (e) {
+      this.logger.warn(`trustline VCRC para vendedor falló: ${(e as Error).message}`);
+      return { txHash: '', priceRecorded: false };
+    }
+    const issuerKp = this.wallets.keypairFor(this.wallets.issuerAddress!);
+    const issuerSrc = await this.server.loadAccount(this.wallets.issuerAddress!);
+    const tx = new TransactionBuilder(issuerSrc, { fee: BASE_FEE, networkPassphrase: NET })
+      .addOperation(Operation.payment({
+        destination: sellerAddress,
+        asset: vcrc,
+        amount: amount.toFixed(7),
+      }))
+      .addMemo(Memo.text(`sold:${amount}CRC`.slice(0, 28)))
+      .setTimeout(60)
+      .build();
+    tx.sign(issuerKp);
+    const res = await this.server.submitTransaction(tx);
+    this.logger.log(`Precio ₡${amount} VCRC registrado on-chain → ${sellerAddress} (${res.hash})`);
+    return { txHash: res.hash, priceRecorded: true };
+  }
+
+  /** @deprecated — movimiento de bono ahora lo hace TrustlessWork.fundEscrow */
   async lockInEscrow(bondId: string, ownerAddress: string, amount?: number): Promise<string> {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(this.wallets.escrowAddress!, asset);

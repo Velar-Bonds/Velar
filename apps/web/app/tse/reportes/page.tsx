@@ -1,13 +1,14 @@
 'use client';
+import { notify } from '../../../components/Toast';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle, AlertCircle, Eye, X, ExternalLink, User, Waypoints, Coins } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
-import { bondAssetUrl } from '../../../lib/stellar';
+import { bondExplorerUrl } from '../../../lib/stellar';
 
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ':';
-const fmtCRC = (n?: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtCRC = (n?: number | null) => n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
 
 const STATUS: Record<string, [string, string]> = {
   enviado: ['bg-blue-50 text-primary border-blue-200', 'Enviado'],
@@ -24,7 +25,7 @@ export default function TSEReportesPage() {
   const [sel, setSel] = useState<any | null>(null);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
+  
 
   const load = () =>
     Promise.all([
@@ -45,13 +46,13 @@ export default function TSEReportesPage() {
 
   async function review(status: 'aprobado' | 'observado' | 'revisado') {
     if (!sel) return;
-    setBusy(true); setMsg('');
+    setBusy(true);
     try {
       await apiFetch(token, 'PATCH', `/reports/${sel.id}/review`, { status, notes });
-      setMsg(`Reporte marcado como ${status}.`);
+      notify.ok(`Reporte marcado como ${status}.`);
       setSel(null); setNotes('');
       load();
-    } catch (e: any) { setMsg('⚠️ ' + e.message); } finally { setBusy(false); }
+    } catch (e: any) { notify.err(e.message); } finally { setBusy(false); }
   }
 
   return (
@@ -64,7 +65,6 @@ export default function TSEReportesPage() {
       </header>
 
       <div className="mx-auto w-full max-w-[1200px] p-8 pb-20">
-        {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
         <div className="glass-card overflow-hidden rounded-2xl">
           <table className="w-full text-left text-sm">
@@ -84,7 +84,7 @@ export default function TSEReportesPage() {
                 const [cls, lbl] = STATUS[r.status] ?? ['bg-gray-100 text-gray-600 border-gray-200', r.status];
                 return (
                   <tr key={r.id} className="bg-white/60 transition-colors hover:bg-primary/[0.02]">
-                    <td className="px-5 py-3.5 font-medium">{r.parties?.name ?? 'Sin dato'}</td>
+                    <td className="px-5 py-3.5 font-medium">{r.parties?.name ?? '—'}</td>
                     <td className="px-5 py-3.5">{r.title}</td>
                     <td className="px-5 py-3.5 font-semibold">{fmtCRC(r.total_amount)}</td>
                     <td className="px-5 py-3.5 text-on-surface-variant">{fmtDate(r.created_at)}</td>
@@ -118,7 +118,7 @@ export default function TSEReportesPage() {
               {sel.period_start && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Periodo</p>
-                  <p>{fmtDate(sel.period_start)}  a  {fmtDate(sel.period_end)}</p>
+                  <p>{fmtDate(sel.period_start)} → {fmtDate(sel.period_end)}</p>
                 </div>
               )}
               {sel.total_amount != null && (
@@ -182,7 +182,7 @@ export default function TSEReportesPage() {
                         <div className="mb-2 flex items-start justify-between">
                           <div>
                             <p className="font-mono text-sm font-bold text-primary">{b.bond_id}</p>
-                            <p className="text-[11px] text-on-surface-variant">{b.parties?.name ?? 'Sin dato'} · {b.certificate_number ?? 'sin certificado'}</p>
+                            <p className="text-[11px] text-on-surface-variant">{b.parties?.name ?? '—'} · {b.certificate_number ?? 'sin certificado'}</p>
                           </div>
                           <div className="text-right">
                             <p className="font-mono text-sm font-semibold">{fmtCRC(b.face_value)}</p>
@@ -193,7 +193,7 @@ export default function TSEReportesPage() {
                         <div className="mb-2 grid grid-cols-2 gap-2 border-t border-outline-variant/10 pt-2 text-[11px]">
                           <div>
                             <span className="text-on-surface-variant">Dueño actual:</span>
-                            <p className="flex items-center gap-1 font-medium"><User size={10} /> {b.profiles?.full_name ?? 'Sin dato'}</p>
+                            <p className="flex items-center gap-1 font-medium"><User size={10} /> {b.profiles?.full_name ?? '—'}</p>
                           </div>
                           <div>
                             <span className="text-on-surface-variant">Movimientos:</span>
@@ -223,7 +223,7 @@ export default function TSEReportesPage() {
                                 .map((t: any, i: number) => (
                                   <span key={t.id} className="flex items-center gap-1">
                                     {i === 0 && <span className="font-medium">{t.from_profile?.full_name ?? '?'}</span>}
-                                    <span className="text-on-surface-variant"> a </span>
+                                    <span className="text-on-surface-variant mx-1">a</span>
                                     <span className="font-medium">{t.to_profile?.full_name ?? '?'}</span>
                                   </span>
                                 ))}
@@ -244,15 +244,15 @@ export default function TSEReportesPage() {
                               target="_blank" rel="noopener noreferrer"
                               className="flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-primary transition hover:bg-blue-100"
                             >
-                               Tx hash
+                              <ExternalLink size={9} /> Tx hash
                             </a>
                           )}
                           <a
-                            href={bondAssetUrl(b.bond_id)}
+                            href={bondExplorerUrl(b.soroban_contract_id, b.bond_id)}
                             target="_blank" rel="noopener noreferrer"
                             className="flex items-center gap-1 rounded-full border border-outline-variant/30 bg-white px-2 py-0.5 text-[10px] font-medium text-on-surface-variant transition hover:border-primary hover:text-primary"
                           >
-                             Stellar asset
+                            <ExternalLink size={9} /> Stellar asset
                           </a>
                           <Link
                             href={`/tse/trazabilidad?bono=${b.bond_id}`}

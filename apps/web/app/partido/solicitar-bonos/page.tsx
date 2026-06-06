@@ -32,7 +32,7 @@ const fmtMoney = (n: number, cur = 'CRC') =>
   new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(n);
 
 const fmtDate = (d?: string) =>
-  d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : ':';
+  d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 export default function SolicitarBonosPage() {
   const { token, me, loading, error } = useSession();
@@ -102,7 +102,7 @@ export default function SolicitarBonosPage() {
     <PartidoShell me={me}>
       <header className="sticky top-0 z-40 flex h-20 items-center border-b border-outline-variant/30 bg-surface/70 px-10 shadow-sm backdrop-blur-xl">
         <Link href="/partido" className="mr-4 flex items-center gap-2 text-sm text-on-surface-variant transition hover:text-primary">
-           Volver
+          <ArrowLeft size={16} /> Volver
         </Link>
         <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'Geist' }}>Solicitar bonos al TSE</h1>
       </header>
@@ -159,7 +159,7 @@ export default function SolicitarBonosPage() {
                 </div>
 
                 <div>
-                  <label className="field-label">Tasa de interés (%) <span className="text-on-surface-variant font-normal normal-case">(opcional)</span></label>
+                  <label className="field-label">Tasa de interés (%) <span className="text-on-surface-variant font-normal normal-case">opcional</span></label>
                   <input type="number" min="0" max="100" step="0.01" value={form.interest_rate} onChange={set('interest_rate')}
                     placeholder="Ej. 6.5" className="field-input" />
                 </div>
@@ -176,7 +176,7 @@ export default function SolicitarBonosPage() {
                 </div>
 
                 <div>
-                  <label className="field-label">Notas / justificación <span className="text-on-surface-variant font-normal normal-case">(opcional)</span></label>
+                  <label className="field-label">Notas / justificación <span className="text-on-surface-variant font-normal normal-case">opcional</span></label>
                   <textarea rows={3} value={form.notes} onChange={set('notes')} placeholder="Propósito de la solicitud…"
                     className="field-input resize-none" />
                 </div>
@@ -222,7 +222,7 @@ export default function SolicitarBonosPage() {
                   {approved.slice(0, 4).map((r) => <RequestRow key={r.id} r={r} />)}
                 </div>
                 {approved.length > 4 && (
-                  <Link href="/partido/mis-bonos" className="mt-2 block text-xs font-medium text-emerald-700 hover:underline">Ver todos  a </Link>
+                  <Link href="/partido/mis-bonos" className="mt-2 block text-xs font-medium text-emerald-700 hover:underline">Ver todos</Link>
                 )}
               </div>
             )}

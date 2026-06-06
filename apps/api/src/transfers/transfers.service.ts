@@ -71,7 +71,7 @@ export class TransfersService {
     return transfer;
   }
 
-  // El DUEÑO (vendedor) acepta la solicitud  a  el token entra a la canasta.
+  // El DUEÑO (vendedor) acepta la solicitud → el token entra a la canasta.
   async acceptTransfer(transferId: string, actorId: string) {
     const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
     if (!transfer) throw new NotFoundException('Transfer not found');
@@ -81,36 +81,55 @@ export class TransfersService {
     await this.supabase.admin.from('transfers').update({ status: TransferStatus.ACEPTADA }).eq('id', transferId);
     await this.supabase.admin.from('bonds').update({ status: BondStatus.EN_ESCROW }).eq('token_id', transfer.bond_token_id);
 
-    // Mueve el TOKEN del bono a la canasta de escrow on-chain (queda bloqueado).
     const bond = await this.getBond(transfer.bond_token_id);
     const fromWallet = await this.walletOf(transfer.from_owner);
     const toWallet = await this.walletOf(transfer.to_owner);
-    let txHash: string | undefined;
-    if (this.stellar.enabled && fromWallet) {
-      try {
-        txHash = await this.stellar.lockInEscrow(bond.bond_id, fromWallet, Number(transfer.amount) || undefined);
-      } catch (e) {
-        this.logger.warn(`lockInEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
-      }
-    }
+    const saleAmount = Number(transfer.amount) || 1;
+    // En testnet usamos 1 USDC simbólico — el precio real está en BD (colones)
+    const amountUsdc = 1;
 
-    // En paralelo: crea escrow Trustless Work como registro on-chain del trade.
-    // No maneja dinero : solo coordina el lifecycle. Si falla, el flujo sigue.
     let twContractId: string | undefined;
     let twDeployTx: string | undefined;
+    let twFundTx: string | undefined;
+    let lockTx: string | undefined;
+
     if (this.trustlessWork.enabled && fromWallet && toWallet) {
       try {
-        const r = await this.trustlessWork.createCoordinationEscrow({
+        // 1. Provision USDC al comprador para que pueda fondear el escrow (testnet)
+        await this.stellar.provisionUsdc(toWallet, amountUsdc);
+        await new Promise((r) => setTimeout(r, 3000));
+
+        // 2. Deploy contrato TW con USDC como asset custodiado
+        const deployed = await this.trustlessWork.deployEscrow({
           bondId: bond.bond_id,
+          bondAssetCode: this.stellar.assetCodeFor(bond.bond_id),
           sellerAddress: fromWallet,
           buyerAddress: toWallet,
-          amountCRC: Number(transfer.amount) || 0,
           transferId: transfer.id,
+          amountUsdc,
         });
-        twContractId = r.contractId;
-        twDeployTx = r.deployTx;
+        twContractId = deployed.contractId;
+        twDeployTx = deployed.deployTx;
+
+        // 3. Comprador deposita USDC en el contrato TW (queda bloqueado)
+        twFundTx = await this.trustlessWork.fundEscrow(twContractId, toWallet, amountUsdc);
+
+        // 4. Bono entra a wallet escrow del backend (garantía de entrega)
+        if (fromWallet) {
+          try {
+            lockTx = await this.stellar.lockInEscrow(bond.bond_id, fromWallet, saleAmount);
+          } catch (e) {
+            this.logger.warn(`lockInEscrow falló: ${(e as Error).message}`);
+          }
+        }
       } catch (e) {
-        this.logger.warn(`TrustlessWork create falló (sigue el flujo): ${(e as Error).message}`);
+        this.logger.warn(`TrustlessWork deploy/fund falló (sigue el flujo): ${(e as Error).message}`);
+      }
+    } else if (this.stellar.enabled && fromWallet) {
+      try {
+        lockTx = await this.stellar.lockInEscrow(bond.bond_id, fromWallet, saleAmount);
+      } catch (e) {
+        this.logger.warn(`lockInEscrow falló: ${(e as Error).message}`);
       }
     }
 
@@ -125,8 +144,7 @@ export class TransfersService {
       bondTokenId: transfer.bond_token_id,
       transferId,
       actorId,
-      payload: { canasta: 'escrow', twContractId, twDeployTx },
-      txHash,
+      payload: { twContractId, twDeployTx, twFundTx, lockTx, amountUsdc },
     });
     return updated;
   }
@@ -195,30 +213,41 @@ export class TransfersService {
     const bond = await this.getBond(transfer.bond_token_id);
     const fromWallet = await this.walletOf(transfer.from_owner);
     const toWallet = await this.walletOf(transfer.to_owner);
-    let txHash: string | undefined;
-    if (this.stellar.enabled && fromWallet) {
-      try {
-        txHash = await this.stellar.lockInEscrow(bond.bond_id, fromWallet, Number(transfer.amount) || undefined);
-      } catch (e) {
-        this.logger.warn(`lockInEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
-      }
-    }
+    const saleAmount = Number(transfer.counter_offer_amount) || 1;
+    const amountUsdc = 1;
 
-    // Trustless Work como canasta de coordinación on-chain (no dinero).
     let twContractId: string | undefined;
+    let twDeployTx: string | undefined;
+    let twFundTx: string | undefined;
+    let lockTx: string | undefined;
+
     if (this.trustlessWork.enabled && fromWallet && toWallet) {
       try {
-        const r = await this.trustlessWork.createCoordinationEscrow({
+        await this.stellar.provisionUsdc(toWallet, amountUsdc);
+        await new Promise((r) => setTimeout(r, 3000));
+
+        const deployed = await this.trustlessWork.deployEscrow({
           bondId: bond.bond_id,
+          bondAssetCode: this.stellar.assetCodeFor(bond.bond_id),
           sellerAddress: fromWallet,
           buyerAddress: toWallet,
-          amountCRC: Number(transfer.amount) || 0,
           transferId: transfer.id,
+          amountUsdc,
         });
-        twContractId = r.contractId;
+        twContractId = deployed.contractId;
+        twDeployTx = deployed.deployTx;
+        twFundTx = await this.trustlessWork.fundEscrow(twContractId, toWallet, amountUsdc);
+
+        if (fromWallet) {
+          try { lockTx = await this.stellar.lockInEscrow(bond.bond_id, fromWallet, saleAmount); }
+          catch (e) { this.logger.warn(`lockInEscrow falló: ${(e as Error).message}`); }
+        }
       } catch (e) {
-        this.logger.warn(`TrustlessWork create falló (sigue el flujo): ${(e as Error).message}`);
+        this.logger.warn(`TrustlessWork deploy/fund falló (sigue el flujo): ${(e as Error).message}`);
       }
+    } else if (this.stellar.enabled && fromWallet) {
+      try { lockTx = await this.stellar.lockInEscrow(bond.bond_id, fromWallet, saleAmount); }
+      catch (e) { this.logger.warn(`lockInEscrow falló: ${(e as Error).message}`); }
     }
 
     const { data: updated } = await this.supabase.admin
@@ -232,8 +261,7 @@ export class TransfersService {
       bondTokenId: transfer.bond_token_id,
       transferId,
       actorId,
-      payload: { acceptedCounterOffer: transfer.counter_offer_amount, twContractId },
-      txHash,
+      payload: { acceptedCounterOffer: transfer.counter_offer_amount, twContractId, twDeployTx, twFundTx, lockTx, amountUsdc },
     });
     return updated;
   }
@@ -248,16 +276,20 @@ export class TransfersService {
     // El token sigue bloqueado en la canasta hasta que el validador confirme.
     const evidenceHash = crypto.createHash('sha256').update(evidenceContent).digest('hex');
 
-    // Trustless Work: marca el milestone como completed (huella on-chain del paso).
+    // TW: comprador marca milestone completed (confirma que hizo el pago off-chain)
     let twMilestoneTx: string | undefined;
     if (this.trustlessWork.enabled && transfer.escrow_contract_id) {
-      try {
-        twMilestoneTx = await this.trustlessWork.markMilestoneCompleted(
-          transfer.escrow_contract_id,
-          `evidence:${evidenceHash.slice(0, 16)}`,
-        );
-      } catch (e) {
-        this.logger.warn(`TrustlessWork markMilestone falló: ${(e as Error).message}`);
+      const buyerWallet = await this.walletOf(transfer.to_owner);
+      if (buyerWallet) {
+        try {
+          twMilestoneTx = await this.trustlessWork.markMilestoneCompleted(
+            transfer.escrow_contract_id,
+            buyerWallet,
+            `evidence:${evidenceHash.slice(0, 16)}`,
+          );
+        } catch (e) {
+          this.logger.warn(`TrustlessWork markMilestone falló: ${(e as Error).message}`);
+        }
       }
     }
 
@@ -288,7 +320,7 @@ export class TransfersService {
     return updated;
   }
 
-  // El VENDEDOR (dueño actual) confirma que recibió el pago  a  libera el token al comprador.
+  // El VENDEDOR (dueño actual) confirma que recibió el pago → libera el token al comprador.
   async releaseToken(transferId: string, actorId: string, actorRole: Role) {
     const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
     if (!transfer) throw new NotFoundException();
@@ -298,30 +330,34 @@ export class TransfersService {
     }
     if (transfer.status !== TransferStatus.PAGO_REGISTRADO) throw new BadRequestException('El comprador aún no registró el pago');
 
-    // On-chain: libera el TOKEN del bono + registra el precio en VCRC (atómico).
-    let txHash: string | undefined;
-    let priceRecorded = false;
     const bond = await this.getBond(transfer.bond_token_id);
-    const toWallet = await this.walletOf(transfer.to_owner);
     const fromWallet = await this.walletOf(transfer.from_owner);
     const amount = Number(transfer.amount) || 0;
-    if (this.stellar.enabled && toWallet) {
+
+    let twApproveTx: string | undefined;
+    let twReleaseTx: string | undefined;
+    let priceRecorded = false;
+    let priceTxHash: string | undefined;
+
+    if (this.trustlessWork.enabled && transfer.escrow_contract_id) {
       try {
-        const res = await this.stellar.releaseFromEscrow(bond.bond_id, toWallet, amount || undefined, fromWallet ?? undefined);
-        txHash = res.txHash;
-        priceRecorded = res.priceRecorded;
+        // 1. Aprueba el milestone (plataforma confirma que el pago fue válido)
+        twApproveTx = await this.trustlessWork.approveMilestone(transfer.escrow_contract_id);
+        // 2. TW libera el token del bono al comprador (receiver del contrato)
+        twReleaseTx = await this.trustlessWork.releaseFunds(transfer.escrow_contract_id);
       } catch (e) {
-        this.logger.warn(`releaseFromEscrow falló (sigue el flujo en BD): ${(e as Error).message}`);
+        this.logger.warn(`TrustlessWork approve/release falló: ${(e as Error).message}`);
       }
     }
 
-    // Trustless Work: aprueba el milestone (cierra el lifecycle del escrow on-chain).
-    let twApproveTx: string | undefined;
-    if (this.trustlessWork.enabled && transfer.escrow_contract_id) {
+    // Registra el precio en VCRC on-chain (analytics) — separado del movimiento del bono
+    if (this.stellar.enabled && fromWallet && amount > 0) {
       try {
-        twApproveTx = await this.trustlessWork.approveMilestone(transfer.escrow_contract_id);
+        const res = await this.stellar.recordPrice(bond.bond_id, amount, fromWallet);
+        priceRecorded = res.priceRecorded;
+        priceTxHash = res.txHash;
       } catch (e) {
-        this.logger.warn(`TrustlessWork approveMilestone falló: ${(e as Error).message}`);
+        this.logger.warn(`recordPrice VCRC falló: ${(e as Error).message}`);
       }
     }
 
@@ -329,8 +365,15 @@ export class TransfersService {
       this.supabase.admin.from('bonds').update({ current_owner: transfer.to_owner, status: BondStatus.ACTIVO }).eq('token_id', transfer.bond_token_id),
       this.supabase.admin.from('transfers').update({ status: TransferStatus.LIBERADA }).eq('id', transferId),
     ]);
-    await this.audit.emit({ type: AuditEventType.TOKEN_LIBERADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: { newOwner: transfer.to_owner, priceRecorded, twApproveTx }, txHash });
-    return { success: true, newOwner: transfer.to_owner, txHash, priceRecorded, twApproveTx };
+    await this.audit.emit({
+      type: AuditEventType.TOKEN_LIBERADO,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { newOwner: transfer.to_owner, twApproveTx, twReleaseTx, priceRecorded },
+      txHash: twReleaseTx ?? priceTxHash,
+    });
+    return { success: true, newOwner: transfer.to_owner, txHash: twReleaseTx, priceRecorded, twApproveTx, twReleaseTx };
   }
 
   /** El dueño solicita al TSE que saque el bono del escrow (cancelación con disputa). */
@@ -383,11 +426,11 @@ export class TransfersService {
     const ownerWallet = await this.walletOf(transfer.from_owner);
 
     let returnTx: string | undefined;
-    if (this.stellar.enabled && ownerWallet) {
+    if (this.trustlessWork.enabled && transfer.escrow_contract_id && ownerWallet) {
       try {
-        returnTx = await this.stellar.returnFromEscrow(bond.bond_id, ownerWallet);
+        returnTx = await this.trustlessWork.returnToSeller(transfer.escrow_contract_id, ownerWallet);
       } catch (e) {
-        this.logger.warn(`returnFromEscrow falló: ${(e as Error).message}`);
+        this.logger.warn(`TrustlessWork returnToSeller falló: ${(e as Error).message}`);
       }
     }
 

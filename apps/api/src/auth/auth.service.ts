@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { WalletService } from '../escrow/wallet.service';
 
-export type Perspectiva = 'usuario' | 'partido';
+export type Perspectiva = 'usuario' | 'partido' | 'tse';
 
 export interface RegisterInput {
   email: string;
@@ -117,7 +117,9 @@ export class AuthService {
       }
 
       // 4) Completar el profile (lo creó el trigger handle_new_user) con la info.
-      const role = input.perspectiva === 'partido' ? 'emisor' : 'comprador';
+      const role = input.perspectiva === 'partido' ? 'emisor'
+        : input.perspectiva === 'tse' ? 'tse'
+        : 'comprador';
       const core = {
         role,
         full_name: this.fullName(input),

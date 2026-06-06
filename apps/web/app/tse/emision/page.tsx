@@ -12,13 +12,10 @@ export default function EmisionPage() {
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-  const [parties, setParties] = useState<Array<{ id: string; name: string }>>([]);
+  const [parties, setParties] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!token) return;
-    apiFetch(token, 'GET', '/parties').then((rows) => {
-      setParties(Array.isArray(rows) ? rows : []);
-    }).catch(() => setParties([]));
+    if (token) apiFetch(token, 'GET', '/parties').then((ps) => { if (Array.isArray(ps)) setParties(ps); }).catch(() => {});
   }, [token]);
 
   if (loading || !token || !me) {
@@ -38,7 +35,7 @@ export default function EmisionPage() {
     setBusy(true); setMsg(null);
     try {
       const bondId = form.bond_id || `SOL-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
-      const created = await apiFetch(token, 'POST', '/bonds', {
+      await apiFetch(token, 'POST', '/bonds', {
         bondId,
         issuerPartyId: form.party_id,
         documentHash: 'manual-' + Date.now(),
@@ -50,13 +47,7 @@ export default function EmisionPage() {
         issueDate: form.issue_date || undefined,
         maturityDate: form.maturity_date || undefined,
       });
-      const confirmed = created?.stellar_status === 'confirmed' && created?.stellar_transaction_hash;
-      setMsg({
-        type: confirmed ? 'ok' : 'err',
-        text: confirmed
-          ? `Bono ${bondId} emitido en Stellar Testnet y asignado al partido.`
-          : `Bono ${bondId} registrado, pero la emisión on-chain quedó pendiente. Revisá la configuración Stellar.`,
-      });
+      setMsg({ type: 'ok', text: `Bono ${bondId} emitido correctamente y asignado al partido.` });
       setForm({ party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: 'CRC', interest_rate: '', series: '', issue_date: '', maturity_date: '' });
     } catch (err: any) {
       setMsg({ type: 'err', text: err.message });
@@ -95,7 +86,7 @@ export default function EmisionPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="field-label">ID del bono <span className="text-on-surface-variant font-normal normal-case">(opcional)</span></label>
+              <label className="field-label">ID del bono <span className="text-on-surface-variant font-normal normal-case">opcional</span></label>
               <input value={form.bond_id} onChange={set('bond_id')} placeholder="Auto-generado si vacío" className="field-input" />
             </div>
             <div>
