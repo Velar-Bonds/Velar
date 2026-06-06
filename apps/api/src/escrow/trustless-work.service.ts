@@ -4,16 +4,19 @@ import { WalletService } from './wallet.service';
 import { StellarBondService } from './stellar-bond.service';
 
 /**
- * Trustless Work usado como CANASTA DE COORDINACIÓN on-chain (no maneja dinero).
+ * Trustless Work como escrow REAL del token del bono.
  *
- * Cada venta de bono crea un contrato escrow Single-Release que registra:
- *   - createEscrow             a  contractDeploy en Stellar Expert
- *   - changeMilestoneStatus    a  "completed" cuando el comprador paga off-chain
- *   - approveMilestone         a  cuando el vendedor/TSE confirma el pago
+ * El contrato Soroban de TW custodia físicamente el token durante la venta:
+ *   deployEscrow    → contrato creado con buyer como receiver y bond asset como trustline
+ *   fundEscrow      → vendedor deposita 1 unidad del token bono en el contrato
+ *   markCompleted   → comprador registra pago off-chain (evidencia hasheada)
+ *   approveMilestone → plataforma aprueba
+ *   releaseFunds    → TW mueve el token al comprador automáticamente
  *
- * Nunca llamamos a fundEscrow ni releaseFunds : el movimiento del token bono
- * sigue por Classic Asset (issuer  a  escrow wallet  a  nuevo dueño). Trustless
- * Work solo deja huella pública del lifecycle del trade.
+ * Para cancelaciones/retornos:
+ *   disputeEscrow + resolveDispute → TW devuelve el token al vendedor
+ *
+ * El registro de precio en VCRC sigue como tx Stellar separada (analytics).
  */
 @Injectable()
 export class TrustlessWorkService {
@@ -48,18 +51,12 @@ export class TrustlessWorkService {
     return res.json() as Promise<T>;
   }
 
-  private async getJSON<T = any>(path: string): Promise<T> {
-    const res = await fetch(`${this.base}${path}`, {
-      headers: { 'x-api-key': this.apiKey },
-    });
-    if (!res.ok) throw new Error(`TrustlessWork GET ${path} ${res.status}`);
-    return res.json() as Promise<T>;
-  }
-
-  /** Firma un XDR con la wallet de plataforma y lo manda vía Trustless Work. */
-  private async signAndSubmit(unsignedXdr: string, signerAddress?: string): Promise<{ txHash: string; ledger?: number; contractId?: string }> {
-    const signer = signerAddress ?? this.platformAddress;
-    const kp = this.wallets.keypairFor(signer);
+  /** Firma un XDR con la keypair del signer indicado y lo envía. */
+  private async signAndSubmit(
+    unsignedXdr: string,
+    signerAddress: string,
+  ): Promise<{ txHash: string; ledger?: number; contractId?: string }> {
+    const kp = this.wallets.keypairFor(signerAddress);
     const tx = TransactionBuilder.fromXDR(unsignedXdr, Networks.TESTNET);
     tx.sign(kp);
     const signedXdr = tx.toXDR();
@@ -71,105 +68,171 @@ export class TrustlessWorkService {
   }
 
   /**
-   * Crea un escrow Single-Release como canasta de coordinación.
-   * No requiere fondeo. El amount se registra como referencia pero
-   * el contrato nunca recibe dinero.
+   * Despliega el contrato escrow Single-Release de TW.
+   * El token del bono es el asset custodiado; el comprador es el receiver.
    */
-  async createCoordinationEscrow(input: {
+  async deployEscrow(input: {
     bondId: string;
+    bondAssetCode: string;
     sellerAddress: string;
     buyerAddress: string;
-    amountCRC: number;
     transferId: string;
-  }): Promise<{ contractId: string; deployTx?: string }> {
+    amountUsdc: number;
+  }): Promise<{ contractId: string; deployTx: string }> {
+    // Asegura que el comprador tenga trustline al asset del bono antes del deploy.
+    // TW necesita poder enviarle el token al liberar.
+    // TW en dev solo acepta USDC — aseguramos trustline USDC al vendedor (receiver del USDC)
+    try {
+      this.logger.log(`TW: asegurando trustline USDC para seller ${input.sellerAddress}…`);
+      await this.stellar.ensureUsdcTrustline(input.sellerAddress);
+      await new Promise((r) => setTimeout(r, 3000));
+      this.logger.log(`TW: trustline USDC lista para seller`);
+    } catch (e) {
+      throw new Error(`Trustline USDC para vendedor falló: ${(e as Error).message}`);
+    }
+
     const body = {
       engagementId: input.transferId,
       title: `VELAR bond ${input.bondId}`.slice(0, 64),
-      description: `Coordinacion de venta del bono VELAR ${input.bondId}`,
+      description: `Venta del bono VELAR ${input.bondId}`,
       roles: {
         approver: this.platformAddress,
-        serviceProvider: input.sellerAddress,
+        serviceProvider: input.buyerAddress,   // comprador "provee el pago" (USDC)
         platformAddress: this.platformAddress,
         releaseSigner: this.platformAddress,
         disputeResolver: this.platformAddress,
-        receiver: input.sellerAddress,
+        receiver: input.sellerAddress,          // vendedor recibe el USDC al liberar
       },
       milestones: [{
-        description: `Transferencia del bono ${input.bondId}`,
+        description: `Pago por bono ${input.bondId}`,
       }],
-      // amount referencial : el escrow nunca se fondea, es solo coordinación
-      amount: Number(input.amountCRC) || 1,
+      amount: input.amountUsdc,
       platformFee: 0,
       trustline: {
-        address: this.wallets.issuerAddress,
-        symbol: 'VCRC',
+        address: this.stellar.usdcIssuer,
+        symbol: 'USDC',
       },
       signer: this.platformAddress,
     };
 
-    // Trustless Work valida que el receiver tenga trustline al asset antes
-    // de crear el escrow. Aseguramos la trustline VCRC y damos tiempo de
-    // propagación en Horizon antes de continuar.
-    try {
-      this.logger.log(`TW: asegurando trustline VCRC para receiver ${input.sellerAddress}…`);
-      await this.stellar.ensureVcrcTrustline(input.sellerAddress);
-      // Pausa breve para que Horizon propague la trustline antes de que
-      // Trustless Work la lea con su propia consulta.
-      await new Promise((r) => setTimeout(r, 2500));
-      this.logger.log(`TW: trustline VCRC lista para ${input.sellerAddress}`);
-    } catch (e) {
-      this.logger.warn(`TW: trustline VCRC falló: ${(e as Error).message}`);
-    }
-
     const deployRes = await this.call<{ unsignedTransaction: string }>('/deployer/single-release', body);
-    const submitRes = await this.signAndSubmit(deployRes.unsignedTransaction);
+    const submitRes = await this.signAndSubmit(deployRes.unsignedTransaction, this.platformAddress);
 
     if (!submitRes.contractId) {
-      this.logger.warn(`TW deploy ok pero send-transaction no devolvió contractId: ${JSON.stringify(submitRes).slice(0, 200)}`);
+      this.logger.warn(`TW deploy sin contractId en respuesta: ${JSON.stringify(submitRes).slice(0, 200)}`);
     }
-    return {
-      contractId: submitRes.contractId ?? `pending-${input.transferId}`,
-      deployTx: submitRes.txHash,
-    };
+
+    const contractId = submitRes.contractId ?? `pending-${input.transferId}`;
+    this.logger.log(`TW escrow desplegado: ${contractId} (bond ${input.bondId})`);
+    return { contractId, deployTx: submitRes.txHash };
   }
 
-  /** Marca el milestone como completado (vendedor "entregó" el bono). */
-  async markMilestoneCompleted(contractId: string, evidence?: string): Promise<string> {
+  /**
+   * El comprador deposita USDC en el contrato TW (el pago queda bloqueado).
+   * El bono sigue moviéndose por Stellar Classic (lockInEscrow del backend).
+   */
+  async fundEscrow(contractId: string, buyerAddress: string, amountUsdc: number): Promise<string> {
+    const { unsignedTransaction } = await this.call<{ unsignedTransaction: string }>(
+      '/escrow/single-release/fund-escrow',
+      {
+        contractId,
+        signer: buyerAddress,
+        amount: amountUsdc,
+      },
+    );
+    const { txHash } = await this.signAndSubmit(unsignedTransaction, buyerAddress);
+    this.logger.log(`TW fundEscrow OK: ${amountUsdc} USDC bloqueados (contrato ${contractId}, tx ${txHash})`);
+    return txHash;
+  }
+
+  /**
+   * Marca el milestone como completado cuando el comprador registra el pago off-chain.
+   */
+  async markMilestoneCompleted(
+    contractId: string,
+    buyerAddress: string,
+    evidence?: string,
+  ): Promise<string> {
     const { unsignedTransaction } = await this.call<{ unsignedTransaction: string }>(
       '/escrow/single-release/change-milestone-status',
       {
         contractId,
-        milestoneIndex: 0,
+        milestoneIndex: '0',
         newStatus: 'completed',
-        newEvidence: (evidence ?? 'bono transferido on-chain').slice(0, 200),
-        signer: this.platformAddress,
+        newEvidence: (evidence ?? 'pago registrado off-chain').slice(0, 200),
+        serviceProvider: buyerAddress,
       },
     );
-    const { txHash } = await this.signAndSubmit(unsignedTransaction);
+    const { txHash } = await this.signAndSubmit(unsignedTransaction, this.platformAddress);
     return txHash;
   }
 
-  /** Approver valida el milestone. */
+  /**
+   * La plataforma aprueba el milestone (el TSE/vendedor confirmó el pago).
+   */
   async approveMilestone(contractId: string): Promise<string> {
     const { unsignedTransaction } = await this.call<{ unsignedTransaction: string }>(
       '/escrow/single-release/approve-milestone',
       {
         contractId,
-        milestoneIndex: 0,
-        newFlag: true,
-        signer: this.platformAddress,
+        milestoneIndex: '0',
+        approver: this.platformAddress,
       },
     );
-    const { txHash } = await this.signAndSubmit(unsignedTransaction);
+    const { txHash } = await this.signAndSubmit(unsignedTransaction, this.platformAddress);
     return txHash;
   }
 
-  /** URL al contrato escrow en Stellar Expert. */
+  /**
+   * TW libera el token del bono al comprador (receiver del contrato).
+   * Se llama después de approveMilestone.
+   */
+  async releaseFunds(contractId: string): Promise<string> {
+    const { unsignedTransaction } = await this.call<{ unsignedTransaction: string }>(
+      '/escrow/single-release/release-funds',
+      {
+        contractId,
+        releaseSigner: this.platformAddress,
+      },
+    );
+    const { txHash } = await this.signAndSubmit(unsignedTransaction, this.platformAddress);
+    this.logger.log(`TW releaseFunds OK: ${txHash} (contrato ${contractId})`);
+    return txHash;
+  }
+
+  /**
+   * Cancela el escrow abriendo una disputa y resolviéndola a favor del vendedor.
+   * El token del bono vuelve al vendedor (serviceProvider del contrato).
+   */
+  async returnToSeller(contractId: string, sellerAddress: string): Promise<string> {
+    // 1. Abrir disputa (firmado por la plataforma como disputeResolver)
+    const { unsignedTransaction: disputeXdr } = await this.call<{ unsignedTransaction: string }>(
+      '/escrow/single-release/dispute-escrow',
+      {
+        contractId,
+        signer: this.platformAddress,
+      },
+    );
+    await this.signAndSubmit(disputeXdr, this.platformAddress);
+
+    // 2. Resolver disputa devolviendo el token completo al vendedor
+    const { unsignedTransaction: resolveXdr } = await this.call<{ unsignedTransaction: string }>(
+      '/escrow/single-release/resolve-dispute',
+      {
+        contractId,
+        disputeResolver: this.platformAddress,
+        distributions: [{ address: sellerAddress, amount: 1 }],
+      },
+    );
+    const { txHash } = await this.signAndSubmit(resolveXdr, this.platformAddress);
+    this.logger.log(`TW returnToSeller OK: ${txHash} (contrato ${contractId})`);
+    return txHash;
+  }
+
   contractExplorerUrl(contractId: string): string {
     return `https://stellar.expert/explorer/testnet/contract/${contractId}`;
   }
 
-  /** URL a la tx en Stellar Expert. */
   txExplorerUrl(txHash: string): string {
     return `https://stellar.expert/explorer/testnet/tx/${txHash}`;
   }

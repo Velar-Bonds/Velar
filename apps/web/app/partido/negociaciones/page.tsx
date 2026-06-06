@@ -1,4 +1,5 @@
 'use client';
+import { notify } from '../../components/Toast';
 import { useEffect, useState } from 'react';
 import { Handshake, ArrowRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
@@ -16,25 +17,24 @@ const STATUS_MAP: Record<string, [string, string]> = {
   solicitada: ['bg-blue-50 text-primary border-blue-200', 'Solicitada'],
   aceptada: ['bg-amber-50 text-amber-700 border-amber-200', 'Aceptada'],
   en_escrow: ['bg-amber-50 text-amber-700 border-amber-200', 'En escrow'],
-  pago_registrado: ['bg-blue-50 text-primary border-blue-200', 'Pago registrado'],
+  pago_registrado: ['bg-purple-50 text-purple-700 border-purple-200', 'Pago registrado'],
   pago_validado: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Pago validado'],
   liberada: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Completada'],
   cancelada: ['bg-gray-100 text-gray-500 border-gray-200', 'Cancelada'],
 };
 
 const ACTIVE = ['solicitada', 'aceptada', 'en_escrow', 'pago_registrado', 'pago_validado'];
-const FLOW_STEPS = ['Comprador solicita', 'Vos aceptás', 'Escrow activo', 'Comprador paga', 'Vos confirmás', 'Completado'];
 
 const fmt = (n: number | null | undefined) => n == null ? '' : '₡' + Number(n).toLocaleString('es-CR');
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : ':';
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 export default function PartidoNegociacionesPage() {
   const { token, me, loading, error } = useSession();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [msg, setMsg] = useState('');
+  
 
-  const load = (tok: string) => apiFetch(tok, 'GET', '/transfers').then(setTransfers).catch((e: any) => setMsg(e.message));
+  const load = (tok: string) => apiFetch(tok, 'GET', '/transfers').then(setTransfers).catch((e: any) => notify.err(e.message));
   useEffect(() => { if (token) load(token); /* eslint-disable-next-line */ }, [token]);
 
   if (loading || !token || !me) {
@@ -53,12 +53,12 @@ export default function PartidoNegociacionesPage() {
       if (!reason || !reason.trim()) return;
       body = { reason: reason.trim() };
     }
-    setBusy(id); setMsg('');
+    setBusy(id); 
     try {
       await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, body);
-      setMsg(action === 'request-return' ? '✅ Solicitud enviada al TSE' : '✅ Acción realizada');
+      notify.ok(action === 'request-return' ? 'Solicitud enviada al TSE' : 'Acción realizada');
       load(token);
-    } catch (e: any) { setMsg('⚠️ ' + e.message); }
+    } catch (e: any) { notify.err(e.message); }
     finally { setBusy(null); }
   }
 
@@ -92,7 +92,7 @@ export default function PartidoNegociacionesPage() {
             <div>
               <p className="font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{t.bonds?.bond_id ?? 'Bono'}</p>
               <p className="flex items-center gap-1.5 text-sm text-on-surface-variant">
-                {t.from_profile?.full_name ?? '?'}  {t.to_profile?.full_name ?? '?'}
+                {t.from_profile?.full_name ?? '?'} <ArrowRight size={13} /> {t.to_profile?.full_name ?? '?'}
               </p>
               <p className="text-xs text-on-surface-variant">{fmtDate(t.created_at)}</p>
               {(t as any).escrow_contract_id && (
@@ -102,7 +102,7 @@ export default function PartidoNegociacionesPage() {
                   className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-100"
                   title={(t as any).escrow_contract_id}
                 >
-                  🛡 Canasta on-chain (Trustless Work) 
+                  Canasta on-chain (Trustless Work)
                 </a>
               )}
             </div>
@@ -111,7 +111,7 @@ export default function PartidoNegociacionesPage() {
             {t.amount ? <span className="text-sm font-semibold">{fmt(t.amount)}</span> : null}
             <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>{lbl}</span>
             {acts.map(([label, action, variant]) => (
-              <button key={action} type="button" onClick={() => act(t.id, action)} disabled={busy === t.id}
+              <button key={action} onClick={() => act(t.id, action)} disabled={busy === t.id}
                 className={`${variant === 'primary' ? 'btn-action btn-success' : 'btn-ghost btn-ghost-danger'} ${busy === t.id ? 'btn-loading' : ''}`}>
                 {busy === t.id ? <span className="btn-spinner" /> : label}
               </button>
@@ -129,27 +129,19 @@ export default function PartidoNegociacionesPage() {
       </header>
 
       <div className="mx-auto w-full max-w-[1100px] p-10 pb-20">
-        {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
         {/* Flujo visual */}
-        <ol className="mb-8 grid w-full grid-cols-1 overflow-hidden rounded-2xl border border-blue-100 bg-blue-50 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {FLOW_STEPS.map((step, i) => (
-            <li
-              key={step}
-              className="relative flex min-h-[74px] items-center gap-3 border-b border-blue-100 px-4 py-3 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 lg:[&:nth-last-child(-n+3)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-sm">
-                {i + 1}
-              </span>
-              <span className="min-w-0 text-[12px] font-semibold leading-snug text-primary">
-                {step}
-              </span>
-              {i < FLOW_STEPS.length - 1 && (
-                <span aria-hidden className="ml-auto hidden h-px w-5 shrink-0 bg-primary/25 xl:block" />
-              )}
-            </li>
+        <div className="mb-8 flex items-center gap-2 overflow-x-auto rounded-2xl border border-blue-100 bg-blue-50 px-6 py-4">
+          {['Comprador solicita', 'Vos aceptás', 'Escrow activo', 'Comprador paga', 'Vos confirmás', 'Completado'].map((step, i, arr) => (
+            <div key={step} className="flex shrink-0 items-center gap-2">
+              <div className="text-center">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">{i + 1}</div>
+                <p className="mt-1 text-[11px] font-medium text-primary/80">{step}</p>
+              </div>
+              {i < arr.length - 1 && <ArrowRight size={14} className="shrink-0 text-primary/40" />}
+            </div>
           ))}
-        </ol>
+        </div>
 
         <h2 className="mb-3 text-lg font-semibold">Solicitudes activas</h2>
         {activas.length === 0 ? (

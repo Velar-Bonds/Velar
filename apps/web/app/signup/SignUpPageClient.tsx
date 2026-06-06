@@ -10,7 +10,7 @@ import { publicApiFetch } from '../../lib/api';
 import { getDefaultRouteForRole } from '../../lib/auth/routing';
 import { createClient } from '../../lib/supabase/client';
 
-type Perspectiva = 'usuario' | 'partido';
+type Perspectiva = 'usuario' | 'partido' | 'tse';
 
 type SignUpState = {
   perspectiva: Perspectiva;
@@ -31,6 +31,9 @@ const initialSignUpState: SignUpState = {
 function signUpReducer(state: SignUpState, patch: Partial<SignUpState>) {
   return { ...state, ...patch };
 }
+
+const defaultRoute = (p: Perspectiva) =>
+  p === 'partido' ? '/partido' : p === 'tse' ? '/tse' : '/marketplace';
 
 export default function SignUpPage() {
   const [state, setState] = useReducer(signUpReducer, initialSignUpState);
@@ -55,9 +58,9 @@ export default function SignUpPage() {
         .eq('id', user.id)
         .maybeSingle();
 
-      return getDefaultRouteForRole(profile?.role) || (perspectiva === 'partido' ? '/partido' : '/marketplace');
+      return getDefaultRouteForRole(profile?.role) || defaultRoute(perspectiva);
     } catch {
-      return perspectiva === 'partido' ? '/partido' : '/marketplace';
+      return defaultRoute(perspectiva);
     }
   }
 
@@ -113,6 +116,7 @@ export default function SignUpPage() {
         <div className="mt-4 flex gap-1 rounded-[16px] border border-[#d8e2f5] bg-white/85 p-1.5 shadow-[0_8px_18px_rgba(15,35,93,0.04)]">
           {tab('usuario', 'Usuario')}
           {tab('partido', 'Partido')}
+          {tab('tse', 'TSE')}
         </div>
 
         <form onSubmit={handleSubmit} className="velar-stagger mt-5 space-y-3.5 sm:mt-6 sm:space-y-4">
@@ -192,7 +196,7 @@ export default function SignUpPage() {
             className="velar-primary-button flex h-11 w-full items-center justify-center gap-3 rounded-[14px] text-[15px] font-semibold transition disabled:opacity-60 sm:h-12 sm:text-base lg:h-[50px]"
           >
             {loading ? 'Creando...' : 'Crear cuenta'}
-            {!loading && <span aria-hidden className="text-xl leading-none"> a </span>}
+            
           </button>
         </form>
 

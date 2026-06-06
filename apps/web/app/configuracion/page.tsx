@@ -1,4 +1,5 @@
 'use client';
+import { notify } from '../../components/Toast';
 
 import { ReactNode, useState } from 'react';
 import { ExternalLink, LogOut, ShieldCheck, User, Wallet } from 'lucide-react';
@@ -28,17 +29,17 @@ function Content({ token, me }: { token: string; me: Me }) {
   const router = useRouter();
   const supabase = createClient();
   const [fullName, setFullName] = useState(me.full_name ?? '');
-  const [msg, setMsg] = useState('');
+  
   const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
-    setMsg('');
+    
     try {
       await apiFetch(token, 'PATCH', '/users/me', { full_name: fullName });
-      setMsg('Cambios guardados');
+      notify.ok('Cambios guardados');
     } catch (e: any) {
-      setMsg('Atencion: ' + e.message);
+      notify.err(e.message);
     } finally {
       setSaving(false);
     }
@@ -50,7 +51,6 @@ function Content({ token, me }: { token: string; me: Me }) {
     <>
       <h1 className="mb-1 text-3xl font-bold tracking-tight md:text-4xl" style={{ fontFamily: 'Geist' }}>Configuracion</h1>
       <p className="mb-6 text-on-surface-variant">Tu perfil, wallet y seguridad.</p>
-      {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SettingsCard icon={<User size={20} />} title="Perfil">

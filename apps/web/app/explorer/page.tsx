@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {
   ArrowLeft, ExternalLink, ShieldCheck, Coins, Server, Lock, Activity, Eye, BookOpen, Boxes,
 } from 'lucide-react';
-import { VelarBrand } from '../../components/VelarBrand';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
@@ -79,12 +78,17 @@ export default function ExplorerPage() {
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-4 px-6">
           <div className="flex items-center gap-5">
             <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-600 transition hover:text-slate-900">
-               Volver al inicio
+              <ArrowLeft size={15} /> Volver al inicio
             </Link>
             <span className="hidden h-5 w-px bg-slate-200 sm:block" />
-            <Link href="/" className="hidden items-center gap-2 sm:flex" aria-label="VELAR Explorer">
-              <VelarBrand size="sm" />
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-slate-500">EXPLORER</span>
+            <Link href="/" className="hidden items-center gap-2 sm:flex">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary-container to-primary text-white">
+                <Boxes size={14} strokeWidth={2.3} />
+              </div>
+              <span className="text-sm font-bold tracking-tight text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>
+                VELAR
+                <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-slate-500">EXPLORER</span>
+              </span>
             </Link>
           </div>
           <Link
@@ -92,7 +96,7 @@ export default function ExplorerPage() {
             className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-white transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25"
           >
             Acceder a la plataforma
-            
+            <ExternalLink size={13} />
           </Link>
         </div>
       </header>
@@ -155,7 +159,7 @@ export default function ExplorerPage() {
               <p className="mt-1 text-[13px] leading-relaxed text-slate-600">{data.assets.vcrc.purpose}</p>
               <p className="mt-3 font-mono text-[11px] text-slate-400">{shortKey(data.assets.vcrc.issuer, 8)}</p>
               <span className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-primary group-hover:underline">
-                Ver volumen total 
+                Ver volumen total <ExternalLink size={11} />
               </span>
             </a>
 
@@ -175,7 +179,7 @@ export default function ExplorerPage() {
               <p className="mt-1 text-[13px] leading-relaxed text-slate-600">Cuenta que emite todos los bonos y el VCRC. Toda la actividad de la plataforma pasa por aquí.</p>
               <p className="mt-3 font-mono text-[11px] text-slate-400">{shortKey(data.platform_account.address, 8)}</p>
               <span className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-primary group-hover:underline">
-                Ver actividad histórica 
+                Ver actividad histórica <ExternalLink size={11} />
               </span>
             </a>
 
@@ -195,7 +199,7 @@ export default function ExplorerPage() {
               <p className="mt-1 text-[13px] leading-relaxed text-slate-600">Cuenta donde se bloquean los tokens durante una venta hasta que el TSE/validador apruebe.</p>
               <p className="mt-3 font-mono text-[11px] text-slate-400">{shortKey(data.escrow_account.address, 8)}</p>
               <span className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-primary group-hover:underline">
-                Ver bonos en custodia 
+                Ver bonos en custodia <ExternalLink size={11} />
               </span>
             </a>
           </div>
@@ -205,19 +209,19 @@ export default function ExplorerPage() {
         {data.soroban_nfts.length > 0 && (
           <section className="mb-12">
             <h2 className="mb-1 flex items-center gap-2 text-xl font-semibold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>
-              🪙 Soroban NFTs <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[12px] font-semibold text-primary">{data.soroban_nfts.length}</span>
+              Soroban NFTs <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[12px] font-semibold text-purple-700">{data.soroban_nfts.length}</span>
             </h2>
             <p className="mb-6 text-sm text-slate-500">Cada bono nuevo es un contrato Soroban con toda su metadata on-chain.</p>
 
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
               {data.soroban_nfts.map((n) => (
                 <a key={n.contract_id} href={n.url} target="_blank" rel="noopener noreferrer"
-                  className="group flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/40 px-4 py-3 transition hover:bg-blue-50">
+                  className="group flex items-center justify-between gap-3 rounded-xl border border-purple-100 bg-purple-50/40 px-4 py-3 transition hover:bg-purple-50">
                   <div className="min-w-0">
-                    <p className="font-mono text-sm font-bold text-primary" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{n.bond_id}</p>
-                    <p className="truncate font-mono text-[11px] text-primary">{shortKey(n.contract_id, 6)}</p>
+                    <p className="font-mono text-sm font-bold text-purple-900" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{n.bond_id}</p>
+                    <p className="truncate font-mono text-[11px] text-purple-700">{shortKey(n.contract_id, 6)}</p>
                   </div>
-                  
+                  <ExternalLink size={14} className="shrink-0 text-purple-600 transition group-hover:scale-110" />
                 </a>
               ))}
             </div>
@@ -243,7 +247,7 @@ export default function ExplorerPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[11px] text-slate-500">{shortKey(c.contract_id, 6)}</span>
-                    
+                    <ExternalLink size={13} className="text-emerald-600 transition group-hover:scale-110" />
                   </div>
                 </a>
               ))}
@@ -271,18 +275,18 @@ export default function ExplorerPage() {
               {data.recent_bonds.map((b) => (
                 <div key={b.bond_id} className="grid grid-cols-1 items-center gap-3 border-b border-slate-100 px-5 py-3 last:border-0 md:grid-cols-[140px_1fr_120px_120px_240px]">
                   <span className="font-mono text-sm font-bold text-primary" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{b.bond_id}</span>
-                  <span className="text-sm text-slate-700">{b.party ?? 'Sin dato'}</span>
+                  <span className="text-sm text-slate-700">{b.party ?? '—'}</span>
                   <span className="text-sm font-semibold text-slate-900">{fmtCRC(b.face_value)}</span>
                   <span><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{b.status}</span></span>
                   <div className="flex items-center justify-end gap-2">
                     <a href={b.asset_url} target="_blank" rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 transition hover:border-primary hover:text-primary">
-                      Asset 
+                      Asset <ExternalLink size={10} />
                     </a>
                     {b.soroban_contract_url && (
                       <a href={b.soroban_contract_url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-primary transition hover:bg-blue-100">
-                        🪙 NFT 
+                        className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[11px] font-medium text-purple-700 transition hover:bg-purple-100">
+                        NFT <ExternalLink size={10} />
                       </a>
                     )}
                   </div>

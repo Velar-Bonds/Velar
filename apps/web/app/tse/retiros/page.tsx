@@ -1,4 +1,5 @@
 'use client';
+import { notify } from '../../../components/Toast';
 import { useEffect, useState } from 'react';
 import { ArrowRight, AlertTriangle, CheckCircle, XCircle, Shield } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
@@ -11,7 +12,7 @@ export default function RetirosPage() {
   const { token, me, loading, error } = useSession();
   const [transfers, setTransfers] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [msg, setMsg] = useState('');
+  
   const [notes, setNotes] = useState<Record<string, string>>({});
 
   const load = () => apiFetch(token, 'GET', '/transfers').then(setTransfers).catch(() => {});
@@ -26,12 +27,12 @@ export default function RetirosPage() {
   }
 
   async function decide(id: string, action: 'approve-return' | 'reject-return') {
-    setBusy(id); setMsg('');
+    setBusy(id); 
     try {
       await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, { notes: notes[id] });
-      setMsg(action === 'approve-return' ? '✅ Bono devuelto al dueño on-chain' : 'Solicitud rechazada');
+      notify.ok(action === 'approve-return' ? 'Bono devuelto al dueño on-chain' : 'Solicitud rechazada');
       load();
-    } catch (e: any) { setMsg('⚠️ ' + e.message); }
+    } catch (e: any) { notify.err(e.message); }
     finally { setBusy(null); }
   }
 
@@ -65,7 +66,6 @@ export default function RetirosPage() {
           </div>
         </div>
 
-        {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
         <h2 className="mb-3 text-lg font-semibold">Pendientes</h2>
         {pending.length === 0 ? (

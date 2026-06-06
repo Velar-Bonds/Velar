@@ -82,8 +82,8 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell>
-      <div className="mx-auto w-full max-w-[520px]">
+    <AuthShell cardClassName="lg:h-full">
+      <div className="mx-auto w-full max-w-[560px] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:justify-center">
         <div className="mb-5 text-center sm:mb-6 lg:mb-6">
           <h2 className="velar-brand-text text-[1.85rem] font-extrabold tracking-[-0.03em] text-[#10235d] sm:text-[2.2rem] xl:text-[2.45rem]">
             Iniciar sesion
@@ -158,7 +158,7 @@ export default function LoginPage() {
             className="velar-primary-button flex h-11 w-full items-center justify-center gap-3 rounded-[14px] text-[15px] font-semibold transition disabled:opacity-60 sm:h-12 sm:text-base lg:h-[50px]"
           >
             {loading ? 'Iniciando...' : 'Iniciar sesion'}
-            {!loading && <span aria-hidden className="text-xl leading-none"> a </span>}
+            
           </button>
         </form>
 

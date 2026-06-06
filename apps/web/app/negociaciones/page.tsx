@@ -1,4 +1,5 @@
 'use client';
+import { notify } from '../../components/Toast';
 import { useEffect, useState } from 'react';
 import { Handshake, ArrowRight, Shield, ExternalLink } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
@@ -20,10 +21,10 @@ export default function NegociacionesPage() {
 
 function Content({ token, me }: { token: string; me: Me }) {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [msg, setMsg] = useState('');
+  
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = () => apiFetch(token, 'GET', '/transfers').then(setTransfers).catch((e) => setMsg(e.message));
+  const load = () => apiFetch(token, 'GET', '/transfers').then(setTransfers).catch((e) => notify.err(e.message));
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   async function act(id: string, action: string) {
@@ -34,12 +35,12 @@ function Content({ token, me }: { token: string; me: Me }) {
       if (!reason || !reason.trim()) return;
       body = { reason: reason.trim() };
     }
-    setBusy(id); setMsg('');
+    setBusy(id); 
     try {
       await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, body);
-      setMsg(action === 'request-return' ? '✅ Solicitud enviada al TSE' : '✅ Acción realizada');
+      notify.ok(action === 'request-return' ? 'Solicitud enviada al TSE' : 'Acción realizada');
       load();
-    } catch (e: any) { setMsg('⚠️ ' + e.message); }
+    } catch (e: any) { notify.err(e.message); }
     finally { setBusy(null); }
   }
 
@@ -94,7 +95,6 @@ function Content({ token, me }: { token: string; me: Me }) {
     <>
       <h1 className="mb-1 text-3xl font-bold tracking-tight md:text-4xl" style={{ fontFamily: 'Geist' }}>Negociaciones</h1>
       <p className="mb-6 text-on-surface-variant">Compras, ventas, ofertas activas e historial de transacciones.</p>
-      {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
       <h2 className="mb-3 text-lg font-semibold">Ofertas activas</h2>
       {activas.length === 0

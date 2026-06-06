@@ -1,10 +1,11 @@
 'use client';
+import { notify } from '../../components/Toast';
 import { useEffect, useState } from 'react';
 import { Wallet, TrendingUp, Boxes, ShoppingCart } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { StellarExpertButton, StatusBadge, EmptyState, fmtMoney } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
-import { bondAssetUrl } from '../../lib/stellar';
+import { bondExplorerUrl } from '../../lib/stellar';
 
 type Bond = { token_id: string; bond_id: string; status: string; face_value: number | null; parties?: { name?: string }; created_at?: string };
 
@@ -15,15 +16,15 @@ export default function MisBonosPage() {
 function Content({ token }: { token: string }) {
   const [bonds, setBonds] = useState<Bond[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [msg, setMsg] = useState('');
+  
 
   const load = () => apiFetch(token, 'GET', '/bonds').then(setBonds).catch(() => {});
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
   async function publicar(tokenId: string) {
-    setBusy(tokenId); setMsg('');
-    try { await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`); setMsg('✅ Bono publicado en el marketplace.'); load(); }
-    catch (e: any) { setMsg('⚠️ ' + e.message); } finally { setBusy(null); }
+    setBusy(tokenId); 
+    try { await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`); notify.ok('Bono publicado en el marketplace.'); load(); }
+    catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
   }
 
   const total = bonds.reduce((s, b) => s + (Number(b.face_value) || 0), 0);
@@ -39,7 +40,6 @@ function Content({ token }: { token: string }) {
     <>
       <h1 className="mb-1 text-3xl font-bold tracking-tight md:text-4xl" style={{ fontFamily: 'Geist' }}>Mis bonos</h1>
       <p className="mb-6 text-on-surface-variant">Los bonos que poseés, con su estado y verificación on-chain.</p>
-      {msg && <div className="mb-4 rounded-xl border border-[#d8e2f5] bg-white px-4 py-2.5 text-sm">{msg}</div>}
 
       <div className="velar-stagger mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map(([label, val, icon]) => (
@@ -75,7 +75,7 @@ function Content({ token }: { token: string }) {
                             {busy === b.token_id ? <><span className="btn-spinner" /> Publicando…</> : <><ShoppingCart size={12} /> Publicar</>}
                           </button>
                         )}
-                        <StellarExpertButton href={bondAssetUrl(b.bond_id)} label="Stellar" small />
+                        <StellarExpertButton href={bondExplorerUrl(b.soroban_contract_id, b.bond_id)} label="Stellar" small />
                       </div>
                     </td>
                   </tr>

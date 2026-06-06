@@ -172,7 +172,7 @@ export default function EscrowsPage() {
                     </div>
                   ) : (
                     <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-                      ⚠️ Esta transferencia no tiene canasta Trustless Work (puede haberse creado antes de la integración o falló la API).
+                      Esta transferencia no tiene canasta Trustless Work registrada.
                     </div>
                   )}
                 </div>

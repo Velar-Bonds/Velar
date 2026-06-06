@@ -19,6 +19,13 @@ export const PLATFORM_ISSUER = 'GDJMYOQUSNS4LWVENGQYFFUULNEYAGJBOIGAVENSRY3GI3S2
 export const assetCodeFor = (bondId: string) =>
   bondId.replace(/[^A-Za-z0-9]/g, '').slice(0, 12) || 'BOND';
 
-/** URL del activo del bono en Stellar Expert. */
+/** URL del bono en Stellar Expert — usa el contrato Soroban si existe, si no el asset clásico. */
+export const bondExplorerUrl = (contractId?: string | null, bondId?: string) => {
+  if (contractId) return `${BASE}/contract/${contractId}`;
+  if (bondId) return stellarExpert.asset(assetCodeFor(bondId), PLATFORM_ISSUER);
+  return BASE;
+};
+
+/** @deprecated usar bondExplorerUrl */
 export const bondAssetUrl = (bondId: string) =>
   stellarExpert.asset(assetCodeFor(bondId), PLATFORM_ISSUER);

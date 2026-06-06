@@ -199,7 +199,7 @@ body {
 }
 .field-input:focus {
   border-color: var(--color-primary-container);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary-container) 15%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary-container) 12%, transparent);
 }
 
 .velar-card {
@@ -444,6 +444,8 @@ body {
   outline: 2px solid var(--color-primary-container);
   outline-offset: 2px;
 }
+
+/* ─── Auth card con tono cálido ───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .btn-action, .btn-ghost, .velar-primary-button { transition: none; }
   .btn-action::after, .btn-ghost::after { display: none; }
