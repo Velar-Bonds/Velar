@@ -18,14 +18,14 @@ const partido = await reg({
   nombrePartido: `Partido Demo ${n}`, codigo: `PD${n}`,
   representanteLegal: 'Juan Pérez', cedulaJuridica: `3-101-${n}`,
 });
-console.log('   →', partido.email, '| rol', partido.role, '| wallet', partido.wallet?.slice(0, 8) + '…');
+console.log('    a ', partido.email, '| rol', partido.role, '| wallet', partido.wallet?.slice(0, 8) + '…');
 
 console.log('② Registrar USUARIO (comprador) con info completa');
 const usuario = await reg({
   email: `user${n}@velar.cr`, password: PASS, perspectiva: 'usuario',
   nombres: 'María', apellidos: 'Gómez', identificacion: `1-${n}`, telefono: '8888-0000', direccion: 'San José',
 });
-console.log('   →', usuario.email, '| rol', usuario.role, '| wallet', usuario.wallet?.slice(0, 8) + '…');
+console.log('    a ', usuario.email, '| rol', usuario.role, '| wallet', usuario.wallet?.slice(0, 8) + '…');
 
 console.log('③ TSE emite un bono A NOMBRE del partido nuevo');
 const tse = await login('tse@velar.cr', 'Velar12345!');
@@ -42,17 +42,17 @@ const avail = await api('GET', '/bonds/available', uTok);
 console.log('   bonos disponibles para el usuario:', avail.length);
 const t = await api('POST', '/transfers', uTok, { bondTokenId: bond.token_id, amount: 480000 });
 
-console.log('⑤ El PARTIDO acepta la venta → token a la canasta 🔒');
+console.log('⑤ El PARTIDO acepta la venta  a  token a la canasta 🔒');
 const pTok = await login(partido.email, PASS);
 await api('PATCH', `/transfers/${t.id}/accept`, pTok);
 oc = await api('GET', `/bonds/${bond.token_id}/onchain`, tse);
 console.log('   dueño on-chain:', oc.onchainHolder?.slice(0, 8) + '… (escrow)');
 
-console.log('⑥ El USUARIO registra el pago; el PARTIDO confirma → libera el token');
+console.log('⑥ El USUARIO registra el pago; el PARTIDO confirma  a  libera el token');
 await api('PATCH', `/transfers/${t.id}/payment`, uTok, { evidence: 'comprobante' });
 await api('PATCH', `/transfers/${t.id}/release`, pTok);
 oc = await api('GET', `/bonds/${bond.token_id}/onchain`, tse);
 console.log('   dueño on-chain:', oc.onchainHolder?.slice(0, 8) + '… (= wallet del usuario', usuario.wallet?.slice(0, 8) + '…)');
 
-console.log('\n✅ Registro + flujo completo OK. El bono pasó: partido → usuario, on-chain.');
+console.log('\n✅ Registro + flujo completo OK. El bono pasó: partido  a  usuario, on-chain.');
 console.log('🔗', oc.assetExplorer);

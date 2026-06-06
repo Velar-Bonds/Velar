@@ -1,4 +1,4 @@
-# DEMO.md — Cómo ver y probar VELAR funcionando
+# DEMO.md : Cómo ver y probar VELAR funcionando
 
 > Guía para levantar el proyecto y **ver con tus propios ojos** que el bono es un
 > token real en Stellar y que el flujo completo funciona.
@@ -40,8 +40,8 @@ Con la API corriendo (`npm run start`), abrí:
 http://localhost:3001/api/console
 ```
 Botones de un clic para entrar como **🏛️ TSE**, **🎗️ Partido (PLN)**, **👤 Usuario A** o **👤 Usuario B**.
-Flujo: TSE emite a un partido → Usuario solicita comprar → el dueño Acepta (token a la canasta) →
-Usuario "Registré el pago" → el vendedor "Confirmar pago y liberar" → el bono cambia de dueño on-chain.
+Flujo: TSE emite a un partido  a  Usuario solicita comprar  a  el dueño Acepta (token a la canasta)  a 
+Usuario "Registré el pago"  a  el vendedor "Confirmar pago y liberar"  a  el bono cambia de dueño on-chain.
 El botón "ver en Stellar" abre la transacción real en stellar.expert.
 
 ## 2. La forma más rápida de ver que TODO funciona (CLI)
@@ -51,20 +51,20 @@ Con la API corriendo, un solo comando ejecuta el ciclo completo y te da el link 
 ```bash
 cd apps/api
 npm run start            # en una terminal (deja corriendo)
-npm run demo:flow        # en otra terminal — flujo con cuentas sembradas
+npm run demo:flow        # en otra terminal : flujo con cuentas sembradas
 npm run demo:register    # registra un partido y un usuario NUEVOS y corre el flujo
 ```
 
 Vas a ver paso a paso cómo el **token del bono** se mueve:
 ```
-① EMISOR emite el bono como TOKEN en Stellar → COMPRADOR
+① EMISOR emite el bono como TOKEN en Stellar  a  COMPRADOR
    dueño on-chain: COMPRADOR
-② COMPRADOR solicita transferir → RECOMPRADOR
-③ RECOMPRADOR acepta → el TOKEN entra a la CANASTA (escrow) 🔒
+② COMPRADOR solicita transferir  a  RECOMPRADOR
+③ RECOMPRADOR acepta  a  el TOKEN entra a la CANASTA (escrow) 🔒
    dueño on-chain: ESCROW
 ④ RECOMPRADOR registra el pago físico (hash de evidencia)
 ⑤ VALIDADOR confirma el pago
-⑥ VALIDADOR libera → el TOKEN sale de la canasta → RECOMPRADOR
+⑥ VALIDADOR libera  a  el TOKEN sale de la canasta  a  RECOMPRADOR
    dueño on-chain: RECOMPRADOR
 🔗 https://stellar.expert/explorer/testnet/asset/DEMO...-G...
 ```

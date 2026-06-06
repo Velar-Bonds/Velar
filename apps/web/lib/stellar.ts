@@ -10,7 +10,7 @@ export const stellarExpert = {
 };
 
 export const shortKey = (k?: string | null, n = 4) =>
-  !k ? '—' : `${k.slice(0, n + 2)}…${k.slice(-n)}`;
+  !k ? 'Sin dato' : `${k.slice(0, n + 2)}…${k.slice(-n)}`;
 
 /** Cuenta emisora (plataforma) de los activos de bono en testnet. */
 export const PLATFORM_ISSUER = 'GDJMYOQUSNS4LWVENGQYFFUULNEYAGJBOIGAVENSRY3GI3S2P2HW2VK5';

@@ -71,7 +71,7 @@ export class TransfersService {
     return transfer;
   }
 
-  // El DUEÑO (vendedor) acepta la solicitud → el token entra a la canasta.
+  // El DUEÑO (vendedor) acepta la solicitud  a  el token entra a la canasta.
   async acceptTransfer(transferId: string, actorId: string) {
     const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
     if (!transfer) throw new NotFoundException('Transfer not found');
@@ -95,7 +95,7 @@ export class TransfersService {
     }
 
     // En paralelo: crea escrow Trustless Work como registro on-chain del trade.
-    // No maneja dinero — solo coordina el lifecycle. Si falla, el flujo sigue.
+    // No maneja dinero : solo coordina el lifecycle. Si falla, el flujo sigue.
     let twContractId: string | undefined;
     let twDeployTx: string | undefined;
     if (this.trustlessWork.enabled && fromWallet && toWallet) {
@@ -288,7 +288,7 @@ export class TransfersService {
     return updated;
   }
 
-  // El VENDEDOR (dueño actual) confirma que recibió el pago → libera el token al comprador.
+  // El VENDEDOR (dueño actual) confirma que recibió el pago  a  libera el token al comprador.
   async releaseToken(transferId: string, actorId: string, actorRole: Role) {
     const { data: transfer } = await this.supabase.admin.from('transfers').select('*').eq('id', transferId).single();
     if (!transfer) throw new NotFoundException();

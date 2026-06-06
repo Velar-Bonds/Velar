@@ -11,15 +11,15 @@ type Transfer = {
   from_profile?: { full_name?: string }; to_profile?: { full_name?: string };
 };
 
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-const fmt = (n: number | null | undefined) => n == null ? '—' : '₡' + Number(n).toLocaleString('es-CR');
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ':';
+const fmt = (n: number | null | undefined) => n == null ? 'Sin dato' : '₡' + Number(n).toLocaleString('es-CR');
 
 const STATUS_COLOR: Record<string, string> = {
   solicitada: 'bg-blue-100 text-primary',
   liberada: 'bg-emerald-100 text-emerald-700',
   cancelada: 'bg-gray-100 text-gray-500',
   en_escrow: 'bg-amber-100 text-amber-700',
-  pago_registrado: 'bg-purple-100 text-purple-700',
+  pago_registrado: 'bg-blue-100 text-primary',
 };
 
 export default function PartidoTrazabilidadPage() {
@@ -55,7 +55,7 @@ export default function PartidoTrazabilidadPage() {
   // El dueño actual viene de la BD (bond.profiles.full_name), fallback al último mov liberado
   const currentOwner = (bond as any)?.profiles?.full_name
     ?? movs.filter((t) => t.status === 'liberada').at(-1)?.to_profile?.full_name
-    ?? '—';
+    ?? 'Sin dato';
 
   return (
     <PartidoShell me={me}>
@@ -108,7 +108,7 @@ export default function PartidoTrazabilidadPage() {
                 {bond && (
                   <a href={bondAssetUrl(bond.bond_id)} target="_blank" rel="noopener noreferrer"
                     className="mb-5 flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-xs font-medium text-primary transition hover:bg-blue-100">
-                    <ExternalLink size={13} /> Ver transacciones en Stellar Expert
+                     Ver transacciones en Stellar Expert
                   </a>
                 )}
 
@@ -121,12 +121,12 @@ export default function PartidoTrazabilidadPage() {
                       return (
                         <div key={t.id} className="relative flex gap-4">
                           <span className={`z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm ${colorCls}`}>
-                            <ArrowRight size={15} />
+                            
                           </span>
                           <div className="flex-1 rounded-xl border border-outline-variant/20 bg-white p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <p className="text-sm font-semibold">
-                                {t.from_profile?.full_name ?? '—'} <span className="text-on-surface-variant">→</span> {t.to_profile?.full_name ?? '—'}
+                                {t.from_profile?.full_name ?? 'Sin dato'} <span className="text-on-surface-variant"> a </span> {t.to_profile?.full_name ?? 'Sin dato'}
                               </p>
                               <span className="text-xs text-on-surface-variant">{fmtDate(t.created_at)}</span>
                             </div>

@@ -1,4 +1,4 @@
-# VELAR — Bonos como NFT Soroban
+# VELAR : Bonos como NFT Soroban
 
 ## Qué es
 
@@ -13,7 +13,7 @@ contratos.
 
 ```
 ┌──────────────────────┐     ┌──────────────────────┐
-│   Postgres (cache)   │ ←─→ │  Soroban (verdad)    │
+│   Postgres (cache)   │  de ─ a  │  Soroban (verdad)    │
 │  - filas para UI     │     │  - 1 contrato/bono   │
 │  - filtros rápidos   │     │  - reglas inmutables │
 └──────────────────────┘     └──────────────────────┘

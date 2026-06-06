@@ -1,5 +1,5 @@
 // ============================================================
-// VELAR — Seed de datos demo (idempotente)
+// VELAR : Seed de datos demo (idempotente)
 // ============================================================
 // Crea 6 usuarios (uno por rol), asigna partido al emisor, y precarga
 // bonos y transferencias en distintos estados con sus eventos de auditoría.
@@ -80,7 +80,7 @@ async function emit(ev) {
 }
 
 async function main() {
-  console.log('🌱 VELAR seed — iniciando...');
+  console.log('🌱 VELAR seed : iniciando...');
 
   // 1) Usuarios
   console.log('\n👤 Usuarios:');

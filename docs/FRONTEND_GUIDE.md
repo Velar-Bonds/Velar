@@ -1,4 +1,4 @@
-# FRONTEND_GUIDE.md — Guía para el agente/dev de Frontend (apps/web)
+# FRONTEND_GUIDE.md : Guía para el agente/dev de Frontend (apps/web)
 
 > Para quien construye el frontend de VELAR. **Leé también `AGENTS.md`** (reglas del repo).
 > El backend ya está hecho y es la fuente de verdad de la lógica y los permisos. Tu trabajo es
@@ -12,7 +12,7 @@
 > 🚫 **Para NO romper el backend (regla dura):** trabajá **solo en `apps/web/`**.
 > NO edites `apps/api/`, `supabase/migrations/`, ni los `.ts` de `packages/types/` (podés
 > importar sus tipos, no cambiarlos). NO toques los `.env`. NO cambies los contratos de la API:
-> si necesitás un endpoint o campo nuevo, anotalo acá y avisá — no lo "arregles" en el backend.
+> si necesitás un endpoint o campo nuevo, anotalo acá y avisá : no lo "arregles" en el backend.
 > Antes de commitear: `npm run build --workspace apps/web` debe pasar.
 
 ---
@@ -59,7 +59,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api
 
 ## 3. Cómo autenticar cada request (patrón obligatorio)
 
-1. Login/signup con Supabase Auth → obtenés una `session` con `access_token`.
+1. Login/signup con Supabase Auth  a  obtenés una `session` con `access_token`.
 2. En **cada** llamada al backend, mandá el header:
    ```
    Authorization: Bearer <access_token>
@@ -87,39 +87,39 @@ nuevos en paralelo.
   - Crea la cuenta + perfil con la info + una wallet de custodia. (El TSE se siembra, no se auto-registra.)
 
 ### Usuarios
-- `GET  /users/me` → perfil del usuario actual (incluye `role`, `party_id`, `stellar_wallet`).
-- `PATCH /users/me` → body `{ full_name?, stellar_wallet? }`.
-- `GET  /users` → lista usuarios (solo admin/tse).
-- `PATCH /users/:id/role` → body `{ role }` (solo admin).
+- `GET  /users/me`  a  perfil del usuario actual (incluye `role`, `party_id`, `stellar_wallet`).
+- `PATCH /users/me`  a  body `{ full_name?, stellar_wallet? }`.
+- `GET  /users`  a  lista usuarios (solo admin/tse).
+- `PATCH /users/:id/role`  a  body `{ role }` (solo admin).
 
 ### Partidos
-- `GET  /parties` → lista de partidos (para `<select>`).
+- `GET  /parties`  a  lista de partidos (para `<select>`).
 - `GET  /parties/:id`
-- `POST /parties` → `{ code, name }`.
+- `POST /parties`  a  `{ code, name }`.
 
 ### Bonos
-- `GET  /bonds` → bonos visibles según el rol (dueño ve los suyos; emisor los de su partido;
+- `GET  /bonds`  a  bonos visibles según el rol (dueño ve los suyos; emisor los de su partido;
   TSE/admin ven todos). Incluye `parties` y datos del dueño.
-- `GET  /bonds/:tokenId` → detalle de un bono.
-- `GET  /bonds/:tokenId/onchain` → info blockchain: `{ assetCode, onchainHolder, assetExplorer }`.
+- `GET  /bonds/:tokenId`  a  detalle de un bono.
+- `GET  /bonds/:tokenId/onchain`  a  info blockchain: `{ assetCode, onchainHolder, assetExplorer }`.
   Mostrá `assetExplorer` como link a Stellar (stellar.expert) y `onchainHolder` como dueño real on-chain.
-- `POST /bonds` (emisor/admin) → `{ bondId, issuerPartyId, documentHash, metadataUri?,
+- `POST /bonds` (emisor/admin)  a  `{ bondId, issuerPartyId, documentHash, metadataUri?,
   faceValue?, initialOwner? }`.
-- `PATCH /bonds/:tokenId/freeze` (tse/admin) → congela.
-- `PATCH /bonds/:tokenId/unfreeze` (tse/admin) → reactiva.
+- `PATCH /bonds/:tokenId/freeze` (tse/admin)  a  congela.
+- `PATCH /bonds/:tokenId/unfreeze` (tse/admin)  a  reactiva.
 
 ### Bonos en venta (vitrina)
-- `GET /bonds/available` → bonos `activo` de OTROS dueños, que un usuario puede solicitar comprar.
+- `GET /bonds/available`  a  bonos `activo` de OTROS dueños, que un usuario puede solicitar comprar.
 
-### Transferencias (flujo principal) — el COMPRADOR inicia
-- `GET   /transfers` → transferencias donde sos vendedor o comprador.
-- `GET   /transfers/:id` → detalle (con bono y perfiles).
-- `POST  /transfers` → `{ bondTokenId, amount? }`. **El comprador solicita comprar** ese bono
+### Transferencias (flujo principal) : el COMPRADOR inicia
+- `GET   /transfers`  a  transferencias donde sos vendedor o comprador.
+- `GET   /transfers/:id`  a  detalle (con bono y perfiles).
+- `POST  /transfers`  a  `{ bondTokenId, amount? }`. **El comprador solicita comprar** ese bono
   (el vendedor = dueño actual se resuelve solo). Estado `solicitada`.
-- `PATCH /transfers/:id/accept` → **el dueño/vendedor acepta** la venta; el token va a la canasta (escrow).
-- `PATCH /transfers/:id/payment` → `{ evidence }`; **el comprador** registra el pago físico (se guarda su hash).
-- `PATCH /transfers/:id/release` → **el vendedor confirma el pago** y libera el token al comprador.
-- `PATCH /transfers/:id/cancel` → cancela (el token vuelve al dueño anterior).
+- `PATCH /transfers/:id/accept`  a  **el dueño/vendedor acepta** la venta; el token va a la canasta (escrow).
+- `PATCH /transfers/:id/payment`  a  `{ evidence }`; **el comprador** registra el pago físico (se guarda su hash).
+- `PATCH /transfers/:id/release`  a  **el vendedor confirma el pago** y libera el token al comprador.
+- `PATCH /transfers/:id/cancel`  a  cancela (el token vuelve al dueño anterior).
 
 > Nota: ya no hay rol "validador" en el flujo; el propio vendedor confirma el pago recibido.
 
@@ -140,7 +140,7 @@ nuevos en paralelo.
 - El **hash del documento** lo calcula el backend a partir del contenido/evidencia que mandes.
   No intentes replicar el hashing en el front salvo para mostrar.
 
-## 6. Pantallas por rol (ya existen, pulilas — no las reinventes)
+## 6. Pantallas por rol (ya existen, pulilas : no las reinventes)
 
 `apps/web/app/dashboard/{emisor,comprador,recomprador,validador,tse,admin}/page.tsx`
 - **emisor:** registrar bono (select de partido) + ver bonos de su partido.
@@ -152,9 +152,9 @@ nuevos en paralelo.
 
 ## 7. Errores y estados a manejar
 
-- `401` → token vencido/ausente: redirigí a login y refrescá sesión.
-- `403` → el rol no tiene permiso: mostrá mensaje claro, no rompas la UI.
-- `400` → reglas de negocio (ej. "Bond status no permite transferir"): mostrá el `message`.
+- `401`  a  token vencido/ausente: redirigí a login y refrescá sesión.
+- `403`  a  el rol no tiene permiso: mostrá mensaje claro, no rompas la UI.
+- `400`  a  reglas de negocio (ej. "Bond status no permite transferir"): mostrá el `message`.
 - Estados de bono/transfer: mostralos con colores/badges claros usando los enums de `@velar/types`.
 
 ## 8. Definición de "terminado" (frontend)

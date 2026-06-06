@@ -64,10 +64,10 @@ function Content({ token }: { token: string }) {
                 <div className="relative space-y-5 before:absolute before:bottom-2 before:left-[18px] before:top-2 before:w-0.5 before:bg-outline-variant/40">
                   {movs.map((t) => (
                     <div key={t.id} className="relative flex gap-4">
-                      <span className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary-container/20 bg-primary-container/10 text-primary-container"><ArrowRight size={16} /></span>
+                      <span className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary-container/20 bg-primary-container/10 text-primary-container"></span>
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-sm font-semibold">{t.from_profile?.full_name ?? '—'} <span className="text-on-surface-variant">→</span> {t.to_profile?.full_name ?? '—'}</div>
+                          <div className="text-sm font-semibold">{t.from_profile?.full_name ?? 'Sin dato'} <span className="text-on-surface-variant"> a </span> {t.to_profile?.full_name ?? 'Sin dato'}</div>
                           <span className="text-xs text-on-surface-variant">{fmtDate(t.created_at)}</span>
                         </div>
                         <div className="mt-1"><StatusBadge status={t.status} /></div>

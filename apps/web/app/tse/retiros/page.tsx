@@ -4,8 +4,8 @@ import { ArrowRight, AlertTriangle, CheckCircle, XCircle, Shield } from 'lucide-
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
 
-const fmtCRC = (n: number | null) => n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtCRC = (n: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ':';
 
 export default function RetirosPage() {
   const { token, me, loading, error } = useSession();
@@ -82,7 +82,7 @@ export default function RetirosPage() {
                     <p className="font-mono text-sm font-bold text-primary">{t.bonds?.bond_id ?? 'Bono'}</p>
                     <p className="flex items-center gap-1.5 text-sm">
                       {t.from_profile?.full_name ?? '?'}
-                      <ArrowRight size={12} className="text-on-surface-variant" />
+                      
                       {t.to_profile?.full_name ?? '?'}
                     </p>
                     <p className="text-xs text-on-surface-variant">Monto en negociación: <span className="font-semibold">{fmtCRC(Number(t.amount))}</span></p>

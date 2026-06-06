@@ -11,7 +11,7 @@ type Transfer = {
 };
 
 const fmt = (n: number | null | undefined) => n == null ? '' : '₡' + Number(n).toLocaleString('es-CR');
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : ':';
 
 export default function PartidoHistorialPage() {
   const { token, me, loading, error } = useSession();
@@ -60,9 +60,9 @@ export default function PartidoHistorialPage() {
               <tbody className="divide-y divide-outline-variant/20">
                 {all.map((t) => (
                   <tr key={t.id} className="hover:bg-primary/[0.02]">
-                    <td className="px-5 py-3.5 font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{t.bonds?.bond_id ?? '—'}</td>
+                    <td className="px-5 py-3.5 font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{t.bonds?.bond_id ?? 'Sin dato'}</td>
                     <td className="px-5 py-3.5 text-on-surface-variant">
-                      <span className="flex items-center gap-1">{t.from_profile?.full_name ?? '?'} <ArrowRight size={12} /> {t.to_profile?.full_name ?? '?'}</span>
+                      <span className="flex items-center gap-1">{t.from_profile?.full_name ?? '?'}  {t.to_profile?.full_name ?? '?'}</span>
                     </td>
                     <td className="px-5 py-3.5 font-semibold">{fmt(t.amount)}</td>
                     <td className="px-5 py-3.5"><span className="rounded-full bg-surface-container px-2 py-0.5 text-[11px] text-on-surface-variant">{t.status}</span></td>

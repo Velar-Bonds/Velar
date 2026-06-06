@@ -15,7 +15,7 @@ export function HeroArt({ compact = false }: { compact?: boolean }) {
       className={`h-auto max-w-none object-contain mix-blend-multiply ${
         compact
           ? 'w-[150px] drop-shadow-[0_20px_34px_rgba(31,99,255,0.18)] sm:w-[185px]'
-          : 'w-[270px] drop-shadow-[0_32px_56px_rgba(31,99,255,0.18)] xl:w-[350px] 2xl:w-[400px]'
+          : 'w-[240px] drop-shadow-[0_28px_48px_rgba(31,99,255,0.16)] xl:w-[300px] 2xl:w-[340px]'
       }`}
     />
   );

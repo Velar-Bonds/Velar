@@ -4,8 +4,8 @@ import { FileText, Send, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../lib/api';
 
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-const fmtCRC = (n?: number | null) => n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : ':';
+const fmtCRC = (n?: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
 
 const STATUS: Record<string, [string, string, any]> = {
   enviado: ['bg-blue-50 text-primary border-blue-200', 'Enviado', Clock],

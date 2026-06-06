@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>VELAR — Consola</title>
+<title>VELAR : Consola</title>
 <style>
   :root { --bg:#0f1420; --card:#1a2233; --line:#2a3550; --txt:#e6ebf5; --muted:#8da0c0; --accent:#4f8cff; }
   *{box-sizing:border-box;} body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--txt);}
@@ -43,7 +43,7 @@
 <div class="wrap">
   <!-- TSE: emitir bono a nombre de un partido -->
   <div class="card hidden" id="emitCard">
-    <h2>🏛️ TSE — Emitir bono a nombre de un partido</h2>
+    <h2>🏛️ TSE : Emitir bono a nombre de un partido</h2>
     <div class="row">
       <input id="bondId" placeholder="Nº bono (ej: BONO-101)" />
       <select id="party"></select>
@@ -67,7 +67,7 @@
 
   <div class="card">
     <h2>Solicitudes / Transferencias <button class="ghost sm" onclick="loadTransfers()">↻</button></h2>
-    <table id="trTbl"><thead><tr><th>Bono</th><th>Vendedor → Comprador</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table>
+    <table id="trTbl"><thead><tr><th>Bono</th><th>Vendedor  a  Comprador</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table>
     <div class="muted">El token se bloquea en la canasta al aceptar y se libera cuando el vendedor confirma el pago.</div>
   </div>
 
@@ -100,17 +100,17 @@ async function login(role){
     await Promise.all(tasks);
   }catch(e){ log('Login: '+e.message,false); }
 }
-async function loadParties(){try{const p=await api('GET','/parties');document.getElementById('party').innerHTML='<option value="">— partido —</option>'+p.map(x=>`<option value="${x.id}">${x.code} · ${x.name}</option>`).join('');}catch(e){log('Partidos: '+e.message,false);}}
+async function loadParties(){try{const p=await api('GET','/parties');document.getElementById('party').innerHTML='<option value="">: partido :</option>'+p.map(x=>`<option value="${x.id}">${x.code} · ${x.name}</option>`).join('');}catch(e){log('Partidos: '+e.message,false);}}
 async function loadBonds(){
   if(!token)return;
   try{const b=await api('GET','/bonds');
-    document.querySelector('#bondsTbl tbody').innerHTML=b.map(x=>`<tr><td>${x.bond_id}</td><td><span class="badge ${x.status}">${x.status}</span></td><td>${x.profiles?.full_name||'—'}</td><td><button class="ghost sm" onclick="onchain('${x.token_id}')">ver en Stellar</button></td></tr>`).join('')||'<tr><td colspan=4 class=muted>Sin bonos</td></tr>';
+    document.querySelector('#bondsTbl tbody').innerHTML=b.map(x=>`<tr><td>${x.bond_id}</td><td><span class="badge ${x.status}">${x.status}</span></td><td>${x.profiles?.full_name||':'}</td><td><button class="ghost sm" onclick="onchain('${x.token_id}')">ver en Stellar</button></td></tr>`).join('')||'<tr><td colspan=4 class=muted>Sin bonos</td></tr>';
   }catch(e){log('Bonos: '+e.message,false);}
 }
 async function loadAvailable(){
   if(!token||!isUser())return;
   try{const b=await api('GET','/bonds/available');
-    document.querySelector('#availTbl tbody').innerHTML=b.map(x=>`<tr><td>${x.bond_id}</td><td>${x.parties?.code||''}</td><td>${x.profiles?.full_name||'—'}</td><td><button class="sm" onclick="buy('${x.token_id}')">Solicitar comprar</button></td></tr>`).join('')||'<tr><td colspan=4 class=muted>No hay bonos en venta</td></tr>';
+    document.querySelector('#availTbl tbody').innerHTML=b.map(x=>`<tr><td>${x.bond_id}</td><td>${x.parties?.code||''}</td><td>${x.profiles?.full_name||':'}</td><td><button class="sm" onclick="buy('${x.token_id}')">Solicitar comprar</button></td></tr>`).join('')||'<tr><td colspan=4 class=muted>No hay bonos en venta</td></tr>';
   }catch(e){log('Disponibles: '+e.message,false);}
 }
 async function onchain(id){try{const o=await api('GET',`/bonds/${id}/onchain`);log(`On-chain · ${o.assetCode} · dueño ${o.onchainHolder?.slice(0,8)}…`);window.open(o.assetExplorer,'_blank');}catch(e){log('On-chain: '+e.message,false);}}
@@ -131,7 +131,7 @@ async function loadTransfers(){
       if(x.status==='en_escrow'&&soyComprador)acts.push(btn('Registré el pago',`pay('${x.id}')`));
       if(x.status==='pago_registrado'&&soyVendedor)acts.push(btn('Confirmar pago y liberar',`act('${x.id}','release')`));
       if(['solicitada','aceptada','en_escrow'].includes(x.status))acts.push(btn('Cancelar',`act('${x.id}','cancel')`,'ghost'));
-      return `<tr><td>${x.bonds?.bond_id||'—'}</td><td>${x.from_profile?.full_name||'?'} → ${x.to_profile?.full_name||'?'}</td><td><span class="badge">${x.status}</span></td><td>${acts.join(' ')||'<span class=muted>—</span>'}</td></tr>`;
+      return `<tr><td>${x.bonds?.bond_id||':'}</td><td>${x.from_profile?.full_name||'?'}  a  ${x.to_profile?.full_name||'?'}</td><td><span class="badge">${x.status}</span></td><td>${acts.join(' ')||'<span class=muted>:</span>'}</td></tr>`;
     }).join('')||'<tr><td colspan=4 class=muted>Sin solicitudes</td></tr>';
   }catch(e){log('Transferencias: '+e.message,false);}
 }

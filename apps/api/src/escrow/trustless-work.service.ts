@@ -7,12 +7,12 @@ import { StellarBondService } from './stellar-bond.service';
  * Trustless Work usado como CANASTA DE COORDINACIÓN on-chain (no maneja dinero).
  *
  * Cada venta de bono crea un contrato escrow Single-Release que registra:
- *   - createEscrow            → contractDeploy en Stellar Expert
- *   - changeMilestoneStatus   → "completed" cuando el comprador paga off-chain
- *   - approveMilestone        → cuando el vendedor/TSE confirma el pago
+ *   - createEscrow             a  contractDeploy en Stellar Expert
+ *   - changeMilestoneStatus    a  "completed" cuando el comprador paga off-chain
+ *   - approveMilestone         a  cuando el vendedor/TSE confirma el pago
  *
- * Nunca llamamos a fundEscrow ni releaseFunds — el movimiento del token bono
- * sigue por Classic Asset (issuer → escrow wallet → nuevo dueño). Trustless
+ * Nunca llamamos a fundEscrow ni releaseFunds : el movimiento del token bono
+ * sigue por Classic Asset (issuer  a  escrow wallet  a  nuevo dueño). Trustless
  * Work solo deja huella pública del lifecycle del trade.
  */
 @Injectable()
@@ -97,7 +97,7 @@ export class TrustlessWorkService {
       milestones: [{
         description: `Transferencia del bono ${input.bondId}`,
       }],
-      // amount referencial — el escrow nunca se fondea, es solo coordinación
+      // amount referencial : el escrow nunca se fondea, es solo coordinación
       amount: Number(input.amountCRC) || 1,
       platformFee: 0,
       trustline: {

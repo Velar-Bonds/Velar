@@ -1,21 +1,18 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import {
-  ArrowRight,
-  ArrowUpRight,
   ShieldCheck,
   Eye,
   CheckCircle2,
   Zap,
   Globe,
   FileSearch,
-  Boxes,
-  ChevronRight,
   Landmark,
   Users,
 } from 'lucide-react';
 import { Reveal } from './_components/Reveal';
 import { FAQ } from './_components/FAQ';
+import { VelarBrand } from '../components/VelarBrand';
 
 export const metadata: Metadata = {
   title: 'VELAR · Trazabilidad pública de bonos políticos',
@@ -51,20 +48,6 @@ const AUDIT_GUARANTEES = [
   { Icon: CheckCircle2,title: 'Verificable',   desc: 'Cada registro incluye hash, bloque y sello de tiempo.' },
 ];
 
-function VelarLogo({ size = 36 }: { size?: number }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-primary text-white shadow-sm">
-        <Boxes size={18} strokeWidth={2.3} />
-      </div>
-      <div className="leading-none">
-        <p className="text-[15px] font-bold tracking-tight text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>VELAR</p>
-        <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ledger</p>
-      </div>
-    </div>
-  );
-}
-
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-slate-50/40 text-slate-900" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -72,14 +55,8 @@ export default function LandingPage() {
       {/* ─── NAVBAR (Server Component estático, navegación HTML pura) ───── */}
       <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-6 lg:px-10">
-          <a href="/" className="flex items-center gap-2.5 no-underline">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-primary text-white shadow-sm">
-              <Boxes size={18} strokeWidth={2.3} />
-            </div>
-            <div className="leading-none">
-              <p className="text-[15px] font-bold tracking-tight text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>VELAR</p>
-              <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ledger</p>
-            </div>
+          <a href="/" className="flex items-center no-underline" aria-label="VELAR">
+            <VelarBrand size="sm" />
           </a>
 
           <nav className="hidden items-center gap-1 md:flex">
@@ -94,7 +71,6 @@ export default function LandingPage() {
             className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-white no-underline transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25"
           >
             Acceder a la plataforma
-            <ArrowRight size={15} />
           </a>
         </div>
       </header>
@@ -131,12 +107,10 @@ export default function LandingPage() {
               <Link href="#historial"
                 className="group inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-[15px] font-semibold text-white shadow-lg shadow-primary/20 transition hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30">
                 Ver historial público
-                <ArrowRight size={16} className="transition group-hover:translate-x-0.5" />
               </Link>
               <Link href="#proceso"
                 className="inline-flex h-12 items-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-[15px] font-semibold text-slate-700 transition hover:border-primary-container/40 hover:bg-slate-50">
                 Explorar proceso
-                <ArrowUpRight size={15} />
               </Link>
             </div>
           </div>
@@ -228,7 +202,7 @@ export default function LandingPage() {
                 </div>
 
                 <a href="#historial" className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:text-primary-container">
-                  Ver detalles <ArrowRight size={13} />
+                  Abrir detalle
                 </a>
               </div>
             </div>
@@ -253,7 +227,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── 2. PROCESO: 5 cards conectadas por flechas ──────────────────── */}
+      {/* Proceso: 5 cards conectadas por lineas suaves */}
       <section id="proceso" className="border-t border-slate-200/60 bg-white py-24">
         <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
           <Reveal>
@@ -282,11 +256,9 @@ export default function LandingPage() {
                     <p className="font-semibold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>{s.name}</p>
                     <p className="mt-2 text-[13px] leading-relaxed text-slate-500">{s.desc}</p>
                   </div>
-                  {/* Flecha entre cards (excepto la última) */}
+                  {/* Conector entre cards */}
                   {i < STEPS.length - 1 && (
-                    <div aria-hidden className="pointer-events-none absolute right-[-12px] top-1/2 hidden -translate-y-1/2 text-slate-300 lg:block">
-                      <ChevronRight size={22} strokeWidth={1.5} />
-                    </div>
+                    <div aria-hidden className="pointer-events-none absolute right-[-10px] top-1/2 hidden h-px w-5 -translate-y-1/2 bg-slate-300 lg:block" />
                   )}
                 </div>
               </Reveal>
@@ -374,7 +346,7 @@ export default function LandingPage() {
                     ))}
                   </ul>
                   <Link href={s.href} className="mt-6 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-primary transition group-hover:translate-x-0.5 hover:text-primary-container">
-                    {s.cta} <ArrowRight size={14} />
+                    {s.cta}
                   </Link>
                 </div>
               </Reveal>
@@ -448,7 +420,7 @@ export default function LandingPage() {
 
             <div className="relative mt-7 text-center">
               <a href="#consulta" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-primary-container hover:text-white">
-                Ver historial completo en el explorador <ArrowRight size={14} />
+                Abrir historial completo en el explorador
               </a>
             </div>
           </div>
@@ -496,12 +468,10 @@ export default function LandingPage() {
                 <Link href="/marketplace"
                   className="group inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-[14.5px] font-semibold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30">
                   Explorar historial público
-                  <ArrowRight size={15} className="transition group-hover:translate-x-0.5" />
                 </Link>
                 <Link href="#seguridad"
                   className="inline-flex h-12 items-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-[14.5px] font-semibold text-slate-700 transition hover:border-primary/30 hover:bg-slate-50">
                   Conocer más sobre seguridad
-                  <ArrowUpRight size={14} />
                 </Link>
               </div>
             </div>
@@ -514,11 +484,8 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
           <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-primary text-white">
-                  <Boxes size={18} strokeWidth={2.3} />
-                </div>
-                <p className="text-[15px] font-bold tracking-tight text-white" style={{ fontFamily: 'Geist, sans-serif' }}>VELAR</p>
+              <div className="flex items-center">
+                <VelarBrand size="sm" darkSurface />
               </div>
               <p className="mt-5 max-w-sm text-[13.5px] leading-relaxed text-slate-400">
                 Plataforma blockchain para la trazabilidad, transparencia y validación de bonos políticos del TSE.
@@ -562,7 +529,7 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-slate-800 pt-6 sm:flex-row">
-            <p className="text-[12.5px] text-slate-500">© 2026 VELAR Ledger · Todos los derechos reservados</p>
+            <p className="text-[12.5px] text-slate-500">© 2026 VELAR · Todos los derechos reservados</p>
             <div className="flex flex-wrap items-center gap-4 text-[12.5px] text-slate-500">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Red blockchain pública

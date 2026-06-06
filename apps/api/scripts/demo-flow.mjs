@@ -1,5 +1,5 @@
 // ============================================================
-// VELAR — Demo del flujo completo (el bono como token Stellar)
+// VELAR : Demo del flujo completo (el bono como token Stellar)
 // ============================================================
 // TSE emite un bono A NOMBRE del partido PLN; un USUARIO lo solicita; el
 // PARTIDO acepta (token a la canasta); el usuario paga; el partido confirma
@@ -31,7 +31,7 @@ const avail = await api('GET', '/bonds/available', usuario);
 console.log('   bonos en venta para el usuario:', avail.length);
 const t = await api('POST', '/transfers', usuario, { bondTokenId: bond.token_id, amount: 950000 });
 
-console.log('③ El PARTIDO acepta la venta → token a la CANASTA 🔒');
+console.log('③ El PARTIDO acepta la venta  a  token a la CANASTA 🔒');
 await api('PATCH', `/transfers/${t.id}/accept`, partido);
 oc = await api('GET', `/bonds/${bond.token_id}/onchain`, tse);
 console.log('   dueño on-chain:', short(oc.onchainHolder), '(= escrow)');
@@ -39,7 +39,7 @@ console.log('   dueño on-chain:', short(oc.onchainHolder), '(= escrow)');
 console.log('④ El USUARIO registra el pago físico');
 await api('PATCH', `/transfers/${t.id}/payment`, usuario, { evidence: 'comprobante-0001' });
 
-console.log('⑤ El PARTIDO confirma el pago → libera el token al usuario');
+console.log('⑤ El PARTIDO confirma el pago  a  libera el token al usuario');
 await api('PATCH', `/transfers/${t.id}/release`, partido);
 oc = await api('GET', `/bonds/${bond.token_id}/onchain`, tse);
 console.log('   dueño on-chain:', short(oc.onchainHolder), '(= el usuario)');

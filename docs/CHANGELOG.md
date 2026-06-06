@@ -1,6 +1,6 @@
-# VELAR — Changelog de implementaciones
+# VELAR : Changelog de implementaciones
 
-## 2026-06-05 — Web3 expansion + landing redesign
+## 2026-06-05 : Web3 expansion + landing redesign
 
 ### 🆕 Funcionalidades nuevas
 
@@ -10,7 +10,7 @@
   `freeze`/`unfreeze`, `set_in_escrow`/`set_active`, `details`, `current_owner`,
   `status`, `tse`. 7 errores tipados, eventos por cada acción.
 - **Trustless Work como canasta de coordinación**: cada venta crea un contrato
-  Single-Release que registra deploy → milestone completed → milestone approved.
+  Single-Release que registra deploy  a  milestone completed  a  milestone approved.
   No maneja dinero (sigue siendo custodia simple), solo coordinación on-chain.
 - **Asset VCRC** registra el precio de cada venta en una transacción atómica
   junto con la liberación del token del bono.
@@ -57,11 +57,11 @@
 
 ### 🛠️ Cambios técnicos del contrato Soroban
 
-- `#[contracttype]` no soporta discriminants explícitos en enums → eliminados
+- `#[contracttype]` no soporta discriminants explícitos en enums  a  eliminados
   los `= N` en `Status`.
 - `Error` debe usar `#[contracterror] + #[repr(u32)]` para que el contrato
   compile.
-- Soroban limita funciones a 10 parámetros → `initialize` recibe ahora
+- Soroban limita funciones a 10 parámetros  a  `initialize` recibe ahora
   `(tse, args: InitArgs)` donde `InitArgs` es un struct con `#[contracttype]`.
 
 ### 📊 Composición actual del sistema

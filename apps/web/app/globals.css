@@ -6,49 +6,65 @@
   --font-display: "Geist", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  --color-primary: #0047c1;
-  --color-primary-container: #155eef;
-  --color-primary-hover: #0b5cff;
-  --color-primary-fixed: #dbe1ff;
-  --color-primary-fixed-dim: #b4c5ff;
+  --color-primary: #174EA6;
+  --color-primary-container: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-fixed: #EEF5FF;
+  --color-primary-fixed-dim: #8DBBFF;
   --color-on-primary: #ffffff;
-  --color-institutional: #081b4b;
-  --color-secondary: #4d5c8f;
-  --color-secondary-container: #b5c4fe;
-  --color-tertiary: #0045c8;
-  --color-tertiary-container: #035afd;
-  --color-background: #faf8ff;
-  --color-surface: #faf8ff;
-  --color-surface-variant: #dbe1ff;
-  --color-surface-container: #ebedff;
-  --color-surface-container-low: #f3f3ff;
-  --color-surface-container-high: #e3e7ff;
-  --color-surface-container-highest: #dbe1ff;
+  --color-institutional: #0B1739;
+  --color-secondary: #52627A;
+  --color-secondary-container: #D9E6F8;
+  --color-tertiary: #174EA6;
+  --color-tertiary-container: #2563EB;
+  --color-background: #F7FAFF;
+  --color-surface: #FFFFFF;
+  --color-surface-variant: #D9E6F8;
+  --color-surface-container: #EEF5FF;
+  --color-surface-container-low: #F1F6FD;
+  --color-surface-container-high: #E6F0FF;
+  --color-surface-container-highest: #D9E6F8;
   --color-surface-container-lowest: #ffffff;
-  --color-on-surface: #0e193b;
-  --color-on-surface-variant: #434655;
-  --color-on-background: #0e193b;
-  --color-outline: #737687;
-  --color-outline-variant: #c3c6d8;
-  --color-inverse-surface: #242f52;
-  --color-inverse-on-surface: #eff0ff;
-  --color-error: #ba1a1a;
-  --color-error-container: #ffdad6;
-  --color-success: #16a34a;
-  --color-glass-border: #d5e3ff;
-  --color-tertiary-container: #035afd;
-  --color-secondary-fixed: #dbe1ff;
+  --color-on-surface: #0B1739;
+  --color-on-surface-variant: #52627A;
+  --color-on-background: #0B1739;
+  --color-outline: #B8CBE8;
+  --color-outline-variant: #D9E6F8;
+  --color-inverse-surface: #0B1739;
+  --color-inverse-on-surface: #F7FAFF;
+  --color-error: #B42318;
+  --color-error-container: #FEE4E2;
+  --color-success: #15803D;
+  --color-glass-border: #D9E6F8;
+  --color-secondary-fixed: #EEF5FF;
 
-  --shadow-glass: 0 20px 40px rgba(21, 94, 239, 0.05);
-  --shadow-glass-strong: 0 32px 64px rgba(8, 27, 75, 0.12);
-  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-glass: 0 8px 18px rgba(11, 23, 57, 0.06);
+  --shadow-glass-strong: 0 16px 36px rgba(11, 23, 57, 0.10);
+  --shadow-card: 0 2px 8px rgba(11, 23, 57, 0.06);
 }
 
 :root {
-  --velar-canvas: #fafcff;
-  --velar-section: #f4f8ff;
-  --velar-glass: rgba(255, 255, 255, 0.7);
-  --velar-glass-strong: rgba(255, 255, 255, 0.9);
+  --velar-canvas: #F7FAFF;
+  --velar-section: #EEF5FF;
+  --velar-surface: #FFFFFF;
+  --velar-surface-soft: #F1F6FD;
+  --velar-text: #0B1739;
+  --velar-muted: #52627A;
+  --velar-border: #D9E6F8;
+  --velar-border-strong: #B8CBE8;
+  --velar-success: #15803D;
+  --velar-warning: #B7791F;
+  --velar-error: #B42318;
+  --velar-radius-sm: 8px;
+  --velar-radius-md: 12px;
+  --velar-radius-lg: 16px;
+  --velar-space-2: 8px;
+  --velar-space-3: 12px;
+  --velar-space-4: 16px;
+  --velar-space-5: 20px;
+  --velar-space-6: 24px;
+  --velar-glass: rgba(255, 255, 255, 0.92);
+  --velar-glass-strong: #FFFFFF;
 }
 
 html {
@@ -57,7 +73,7 @@ html {
 
 body {
   background:
-    radial-gradient(circle at top right, rgba(21, 94, 239, 0.08), transparent 34rem),
+    radial-gradient(circle at top right, rgba(141, 187, 255, 0.18), transparent 34rem),
     linear-gradient(135deg, var(--velar-canvas), var(--velar-section));
   color: var(--color-on-surface);
   font-family: var(--font-sans);
@@ -65,24 +81,17 @@ body {
 
 .glass-card {
   background: var(--velar-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1.5px solid white;
-  border-left: 1.5px solid white;
-  border-right: 1.5px solid var(--color-glass-border);
-  border-bottom: 1.5px solid var(--color-glass-border);
+  border: 1px solid var(--velar-border);
   box-shadow: var(--shadow-glass);
 }
 
 .glass-sidebar {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid #D5E3FF;
+  background: rgba(255, 255, 255, 0.94);
+  border-right: 1px solid var(--velar-border);
 }
 .glass-panel {
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: var(--velar-surface);
+  border: 1px solid var(--velar-border);
 }
 
 .velar-auth-shell {
@@ -108,14 +117,14 @@ body {
 }
 
 .velar-primary-button {
-  background: linear-gradient(135deg, #1f63ff, #1155f4);
+  background: var(--color-primary-container);
   color: var(--color-on-primary);
-  box-shadow: 0 14px 28px rgba(17, 85, 244, 0.22);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.18);
 }
 
 .velar-primary-button:hover {
-  background: linear-gradient(135deg, #1159ff, #0d4fe6);
-  box-shadow: 0 18px 36px rgba(17, 85, 244, 0.24);
+  background: var(--color-primary-hover);
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.20);
 }
 
 .velar-input {
@@ -193,9 +202,83 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary-container) 15%, transparent);
 }
 
+.velar-card {
+  background: var(--velar-surface);
+  border: 1px solid var(--velar-border);
+  border-radius: var(--velar-radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.velar-card-soft {
+  background: var(--velar-surface-soft);
+  border: 1px solid var(--velar-border);
+  border-radius: var(--velar-radius-md);
+}
+
+.velar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--velar-border);
+  background: var(--velar-surface-soft);
+  color: var(--velar-text);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.velar-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--velar-text);
+}
+
+.velar-table thead {
+  background: var(--velar-surface-soft);
+  color: var(--velar-muted);
+}
+
+.velar-table tbody tr {
+  border-top: 1px solid var(--velar-border);
+}
+
+.velar-empty,
+.velar-error-state,
+.velar-loading-state {
+  border: 1px solid var(--velar-border);
+  border-radius: var(--velar-radius-lg);
+  background: var(--velar-surface);
+  color: var(--velar-muted);
+}
+
+.velar-error-state {
+  border-color: color-mix(in srgb, var(--velar-error) 35%, white);
+  background: #FFF7F5;
+  color: var(--velar-error);
+}
+
+.velar-history-line,
+.velar-trace-line,
+.velar-audit-line {
+  position: relative;
+}
+
+.velar-history-line::before,
+.velar-trace-line::before,
+.velar-audit-line::before {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  left: 15px;
+  top: 8px;
+  width: 1px;
+  background: var(--velar-border);
+}
+
 /* ─── Sistema de botones VELAR ──────────────────────────────────────────── */
 
-/* Base compartida — altura, tipografía y transiciones consistentes */
+/* Base compartida : altura, tipografía y transiciones consistentes */
 .btn-action, .btn-ghost, .velar-primary-button {
   display: inline-flex;
   align-items: center;
@@ -224,14 +307,14 @@ body {
 
 /* Mejora del primary-button existente (compatibilidad) */
 .velar-primary-button {
-  background: linear-gradient(135deg, #1f63ff, #1155f4);
+  background: var(--color-primary-container);
   color: var(--color-on-primary);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 8px 18px rgba(17,85,244,0.22);
+  box-shadow: 0 2px 8px rgba(37,99,235,0.18);
 }
 .velar-primary-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1159ff, #0d4fe6);
+  background: var(--color-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.06), 0 12px 24px rgba(17,85,244,0.28);
+  box-shadow: 0 3px 10px rgba(37,99,235,0.20);
 }
 .velar-primary-button:active:not(:disabled) { transform: translateY(0); filter: brightness(0.96); }
 .velar-primary-button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; box-shadow: none; }
@@ -240,12 +323,12 @@ body {
 .btn-action {
   background: var(--color-primary-container);
   color: white;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 6px 14px rgba(21,94,239,0.18);
+  box-shadow: 0 2px 8px rgba(37,99,235,0.16);
 }
 .btn-action:hover:not(:disabled) {
-  background: var(--color-primary);
+  background: var(--color-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.06), 0 10px 22px rgba(21,94,239,0.28);
+  box-shadow: 0 3px 10px rgba(37,99,235,0.20);
 }
 .btn-action:active:not(:disabled) { transform: translateY(0); filter: brightness(0.95); }
 .btn-action:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
@@ -265,28 +348,28 @@ body {
 
 /* Variantes de color para btn-action */
 .btn-success {
-  background: linear-gradient(180deg, #10b981, #059669);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 6px 14px rgba(5,150,105,0.22);
+  background: var(--velar-success);
+  box-shadow: 0 2px 8px rgba(21,128,61,0.16);
 }
 .btn-success:hover:not(:disabled) {
-  background: linear-gradient(180deg, #059669, #047857);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.06), 0 10px 22px rgba(5,150,105,0.32);
+  background: #166534;
+  box-shadow: 0 3px 10px rgba(21,128,61,0.20);
 }
 .btn-danger {
-  background: linear-gradient(180deg, #f43f5e, #e11d48);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 6px 14px rgba(244,63,94,0.22);
+  background: var(--velar-error);
+  box-shadow: 0 2px 8px rgba(180,35,24,0.16);
 }
 .btn-danger:hover:not(:disabled) {
-  background: linear-gradient(180deg, #e11d48, #be123c);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.06), 0 10px 22px rgba(244,63,94,0.32);
+  background: #912018;
+  box-shadow: 0 3px 10px rgba(180,35,24,0.20);
 }
 .btn-warn {
-  background: linear-gradient(180deg, #f59e0b, #d97706);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 6px 14px rgba(217,119,6,0.22);
+  background: var(--velar-warning);
+  box-shadow: 0 2px 8px rgba(183,121,31,0.16);
 }
 .btn-warn:hover:not(:disabled) {
-  background: linear-gradient(180deg, #d97706, #b45309);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.06), 0 10px 22px rgba(217,119,6,0.32);
+  background: #975A16;
+  box-shadow: 0 3px 10px rgba(183,121,31,0.20);
 }
 
 /* ─── Botón secundario (Cancelar, Cerrar) ───────────────────────────── */

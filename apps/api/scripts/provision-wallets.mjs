@@ -1,5 +1,5 @@
 // ============================================================
-// VELAR — Aprovisionamiento de wallets Stellar (TESTNET)
+// VELAR : Aprovisionamiento de wallets Stellar (TESTNET)
 // ============================================================
 // Custodia asistida para demo: genera keypairs de testnet para la plataforma
 // y para los usuarios demo, los fondea con XLM (Friendbot), agrega trustline
@@ -88,7 +88,7 @@ async function addUsdcTrustline(secret) {
 }
 
 async function main() {
-  console.log('🌟 VELAR — aprovisionando wallets Stellar (TESTNET)\n');
+  console.log('🌟 VELAR : aprovisionando wallets Stellar (TESTNET)\n');
   const keys = loadOrCreateKeys();
 
   for (const name of NAMES) {
