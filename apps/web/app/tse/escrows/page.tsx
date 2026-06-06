@@ -4,14 +4,14 @@ import { Shield, ExternalLink, ArrowRight, CheckCircle, Clock } from 'lucide-rea
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
 
-const fmtCRC = (n: number | null) => n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtCRC = (n: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ':';
 
 const STATUS_LBL: Record<string, [string, string, any]> = {
   solicitada: ['bg-blue-50 text-primary border-blue-200', 'Solicitada', Clock],
   aceptada: ['bg-amber-50 text-amber-700 border-amber-200', 'Aceptada', Clock],
   en_escrow: ['bg-amber-50 text-amber-700 border-amber-200', 'En escrow', Shield],
-  pago_registrado: ['bg-purple-50 text-purple-700 border-purple-200', 'Pago registrado', Clock],
+  pago_registrado: ['bg-blue-50 text-primary border-blue-200', 'Pago registrado', Clock],
   pago_validado: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Pago validado', CheckCircle],
   liberada: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Liberada', CheckCircle],
 };
@@ -71,8 +71,8 @@ export default function EscrowsPage() {
               <h2 className="font-semibold text-emerald-900">Coordinación on-chain con Trustless Work</h2>
               <p className="mt-1 text-sm text-emerald-800/80">
                 Cada venta crea un contrato Soroban Single-Release como registro inmutable del trade.
-                El contrato no maneja dinero — VELAR sigue custodiando el token del bono y el VCRC del precio.
-                Trustless Work deja huella pública del lifecycle: <strong>deploy → milestone completed → milestone approved</strong>.
+                El contrato no maneja dinero : VELAR sigue custodiando el token del bono y el VCRC del precio.
+                Trustless Work deja huella pública del lifecycle: <strong>deploy  a  milestone completed  a  milestone approved</strong>.
               </p>
               <p className="mt-2 text-xs text-emerald-700">
                 Cualquier persona puede verificar el estado del trade abriendo el link al contrato.
@@ -139,7 +139,7 @@ export default function EscrowsPage() {
                         <p className="font-mono text-sm font-bold text-primary">{t.bonds?.bond_id ?? 'Bono'}</p>
                         <p className="flex items-center gap-1.5 text-sm">
                           {t.from_profile?.full_name ?? '?'}
-                          <ArrowRight size={12} className="text-on-surface-variant" />
+                          
                           {t.to_profile?.full_name ?? '?'}
                         </p>
                         <p className="text-[11px] text-on-surface-variant">{fmtDate(t.created_at)}</p>
@@ -166,7 +166,7 @@ export default function EscrowsPage() {
                           target="_blank" rel="noopener noreferrer"
                           className="btn-action btn-success"
                         >
-                          <ExternalLink size={13} /> Ver contrato on-chain
+                           Ver contrato on-chain
                         </a>
                       </div>
                     </div>

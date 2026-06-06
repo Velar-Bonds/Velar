@@ -3,7 +3,7 @@
 
 **Infraestructura blockchain para el traspaso digital de propiedad de bonos de partidos políticos.**
 
-> Trazabilidad, custodia y auditoría en tiempo real sobre Stellar — para el TSE, partidos y ciudadanos.
+> Trazabilidad, custodia y auditoría en tiempo real sobre Stellar : para el TSE, partidos y ciudadanos.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template)
 
@@ -16,7 +16,7 @@
 | ![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=flat&logo=next.js&logoColor=white) | Frontend (App Router) |
 | ![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white) | API REST + WebSocket |
 | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) | Lenguaje en toda la plataforma |
-| ![Stellar](https://img.shields.io/badge/Stellar-7D00FF?style=flat&logo=stellar&logoColor=white) | Blockchain — activos, escrow, historial |
+| ![Stellar](https://img.shields.io/badge/Stellar-7D00FF?style=flat&logo=stellar&logoColor=white) | Blockchain : activos, escrow, historial |
 | ![Soroban](https://img.shields.io/badge/Soroban_Smart_Contracts-7D00FF?style=flat&logo=stellar&logoColor=white) | Contratos inteligentes por bono |
 | ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white) | Auth + Postgres (cache, roles) |
 | ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=flat&logo=tailwindcss&logoColor=white) | Estilos |
@@ -28,7 +28,7 @@
 
 Hoy los bonos de partidos políticos se traspasan en papel: sin control de quién es el dueño, sin historial verificable, sin trazabilidad para el TSE. **VELAR lo digitaliza.**
 
-Cada bono es un **token único en la blockchain de Stellar** (análogo a un NFT institucional). La propiedad, el escrow durante el traspaso y todo el historial de cambios de dueño viven on-chain — verificables por cualquier persona, en tiempo real.
+Cada bono es un **token único en la blockchain de Stellar** (análogo a un NFT institucional). La propiedad, el escrow durante el traspaso y todo el historial de cambios de dueño viven on-chain : verificables por cualquier persona, en tiempo real.
 
 ---
 
@@ -62,8 +62,8 @@ Cada paso queda como una **transacción inmutable en Stellar**, auditable en [`s
 ```
 VELAR/
 ├── apps/
-│   ├── api/          # NestJS — lógica de negocio + integración Stellar/Soroban
-│   └── web/          # Next.js — UI para TSE, partidos y usuarios
+│   ├── api/          # NestJS : lógica de negocio + integración Stellar/Soroban
+│   └── web/          # Next.js : UI para TSE, partidos y usuarios
 ├── contracts/
 │   └── velar-bond/   # Contrato Soroban en Rust (metadata on-chain por bono)
 ├── packages/
@@ -77,10 +77,10 @@ VELAR/
 
 ## Cómo los bonos viven en blockchain
 
-- Cada bono es un **Classic Asset de Stellar** (cantidad `1`, no divisible) — único por diseño, como un NFT pero sin gas fees prohibitivos.
+- Cada bono es un **Classic Asset de Stellar** (cantidad `1`, no divisible) : único por diseño, como un NFT pero sin gas fees prohibitivos.
 - **Opcionalmente**, cada bono tiene un **contrato Soroban** individual con toda su metadata on-chain (monto, fechas, certificado, partido, estado).
 - **"Ser dueño del bono" = tener ese token en una cuenta de Stellar.** No hay base de datos que lo diga: la blockchain es la fuente de verdad.
-- Cada actor tiene una **wallet de custodia** creada y administrada por el backend — el usuario nunca maneja llaves privadas ni crypto.
+- Cada actor tiene una **wallet de custodia** creada y administrada por el backend : el usuario nunca maneja llaves privadas ni crypto.
 - El **escrow** es una cuenta Stellar separada donde el token queda bloqueado (multisig) durante el proceso de traspaso.
 - El **pago es externo** (fiat / físico): solo se registra el hash SHA-256 de su comprobante.
 
@@ -104,11 +104,11 @@ npm run provision:wallets
 npm run seed
 
 # 5. Levantar la API
-npm run start        # → http://localhost:3001/api
+npm run start        #  a  http://localhost:3001/api
 
 # 6. Levantar el frontend (en otra terminal)
 cd ../web
-npm run dev          # → http://localhost:3000
+npm run dev          #  a  http://localhost:3000
 ```
 
 ### Probar sin frontend
@@ -147,7 +147,7 @@ npm run demo:register     # registra partido + usuario nuevos y corre el flujo
 | `POST` | `/bonds` | Emitir bono directamente (TSE) |
 | `GET` | `/bonds/requests` | Solicitudes de emisión |
 | `POST` | `/bonds/requests` | Partido solicita un bono al TSE |
-| `PATCH` | `/bonds/requests/:id/approve` | TSE aprueba → emite Classic Asset + despliega Soroban NFT |
+| `PATCH` | `/bonds/requests/:id/approve` | TSE aprueba  a  emite Classic Asset + despliega Soroban NFT |
 | `PATCH` | `/bonds/requests/:id/reject` | TSE rechaza con motivo |
 | `PATCH` | `/bonds/:tokenId/publish` | Dueño actual publica al marketplace |
 | `PATCH` | `/bonds/:tokenId/freeze` / `/unfreeze` | TSE congela / descongela |
@@ -158,12 +158,12 @@ npm run demo:register     # registra partido + usuario nuevos y corre el flujo
 | Método | Ruta | Descripción |
 |---|---|---|
 | `POST` | `/transfers` | Solicitar compra (con monto custom para ofertas) |
-| `PATCH` | `/transfers/:id/accept` | Vendedor acepta → token a escrow + Trustless Work deploy |
+| `PATCH` | `/transfers/:id/accept` | Vendedor acepta  a  token a escrow + Trustless Work deploy |
 | `PATCH` | `/transfers/:id/counter` | Vendedor contraoferta con nuevo monto |
 | `PATCH` | `/transfers/:id/accept-counter` | Comprador acepta contraoferta |
 | `PATCH` | `/transfers/:id/payment` | Comprador registra pago (con hash de evidencia) |
 | `PATCH` | `/transfers/:id/validate` | Validador confirma pago físico |
-| `PATCH` | `/transfers/:id/release` | Vendedor libera → token al comprador + VCRC al vendedor (atómico) |
+| `PATCH` | `/transfers/:id/release` | Vendedor libera  a  token al comprador + VCRC al vendedor (atómico) |
 | `PATCH` | `/transfers/:id/cancel` | Cancelar transferencia |
 | `PATCH` | `/transfers/:id/request-return` | Dueño pide al TSE retirar bono del escrow |
 | `PATCH` | `/transfers/:id/approve-return` | TSE aprueba retorno on-chain |
@@ -251,7 +251,7 @@ npm run demo:register     # registra partido + usuario nuevos y corre el flujo
 |---|---|
 | [`docs/WEB3.md`](docs/WEB3.md) | Conceptos Web3 aplicados: Stellar, Soroban, escrow, wallets, tokens, Trustless Work |
 | [`docs/SOROBAN.md`](docs/SOROBAN.md) | Contrato `VelarBond`: arquitectura, cómo activarlo, funciones |
-| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Deploy en Railway — pasos, variables de entorno, troubleshooting |
+| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Deploy en Railway : pasos, variables de entorno, troubleshooting |
 | [`docs/DEMO.md`](docs/DEMO.md) | Cómo levantar, probar y ver el token moverse |
 | [`docs/BACKEND.md`](docs/BACKEND.md) | Arquitectura y módulos del backend |
 | [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md) | Contrato de API para el equipo de frontend |

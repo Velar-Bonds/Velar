@@ -68,7 +68,7 @@ export default function PartidoConfiguracionPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Explorador</p>
                 {partyWallet ? (
                   <a href={stellarExpert.account(partyWallet)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1.5 font-medium text-primary-container hover:underline">
-                    {shortKey(partyWallet, 6)} <ExternalLink size={14} />
+                    {shortKey(partyWallet, 6)} 
                   </a>
                 ) : (
                   <p className="mt-1 text-on-surface-variant">No disponible</p>

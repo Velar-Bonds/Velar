@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Boxes } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { VelarBrand } from '../../components/VelarBrand';
 
 const NAV_ITEMS = [
   { id: 'hero',      label: 'Inicio',           href: '#hero',      external: false },
@@ -16,14 +17,8 @@ export function LandingNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-6 lg:px-10">
-        <Link href="/" onClick={() => setActive('hero')} className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-primary text-white shadow-sm">
-            <Boxes size={18} strokeWidth={2.3} />
-          </div>
-          <div className="leading-none">
-            <p className="text-[15px] font-bold tracking-tight text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>VELAR</p>
-            <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ledger</p>
-          </div>
+        <Link href="/" onClick={() => setActive('hero')} className="flex items-center" aria-label="VELAR">
+          <VelarBrand size="sm" />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -54,7 +49,7 @@ export function LandingNav() {
           className="group inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-white no-underline transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25"
         >
           Acceder a la plataforma
-          <ArrowRight size={15} className="transition group-hover:translate-x-0.5" />
+          
         </a>
       </div>
     </header>

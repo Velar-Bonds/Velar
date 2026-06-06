@@ -1,4 +1,4 @@
-# Web3 en VELAR — Conceptos, herramientas y cómo se aplican
+# Web3 en VELAR : Conceptos, herramientas y cómo se aplican
 
 > Guía técnica concisa de todos los conceptos de blockchain y Web3 usados en la plataforma.
 
@@ -7,15 +7,15 @@
 ## Índice
 
 1. [¿Qué es Web3 y por qué VELAR lo usa?](#1-qué-es-web3-y-por-qué-velar-lo-usa)
-2. [Stellar — la blockchain elegida](#2-stellar--la-blockchain-elegida)
+2. [Stellar : la blockchain elegida](#2-stellar--la-blockchain-elegida)
 3. [Tokens / Activos nativos de Stellar](#3-tokens--activos-nativos-de-stellar)
 4. [Wallets y custodia asistida](#4-wallets-y-custodia-asistida)
 5. [Trustlines](#5-trustlines)
 6. [Escrow on-chain](#6-escrow-on-chain)
-7. [Soroban — contratos inteligentes](#7-soroban--contratos-inteligentes)
+7. [Soroban : contratos inteligentes](#7-soroban--contratos-inteligentes)
 8. [Auditoría inmutable](#8-auditoría-inmutable)
 9. [Stellar SDK (JavaScript/TypeScript)](#9-stellar-sdk-javascripttypescript)
-10. [Trustless Work — escrow como servicio](#10-trustless-work--escrow-como-servicio)
+10. [Trustless Work : escrow como servicio](#10-trustless-work--escrow-como-servicio)
 11. [Flujo completo on-chain paso a paso](#11-flujo-completo-on-chain-paso-a-paso)
 12. [Glosario rápido](#12-glosario-rápido)
 
@@ -31,14 +31,14 @@ La respuesta es registrar la propiedad del bono **directamente en la blockchain 
 
 ---
 
-## 2. Stellar — la blockchain elegida
+## 2. Stellar : la blockchain elegida
 
 **Stellar** es una blockchain de capa 1 diseñada para movimiento de activos digitales con:
 
-- **Finality en ~5 segundos** — las transacciones son definitivas, sin reorganizaciones.
-- **Fees mínimos** — fracciones de centavo por operación (no hay gas fees impredecibles).
-- **Activos nativos** — cualquier cuenta puede emitir y transferir activos sin necesidad de contratos (a diferencia de Ethereum, donde ERC-20 requiere Solidity).
-- **Soroban** — entorno de contratos inteligentes basado en WebAssembly (Rust), añadido en 2024.
+- **Finality en ~5 segundos** : las transacciones son definitivas, sin reorganizaciones.
+- **Fees mínimos** : fracciones de centavo por operación (no hay gas fees impredecibles).
+- **Activos nativos** : cualquier cuenta puede emitir y transferir activos sin necesidad de contratos (a diferencia de Ethereum, donde ERC-20 requiere Solidity).
+- **Soroban** : entorno de contratos inteligentes basado en WebAssembly (Rust), añadido en 2024.
 
 VELAR usa Stellar Testnet para desarrollo y Stellar Mainnet como destino de producción.
 
@@ -65,7 +65,7 @@ En Stellar, cualquier cuenta puede **emitir un activo** simplemente especificand
 ```
 Activo: BOND-abc123   (código único por bono)
 Emisor: cuenta TSE    (la que lo creó)
-Cantidad total: 1     (no divisible → único, como un NFT)
+Cantidad total: 1     (no divisible  a  único, como un NFT)
 ```
 
 - **Emitir** = el TSE firma una transacción que crea el activo y lo acredita a la cuenta del partido.
@@ -74,7 +74,7 @@ Cantidad total: 1     (no divisible → único, como un NFT)
 
 ### ¿Por qué cantidad 1 y no divisible?
 
-Un bono físico es único — no existe medio bono. En Stellar se logra creando el activo con `asset_type: credit_alphanum12`, emitiendo exactamente `1` unidad y desactivando la capacidad de volver a emitir más. Esto lo hace funcionalmente idéntico a un NFT.
+Un bono físico es único : no existe medio bono. En Stellar se logra creando el activo con `asset_type: credit_alphanum12`, emitiendo exactamente `1` unidad y desactivando la capacidad de volver a emitir más. Esto lo hace funcionalmente idéntico a un NFT.
 
 ---
 
@@ -82,8 +82,8 @@ Un bono físico es único — no existe medio bono. En Stellar se logra creando 
 
 Una **wallet** en Stellar es simplemente un par de llaves criptográficas:
 
-- **Clave pública** (`G...`) — es la "dirección", visible para todos.
-- **Clave privada** (`S...`) — firma transacciones; quien la tiene controla la cuenta.
+- **Clave pública** (`G...`) : es la "dirección", visible para todos.
+- **Clave privada** (`S...`) : firma transacciones; quien la tiene controla la cuenta.
 
 ### Problema: usuarios no técnicos
 
@@ -95,11 +95,11 @@ VELAR crea y administra las wallets **en nombre de cada actor**:
 
 ```
 Backend (NestJS)
-  ├── wallet_platform     → opera el sistema, paga fees
-  ├── wallet_tse          → firma emisiones de bonos
-  ├── wallet_partido_X    → recibe/vende bonos del partido X
-  ├── wallet_usuario_Y    → compra/vende bonos del usuario Y
-  └── wallet_escrow_Z     → custodia temporal durante traspasos
+  ├── wallet_platform      a  opera el sistema, paga fees
+  ├── wallet_tse           a  firma emisiones de bonos
+  ├── wallet_partido_X     a  recibe/vende bonos del partido X
+  ├── wallet_usuario_Y     a  compra/vende bonos del usuario Y
+  └── wallet_escrow_Z      a  custodia temporal durante traspasos
 ```
 
 Las llaves privadas viven en variables de entorno del servidor (`.env`). En producción deben guardarse en un **HSM** o servicio de gestión de llaves (AWS KMS, Azure Key Vault, etc.).
@@ -119,10 +119,10 @@ wallet_partido.changeTrust({ asset: BOND-abc123, limit: "1" })
 
 VELAR gestiona las trustlines automáticamente antes de cada transferencia:
 
-1. Antes de emitir un bono → el backend verifica / crea la trustline del partido.
-2. Antes de liberar el escrow → verifica la trustline del comprador.
+1. Antes de emitir un bono  a  el backend verifica / crea la trustline del partido.
+2. Antes de liberar el escrow  a  verifica la trustline del comprador.
 
-Esto evita transacciones fallidas por trustline faltante — uno de los errores más comunes al trabajar con activos Stellar.
+Esto evita transacciones fallidas por trustline faltante : uno de los errores más comunes al trabajar con activos Stellar.
 
 ---
 
@@ -133,9 +133,9 @@ Esto evita transacciones fallidas por trustline faltante — uno de los errores 
 ### Escrow clásico en Stellar (cuenta intermedia)
 
 ```
-1. Vendedor firma → token va a cuenta_escrow (bloqueada con multisig)
+1. Vendedor firma  a  token va a cuenta_escrow (bloqueada con multisig)
 2. Comprador registra pago (hash del comprobante)
-3. Vendedor confirma → cuenta_escrow firma el release → token va al comprador
+3. Vendedor confirma  a  cuenta_escrow firma el release  a  token va al comprador
 ```
 
 La cuenta de escrow se configura con **múltiples firmantes requeridos** (multisig), de modo que ni el vendedor ni el comprador puedan mover el token unilateralmente mientras está en custodia.
@@ -146,7 +146,7 @@ Para escrows más robustos, VELAR integra **Trustless Work**, una API que despli
 
 ---
 
-## 7. Soroban — contratos inteligentes
+## 7. Soroban : contratos inteligentes
 
 **Soroban** es el entorno de contratos inteligentes de Stellar, introducido en 2024. Los contratos se escriben en **Rust**, se compilan a **WebAssembly (WASM)** y se ejecutan en la propia blockchain.
 
@@ -170,10 +170,10 @@ pub struct VelarBond {
 ```
 
 **Funciones del contrato:**
-- `initialize(tse, data)` — despliega y configura el bono
-- `transfer(from, to)` — transfiere propiedad (solo el dueño puede llamarla)
-- `freeze(authority)` — congela el bono (solo TSE)
-- `get_owner()` — consulta el dueño actual
+- `initialize(tse, data)` : despliega y configura el bono
+- `transfer(from, to)` : transfiere propiedad (solo el dueño puede llamarla)
+- `freeze(authority)` : congela el bono (solo TSE)
+- `get_owner()` : consulta el dueño actual
 
 ### Cómo funciona el deploy por bono
 
@@ -214,11 +214,11 @@ CREATE TABLE audit_events (
 );
 ```
 
-Además, cada transacción on-chain tiene su **hash de Stellar** — un identificador criptográfico único que permite verificar la operación en el explorador público, independientemente de VELAR.
+Además, cada transacción on-chain tiene su **hash de Stellar** : un identificador criptográfico único que permite verificar la operación en el explorador público, independientemente de VELAR.
 
 **Doble capa de auditoría:**
-1. `audit_events` en Postgres → rápido de consultar, accesible para el TSE desde la UI.
-2. Transacciones en Stellar → inmutable, verificable públicamente sin depender de VELAR.
+1. `audit_events` en Postgres  a  rápido de consultar, accesible para el TSE desde la UI.
+2. Transacciones en Stellar  a  inmutable, verificable públicamente sin depender de VELAR.
 
 ---
 
@@ -263,7 +263,7 @@ tx.sign(keypair);
 
 ---
 
-## 10. Trustless Work — escrow como servicio
+## 10. Trustless Work : escrow como servicio
 
 [**Trustless Work**](https://trustless.work) es una API construida sobre Stellar/Soroban que abstrae la lógica de escrow:
 
@@ -299,17 +299,17 @@ El `escrowAddress` del contrato Soroban se guarda en `transfers.escrow_address`.
 │    TSE_wallet ──changeTrust──► BOND-abc123                          │
 │    TSE_wallet ──payment(1)───► PARTIDO_wallet                       │
 │                                                                     │
-│  [Partido pone en venta → Usuario solicita compra]                  │
-│    (solo en DB — no hay tx on-chain todavía)                        │
+│  [Partido pone en venta  a  Usuario solicita compra]                  │
+│    (solo en DB : no hay tx on-chain todavía)                        │
 │                                                                     │
-│  [Partido acepta → bono entra a escrow]                             │
+│  [Partido acepta  a  bono entra a escrow]                             │
 │    PARTIDO_wallet ──payment(1)───► ESCROW_wallet 🔒                 │
 │    (multisig: necesita firma del backend para salir)                │
 │                                                                     │
 │  [Usuario registra pago]                                            │
 │    (se guarda hash del comprobante en DB)                           │
 │                                                                     │
-│  [Partido confirma → bono sale a usuario]                           │
+│  [Partido confirma  a  bono sale a usuario]                           │
 │    ESCROW_wallet ──payment(1)───► USUARIO_wallet 🎉                 │
 │                                                                     │
 │  Cada ── es una transacción real, con tx_hash verificable           │
@@ -333,13 +333,13 @@ El `escrowAddress` del contrato Soroban se guarda en `transfers.escrow_address`.
 | **Trustline** | Permiso explícito para recibir un activo en Stellar |
 | **Escrow** | Cuenta/contrato que bloquea el token hasta que se confirma el pago |
 | **Multisig** | Cuenta que requiere múltiples firmas para operar |
-| **Soroban** | Entorno de contratos inteligentes de Stellar (Rust → WASM) |
+| **Soroban** | Entorno de contratos inteligentes de Stellar (Rust  a  WASM) |
 | **Contract ID** | Dirección única de un contrato desplegado en Soroban |
 | **tx_hash** | Identificador criptográfico de una transacción (verificable públicamente) |
-| **WASM** | WebAssembly — formato de bytecode que ejecutan los contratos Soroban |
+| **WASM** | WebAssembly : formato de bytecode que ejecutan los contratos Soroban |
 | **RLS** | Row Level Security de Postgres (usado en Supabase para `audit_events`) |
 | **Trustless Work** | API de escrow sobre Soroban, usada como servicio externo |
-| **NFT institucional** | Activo único no divisible (cantidad 1) — equivalente funcional de un NFT |
+| **NFT institucional** | Activo único no divisible (cantidad 1) : equivalente funcional de un NFT |
 | **Classic Asset** | Activo Stellar sin contrato (el modo por defecto de VELAR) |
 | **Keypair** | Par clave pública + privada que identifica y autoriza una cuenta |
 | **Finality** | Confirmación irreversible de una transacción (~5s en Stellar) |

@@ -66,7 +66,7 @@ function Content({ token, me }: { token: string; me: Me }) {
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-container/10 text-primary-container"><Handshake size={20} /></span>
           <div>
             <div className="mono-data text-sm font-semibold text-primary-container">{t.bonds?.bond_id ?? 'Bono'}</div>
-            <div className="flex items-center gap-1.5 text-sm text-on-surface-variant">{t.from_profile?.full_name ?? '?'} <ArrowRight size={13} /> {t.to_profile?.full_name ?? '?'}</div>
+            <div className="flex items-center gap-1.5 text-sm text-on-surface-variant">{t.from_profile?.full_name ?? '?'}  {t.to_profile?.full_name ?? '?'}</div>
             {t.escrow_contract_id && (
               <a
                 href={`https://stellar.expert/explorer/testnet/contract/${t.escrow_contract_id}`}
@@ -75,7 +75,7 @@ function Content({ token, me }: { token: string; me: Me }) {
                 title={t.escrow_contract_id}
               >
                 <Shield size={10} /> Canasta on-chain (Trustless Work)
-                <ExternalLink size={9} />
+                
               </a>
             )}
           </div>

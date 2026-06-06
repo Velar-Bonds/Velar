@@ -27,7 +27,7 @@ function Content({ token }: { token: string }) {
           </h1>
           <p className="mt-1 text-on-surface-variant">Actividad reciente y últimas transacciones de la red.</p>
         </div>
-        <a href={stellarExpert.network()} target="_blank" rel="noopener noreferrer" className="hidden items-center gap-1.5 rounded-lg border border-primary-container/30 px-3 py-1.5 text-sm font-medium text-primary-container transition hover:bg-primary-container/5 sm:flex"><ExternalLink size={15} /> Red en Stellar Expert</a>
+        <a href={stellarExpert.network()} target="_blank" rel="noopener noreferrer" className="hidden items-center gap-1.5 rounded-lg border border-primary-container/30 px-3 py-1.5 text-sm font-medium text-primary-container transition hover:bg-primary-container/5 sm:flex"> Red en Stellar Expert</a>
       </div>
 
       {items.length === 0 ? (
@@ -39,7 +39,7 @@ function Content({ token }: { token: string }) {
               <div className="flex items-center gap-4">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-container/10 text-primary-container"><Activity size={18} /></span>
                 <div>
-                  <div className="text-sm font-semibold">{t.bonds?.bond_id ?? 'Bono'} · {t.from_profile?.full_name ?? '?'} → {t.to_profile?.full_name ?? '?'}</div>
+                  <div className="text-sm font-semibold">{t.bonds?.bond_id ?? 'Bono'} · {t.from_profile?.full_name ?? '?'}  a  {t.to_profile?.full_name ?? '?'}</div>
                   <div className="text-xs text-on-surface-variant">{fmtDate(t.created_at)}</div>
                 </div>
               </div>

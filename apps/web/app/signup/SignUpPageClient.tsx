@@ -192,7 +192,7 @@ export default function SignUpPage() {
             className="velar-primary-button flex h-11 w-full items-center justify-center gap-3 rounded-[14px] text-[15px] font-semibold transition disabled:opacity-60 sm:h-12 sm:text-base lg:h-[50px]"
           >
             {loading ? 'Creando...' : 'Crear cuenta'}
-            {!loading && <span aria-hidden className="text-xl leading-none">→</span>}
+            {!loading && <span aria-hidden className="text-xl leading-none"> a </span>}
           </button>
         </form>
 

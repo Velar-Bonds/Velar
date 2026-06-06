@@ -1,4 +1,4 @@
-# AGENTS.md — Reglas para agentes de IA trabajando en VELAR
+# AGENTS.md : Reglas para agentes de IA trabajando en VELAR
 
 > **Léelo completo antes de tocar nada.** Este repo se construye en parte con agentes de IA.
 > Estas reglas existen para que NO se rompa lo que ya funciona. Si vas a hacer algo que
@@ -26,12 +26,12 @@ Monorepo con **npm workspaces**:
 ```
 VELAR/
 ├── apps/
-│   ├── api/        → Backend NestJS (TypeScript). DUEÑO: agente de backend.
-│   └── web/        → Frontend Next.js (App Router + Tailwind). DUEÑO: agente de frontend.
+│   ├── api/         a  Backend NestJS (TypeScript). DUEÑO: agente de backend.
+│   └── web/         a  Frontend Next.js (App Router + Tailwind). DUEÑO: agente de frontend.
 ├── packages/
-│   └── types/      → @velar/types. Tipos compartidos entre api y web. FUENTE DE VERDAD.
+│   └── types/       a  @velar/types. Tipos compartidos entre api y web. FUENTE DE VERDAD.
 └── supabase/
-    └── migrations/ → Schema SQL (Postgres). Versionado, append-only.
+    └── migrations/  a  Schema SQL (Postgres). Versionado, append-only.
 ```
 
 - **Base de datos + Auth:** Supabase (Postgres + Supabase Auth).
@@ -69,26 +69,26 @@ NO toques `apps/api`, `supabase/` ni la lógica de `packages/types`. Consumí la
 
 ## 4. Flujo de negocio (no lo rompas)
 
-Estados del **bono**: `emitido → activo → en_escrow → transferido` (+ `cancelado`, `congelado`).
+Estados del **bono**: `emitido  a  activo  a  en_escrow  a  transferido` (+ `cancelado`, `congelado`).
 Estados de la **transferencia**:
-`solicitada → aceptada → en_escrow → pago_registrado → pago_validado → liberada`
+`solicitada  a  aceptada  a  en_escrow  a  pago_registrado  a  pago_validado  a  liberada`
 (+ `rechazada`, `cancelada`).
 
 Tres perspectivas: **TSE** (autoridad: emite + audita), **Partido** (rol `emisor`: vende sus bonos),
 **Usuario** (rol `comprador`/`recomprador`, son lo mismo: compra/revende).
 
 Flujo principal (cada paso emite un evento de auditoría):
-1. **TSE** emite el bono **a nombre de un partido** → dueño inicial = la cuenta del partido (`activo`).
+1. **TSE** emite el bono **a nombre de un partido**  a  dueño inicial = la cuenta del partido (`activo`).
 2. Un **usuario** ve el bono en venta y **solicita comprarlo** (`solicitada`).
-3. El **dueño/vendedor acepta** → token a la canasta, bono `en_escrow`.
+3. El **dueño/vendedor acepta**  a  token a la canasta, bono `en_escrow`.
 4. El **comprador** registra evidencia de pago físico (hash) (`pago_registrado`).
-5. El **vendedor confirma el pago** → libera → bono cambia de dueño, queda `activo` (`liberada`).
+5. El **vendedor confirma el pago**  a  libera  a  bono cambia de dueño, queda `activo` (`liberada`).
    (Ya NO hay rol validador en el flujo; confirma el propio vendedor.)
 
 Reglas duras:
 - Un bono tiene **un solo dueño** a la vez.
 - No se puede transferir si está `en_escrow`, `cancelado` o `congelado`.
-- Toda acción crítica → evento en `audit_events`.
+- Toda acción crítica  a  evento en `audit_events`.
 - El historial de propietarios **no se borra ni se modifica**.
 
 ## 5. Seguridad (crítico)
@@ -113,8 +113,8 @@ npm run dev --workspace apps/api
 npm run dev --workspace apps/web
 ```
 
-Variables de entorno: copiá `apps/api/.env.example` → `apps/api/.env` y
-`apps/web/.env.example` → `apps/web/.env.local`, y pedí las claves reales al humano.
+Variables de entorno: copiá `apps/api/.env.example`  a  `apps/api/.env` y
+`apps/web/.env.example`  a  `apps/web/.env.local`, y pedí las claves reales al humano.
 
 ⚠️ **Node 22+ requerido.** Con Node 20 el cliente de Supabase falla con
 `Node.js 20 detected without native WebSocket support`. Si no podés subir de versión,

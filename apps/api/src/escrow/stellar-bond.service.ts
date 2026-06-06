@@ -124,7 +124,7 @@ export class StellarBondService {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(ownerAddress, asset);
     const { txHash, ledger } = await this.payOne(this.wallets.issuerAddress!, ownerAddress, asset, `VELAR:issue:${bondId}`);
-    this.logger.log(`Bono ${bondId} emitido on-chain → ${ownerAddress} (${txHash})`);
+    this.logger.log(`Bono ${bondId} emitido on-chain  a  ${ownerAddress} (${txHash})`);
     return { assetCode: asset.getCode(), issuer: asset.getIssuer(), owner: ownerAddress, txHash, ledger };
   }
 
@@ -134,7 +134,7 @@ export class StellarBondService {
     await this.ensureTrustline(this.wallets.escrowAddress!, asset);
     const memo = amount ? `escrow:${amount}` : `escrow:${bondId}`;
     const { txHash } = await this.payOne(ownerAddress, this.wallets.escrowAddress!, asset, memo);
-    this.logger.log(`Bono ${bondId} → escrow (${txHash})`);
+    this.logger.log(`Bono ${bondId}  a  escrow (${txHash})`);
     return txHash;
   }
 
@@ -143,7 +143,7 @@ export class StellarBondService {
     const asset = this.assetFor(bondId);
     await this.ensureTrustline(originalOwnerAddress, asset);
     const { txHash } = await this.payOne(this.wallets.escrowAddress!, originalOwnerAddress, asset, `return:${bondId}`.slice(0, 28));
-    this.logger.log(`Bono ${bondId} ← escrow (devuelto al dueño ${originalOwnerAddress}, tx ${txHash})`);
+    this.logger.log(`Bono ${bondId}  de  escrow (devuelto al dueño ${originalOwnerAddress}, tx ${txHash})`);
     return txHash;
   }
 
@@ -151,8 +151,8 @@ export class StellarBondService {
    * Libera el token de la canasta al nuevo dueño Y registra el precio pagado on-chain.
    *
    * En una sola transacción atómica firmada por escrow + issuer:
-   *  - Op 1: paga 1 unidad del token bono: escrow → comprador
-   *  - Op 2 (opcional, si hay precio y vendedor): paga VCRC: issuer → vendedor
+   *  - Op 1: paga 1 unidad del token bono: escrow  a  comprador
+   *  - Op 2 (opcional, si hay precio y vendedor): paga VCRC: issuer  a  vendedor
    *
    * Combinarlas en una sola tx evita race conditions de sequence number y
    * garantiza que el cambio de dueño y el registro del precio sean atómicos.
@@ -202,7 +202,7 @@ export class StellarBondService {
 
     try {
       const res = await this.server.submitTransaction(tx);
-      this.logger.log(`Bono ${bondId} liberado → ${newOwnerAddress} (${res.hash})${wantsPrice ? ` + ₡${amount} VCRC → ${sellerAddress}` : ''}`);
+      this.logger.log(`Bono ${bondId} liberado  a  ${newOwnerAddress} (${res.hash})${wantsPrice ? ` + ₡${amount} VCRC  a  ${sellerAddress}` : ''}`);
       return { txHash: res.hash, priceRecorded: wantsPrice };
     } catch (e: any) {
       const codes = e?.response?.data?.extras?.result_codes;

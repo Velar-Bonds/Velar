@@ -8,6 +8,7 @@ import {
 import { createClient } from '../lib/supabase/client';
 import type { Me } from '../lib/api';
 import { useRoleGuard } from '../lib/role-guard';
+import { VelarBrand } from './VelarBrand';
 
 const NAV = [
   { href: '/partido', label: 'Dashboard', Icon: LayoutDashboard, exact: true },
@@ -40,11 +41,8 @@ export function PartidoShell({ me, children }: { me: Me; children: ReactNode }) 
     <div className="flex min-h-screen bg-background text-on-background" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Sidebar */}
       <nav className="fixed left-0 top-0 z-50 flex h-screen w-[240px] flex-col border-r border-outline-variant bg-white py-6 shadow-sm">
-        <Link href="/partido" className="mb-6 flex items-center gap-2 px-6">
-          <svg width="30" height="30" viewBox="0 0 44 44" fill="none">
-            <path d="M9 10 L22 33 L35 10" stroke="#155EEF" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="text-xl font-bold tracking-tight text-primary" style={{ fontFamily: 'Geist' }}>VELAR</span>
+        <Link href="/partido" className="mb-6 flex items-center px-6" aria-label="VELAR">
+          <VelarBrand size="sm" />
         </Link>
 
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2">
@@ -68,7 +66,7 @@ export function PartidoShell({ me, children }: { me: Me; children: ReactNode }) 
             <div className="min-w-0 flex-1">
               <p className="truncate text-[12px] font-bold uppercase tracking-wider text-on-surface">{me.full_name ?? 'Partido'}</p>
               <p className="flex items-center gap-1 text-[10px] font-medium text-emerald-700">
-                <ShieldCheck className="h-3 w-3" strokeWidth={2.2} /> Verified Node
+                <ShieldCheck className="h-3 w-3" strokeWidth={2.2} /> Nodo verificado
               </p>
             </div>
             <button onClick={logout} className="text-on-surface-variant transition hover:text-red-600">

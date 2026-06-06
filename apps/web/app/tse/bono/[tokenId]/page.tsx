@@ -10,11 +10,11 @@ import { TSEShell } from '../../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../../lib/api';
 
 const fmtCRC = (n: number | null, cur = 'CRC') =>
-  n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
+  n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d?: string | null) =>
-  d ? new Date(d).toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+  d ? new Date(d).toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric' }) : ':';
 const shortKey = (k?: string | null, n = 6) =>
-  !k ? '—' : k.length > 2 * n + 3 ? `${k.slice(0, n)}…${k.slice(-n)}` : k;
+  !k ? 'Sin dato' : k.length > 2 * n + 3 ? `${k.slice(0, n)}…${k.slice(-n)}` : k;
 
 const STATUS_LABELS: Record<string, string> = {
   Active: 'Activo',
@@ -62,7 +62,7 @@ export default function BonoDetallePage() {
             return;
           }
           setData({
-            source: 'database_fallback',
+            source: 'database_snapshot',
             read_error: friendlySorobanReadError(e.message),
             contract_id: bond.soroban_contract_id,
             init_tx_hash: bond.soroban_init_tx_hash ?? null,
@@ -99,7 +99,7 @@ export default function BonoDetallePage() {
     <TSEShell me={me}>
       <header className="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
         <Link href="/tse/registros" className="inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary">
-          <ArrowLeft size={16} /> Volver a registros
+           Volver a registros
         </Link>
       </header>
 
@@ -116,7 +116,7 @@ export default function BonoDetallePage() {
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-primary">
-                  {data.source === 'soroban' ? 'Certificado on-chain' : 'Contrato Soroban desplegado'}
+                  {data.source === 'soroban' ? 'Certificado on-chain' : 'Registro verificado en base de datos'}
                 </p>
                 <h1 className="mt-1 font-mono text-4xl font-bold tracking-tight text-slate-900" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
                   {data.bond_id}
@@ -138,7 +138,7 @@ export default function BonoDetallePage() {
                 <div className="flex items-start gap-3">
                   <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-700" />
                   <div>
-                    <p className="font-semibold">El contrato existe, pero la metadata Soroban aun no se pudo leer.</p>
+                    <p className="font-semibold">La metadata Soroban aun no se pudo leer.</p>
                     <p className="mt-1 text-amber-800">
                       Mostramos los datos registrados por VELAR y el contract ID para verificación pública.
                       Motivo técnico: {friendlySorobanReadError(data.read_error)}.
@@ -165,7 +165,7 @@ export default function BonoDetallePage() {
                 <a href={`https://stellar.expert/explorer/testnet/contract/${data.contract_id}`}
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-white px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/5">
-                  Ver on-chain <ExternalLink size={11} />
+                  Ver on-chain 
                 </a>
               </div>
 
@@ -178,7 +178,7 @@ export default function BonoDetallePage() {
                   value={fmtCRC(data.face_value, data.currency)}
                   emphasis
                 />
-                <Field icon={<Percent size={15} />} label="Tasa de interés" value={data.interest_rate != null ? `${data.interest_rate}%` : '—'} />
+                <Field icon={<Percent size={15} />} label="Tasa de interés" value={data.interest_rate != null ? `${data.interest_rate}%` : ':'} />
                 <Field icon={<Calendar size={15} />} label="Fecha de emisión" value={fmtDate(data.issue_date)} />
                 <Field icon={<Calendar size={15} />} label="Vencimiento" value={fmtDate(data.maturity_date)} />
                 <Field icon={<User size={15} />} label="Dueño actual" value={shortKey(data.current_owner, 8)} mono />
@@ -190,7 +190,7 @@ export default function BonoDetallePage() {
                   Hash del documento (SHA-256)
                 </p>
                 <p className="break-all font-mono text-[12px] text-slate-700">
-                  {data.document_hash_hex ?? '—'}
+                  {data.document_hash_hex ?? 'Sin dato'}
                 </p>
                 <p className="mt-2 text-[11px] text-on-surface-variant">
                   Cualquier persona puede descargar el certificado físico, calcular su SHA-256
@@ -237,7 +237,7 @@ function Field({
         className={`${mono ? 'font-mono text-[13px]' : ''} ${emphasis ? 'text-2xl font-bold text-slate-900' : 'text-base font-medium text-slate-900'}`}
         style={mono ? { fontFamily: 'JetBrains Mono, monospace' } : {}}
       >
-        {value ?? '—'}
+        {value ?? 'Sin dato'}
       </p>
     </div>
   );

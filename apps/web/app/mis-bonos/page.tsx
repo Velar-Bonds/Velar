@@ -64,7 +64,7 @@ function Content({ token }: { token: string }) {
                 return (
                   <tr key={b.token_id} className="transition-colors hover:bg-primary-container/[0.03]">
                     <td className="px-5 py-3 mono-data font-semibold text-primary-container">{b.bond_id}</td>
-                    <td className="px-5 py-3">{b.parties?.name ?? '—'}</td>
+                    <td className="px-5 py-3">{b.parties?.name ?? 'Sin dato'}</td>
                     <td className="px-5 py-3 mono-data font-semibold">{fmtMoney(b.face_value)}</td>
                     <td className="px-5 py-3"><StatusBadge status={b.status} /></td>
                     <td className="px-5 py-3 text-right">

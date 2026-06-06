@@ -1,4 +1,4 @@
-# VELAR — Roadmap
+# VELAR : Roadmap
 
 Estado a 2026-06-05. Lo que sigue está priorizado por impacto en producto.
 
@@ -9,8 +9,8 @@ Estado a 2026-06-05. Lo que sigue está priorizado por impacto en producto.
 ### Web3 / Stellar
 - Auth con 3 perspectivas: usuario / partido / TSE
 - Registro automático de wallet Stellar al crear partido o usuario (Friendbot testnet)
-- Solicitud de bono por partido → estado `pendiente` en BD (no toca Stellar todavía)
-- Aprobación por TSE → emisión real on-chain en Stellar Testnet (issueBond)
+- Solicitud de bono por partido  a  estado `pendiente` en BD (no toca Stellar todavía)
+- Aprobación por TSE  a  emisión real on-chain en Stellar Testnet (issueBond)
 - Persistencia de `stellar_transaction_hash`, `stellar_ledger`, `stellar_asset_code`,
   `stellar_issuer_public_key`, `stellar_owner_public_key`, `stellar_status`
 - Asset VCRC emitido por la plataforma para registrar precios on-chain (volumen
@@ -24,8 +24,8 @@ Estado a 2026-06-05. Lo que sigue está priorizado por impacto en producto.
   hash del documento, estado). 9 funciones en Rust + 7 errores tipados.
   Postgres pasa de fuente de verdad a cache + índice.
 - **Integración Trustless Work** como canasta de coordinación on-chain: deploy de
-  contrato Soroban Single-Release en cada venta. Lifecycle deploy → milestone
-  completed → milestone approved registrado en cadena.
+  contrato Soroban Single-Release en cada venta. Lifecycle deploy  a  milestone
+  completed  a  milestone approved registrado en cadena.
 - Chip 🪙 NFT (morado) y chip 🛡 Canasta Trustless Work (verde) en las páginas TSE.
 - Flujo de retorno: dueño solicita al TSE retirar bono del escrow con motivo,
   TSE aprueba (mueve token on-chain de escrow al dueño) o rechaza con notas.
@@ -75,23 +75,23 @@ Estado a 2026-06-05. Lo que sigue está priorizado por impacto en producto.
 
 ---
 
-## 🚧 Pendiente — Backlog técnico
+## 🚧 Pendiente : Backlog técnico
 
 ### Datos reales vs mocks (parcial)
-- [ ] `/tse` (dashboard) — todavía cae a SEED_BONDS/SEED_REQUESTS/SEED_TRANSFERS
+- [ ] `/tse` (dashboard) : todavía cae a SEED_BONDS/SEED_REQUESTS/SEED_TRANSFERS
   si fetch devuelve vacío
-- [ ] `/tse/registros` — fallback a SEED_BONDS cuando vacío
-- [ ] `/tse/revision` — fallback a SEED_REQUESTS
-- [ ] `/tse/emision` — SEED_PARTIES hardcoded (debería usar `/api/parties`)
-- [ ] `/tse/trazabilidad` — fallback a SEED_BONDS y SEED_TRACEABILITY
-- [ ] `/tse/auditoria` — eventos hardcoded en el componente (debería usar
+- [ ] `/tse/registros` : fallback a SEED_BONDS cuando vacío
+- [ ] `/tse/revision` : fallback a SEED_REQUESTS
+- [ ] `/tse/emision` : SEED_PARTIES hardcoded (debería usar `/api/parties`)
+- [ ] `/tse/trazabilidad` : fallback a SEED_BONDS y SEED_TRACEABILITY
+- [ ] `/tse/auditoria` : eventos hardcoded en el componente (debería usar
   endpoint real `/api/audit/events`)
-- [ ] `/partido` (dashboard) — usa MOCK_BONDS, MOCK_TRANSFERS
-- [ ] `/partido/mis-bonos` — usa MOCK_BONDS
+- [ ] `/partido` (dashboard) : usa MOCK_BONDS, MOCK_TRANSFERS
+- [ ] `/partido/mis-bonos` : usa MOCK_BONDS
 
 ### Endpoints faltantes
-- [ ] `GET /api/audit/events` — listar eventos para `/tse/auditoria`
-- [ ] `GET /api/bonds/:tokenId/traceability` — servicio centralizado de trazabilidad
+- [ ] `GET /api/audit/events` : listar eventos para `/tse/auditoria`
+- [ ] `GET /api/bonds/:tokenId/traceability` : servicio centralizado de trazabilidad
   unificada (audit_events + transfers + estado on-chain + ofertas + dueños)
 
 ### Eventos de auditoría que faltan emitir
@@ -127,7 +127,7 @@ El schema y el contrato Soroban ya tienen `document_hash` pero **nadie sube nada
 - Upload del PDF al solicitar el bono
 - SHA-256 server-side
 - Hash en el `InitArgs.document_hash` del contrato Soroban
-- Verificación pública: descargar PDF → recomputar hash → comparar con on-chain
+- Verificación pública: descargar PDF  a  recomputar hash  a  comparar con on-chain
 
 ### 3. Notificaciones en vivo / WebSocket
 Realtime de Supabase para que los paneles se actualicen sin recargar.
@@ -201,16 +201,16 @@ revisión de regulación, y posiblemente un partner financiero.
 
 Roadmap para subir el % de web3 (hoy ~27% con Nivel 1 activo, ver `docs/WEB3.md`):
 
-- **Nivel 2 — Documentos en IPFS** (~+5% web3, ~1 día): PDF del bono a IPFS,
+- **Nivel 2 : Documentos en IPFS** (~+5% web3, ~1 día): PDF del bono a IPFS,
   CID al `metadata_uri` del contrato Soroban
-- **Nivel 3 — Marketplace contract** (~+15% web3, ~7 días): toda la lógica de
+- **Nivel 3 : Marketplace contract** (~+15% web3, ~7 días): toda la lógica de
   `transfers.service.ts` (ofertas, contraofertas, escrow, validación) se mueve
   a un Soroban contract `BondMarketplace`
-- **Nivel 4 — Trustless Work full mode** (~+5% web3, ~3 días): comprador
+- **Nivel 4 : Trustless Work full mode** (~+5% web3, ~3 días): comprador
   deposita USDC oficial Stellar al contrato escrow, liberación real on-chain
-- **Nivel 5 — Wallets propias** (~+10% web3, alto costo UX): Freighter/Albedo
+- **Nivel 5 : Wallets propias** (~+10% web3, alto costo UX): Freighter/Albedo
   para usuarios power, custodia asistida sigue como default
-- **Nivel 6 — DAO TSE** (~+5% web3, ~3 días): multisig de 3-5 validadores en
+- **Nivel 6 : DAO TSE** (~+5% web3, ~3 días): multisig de 3-5 validadores en
   vez de cuenta única
 
 Total proyectado si se hacen los 5 niveles: **~52% web3 / 48% web2**.

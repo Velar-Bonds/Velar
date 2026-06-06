@@ -14,7 +14,7 @@ export type CustodyWalletCreation = {
  * Custodia asistida (SOLO testnet / demo).
  * Carga las llaves de apps/api/.stellar-wallets.json y firma XDR en nombre de
  * una dirección pública. En producción esto se reemplaza por firmas del lado
- * del usuario (wallet propia) — ver docs/BACKEND.md.
+ * del usuario (wallet propia) : ver docs/BACKEND.md.
  */
 @Injectable()
 export class WalletService {

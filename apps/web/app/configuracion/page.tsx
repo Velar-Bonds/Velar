@@ -75,7 +75,7 @@ function Content({ token, me }: { token: string; me: Me }) {
             {me.stellar_wallet ? (
               <div className="flex items-center justify-between rounded-xl border border-outline-variant/30 bg-surface-container-low/50 px-4 py-3">
                 <span className="mono-data text-sm">{shortKey(me.stellar_wallet, 6)}</span>
-                <a href={stellarExpert.account(me.stellar_wallet)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-container hover:underline"><ExternalLink size={15} /> Ver en Stellar Expert</a>
+                <a href={stellarExpert.account(me.stellar_wallet)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-container hover:underline"> Ver en Stellar Expert</a>
               </div>
             ) : (
               <p className="text-sm text-on-surface-variant">La wallet se crea automaticamente del lado servidor.</p>

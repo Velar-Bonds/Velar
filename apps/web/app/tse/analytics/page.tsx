@@ -69,7 +69,7 @@ export default function AnalyticsPage() {
             {[
               { label: 'Volumen movido', value: fmtCRC(overview.total_volume_crc), Icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
               { label: 'Valor emitido', value: fmtCRC(overview.total_emitted_crc), Icon: Boxes, color: 'text-blue-500', bg: 'bg-blue-50' },
-              { label: 'Bonos emitidos', value: fmtNum(overview.total_bonds), Icon: BarChart3, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Bonos emitidos', value: fmtNum(overview.total_bonds), Icon: BarChart3, color: 'text-primary', bg: 'bg-blue-50' },
               { label: 'Ventas completadas', value: fmtNum(overview.total_sales), Icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50' },
             ].map(({ label, value, Icon, color, bg }) => (
               <div key={label} className="glass-card flex items-center gap-4 rounded-xl p-5 transition-transform hover:-translate-y-0.5">
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
                     <div key={i} className={`rounded-xl border p-3 ${o.current ? 'border-emerald-200 bg-emerald-50/30' : 'border-outline-variant/20'}`}>
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold">
-                          {o.name ?? '—'}
+                          {o.name ?? 'Sin dato'}
                           {o.current && <span className="ml-2 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">DUEÑO ACTUAL</span>}
                         </p>
                         {o.paid != null && <span className="font-mono text-xs font-semibold text-primary">{fmtCRC(o.paid)}</span>}

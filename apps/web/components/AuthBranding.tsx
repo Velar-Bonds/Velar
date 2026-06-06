@@ -1,21 +1,10 @@
 import type { ReactNode } from 'react';
 import { HeroArt } from './HeroArt';
+import { VelarBrand } from './VelarBrand';
 
 type AuthBrandingProps = {
   compact?: boolean;
 };
-
-function VelarLogo({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className={`flex items-center ${compact ? 'gap-2.5' : 'gap-3'}`}>
-      <svg width={compact ? 36 : 44} height={compact ? 36 : 44} viewBox="0 0 44 44" fill="none" aria-hidden>
-        <path d="M9 10 L22 33 L35 10" stroke="#2563EB" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M16 10 L22 21 L28 10" stroke="#60A5FA" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity=".8" />
-      </svg>
-      <span className={`velar-brand-text font-extrabold tracking-[0.14em] ${compact ? 'text-2xl' : 'text-3xl'}`}>VELAR</span>
-    </div>
-  );
-}
 
 function Feature({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
   return (
@@ -49,39 +38,39 @@ const BankIcon = (
 
 function DesktopBranding() {
   return (
-    <section className="relative hidden h-full overflow-hidden px-7 py-6 lg:flex lg:w-[54%] lg:min-w-0 lg:flex-col lg:justify-between xl:px-10 xl:py-8 2xl:w-[56%]">
+    <section className="relative hidden min-h-[640px] overflow-hidden px-7 py-7 lg:flex lg:min-w-0 lg:flex-col lg:justify-center xl:px-10 xl:py-9">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.92),transparent_34%),radial-gradient(circle_at_30%_90%,rgba(37,99,235,0.16),transparent_42%),radial-gradient(circle_at_82%_20%,rgba(96,165,250,0.15),transparent_34%)]" />
       <div className="absolute bottom-0 left-[-8%] h-[340px] w-[760px] rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,0.68),rgba(255,255,255,0))] blur-3xl xl:h-[400px] xl:w-[880px]" />
       <div className="absolute inset-y-0 right-0 w-[160px] bg-[radial-gradient(circle_at_right,_rgba(37,99,235,0.08),transparent_62%)] xl:w-[200px]" />
 
       <div className="relative z-10">
-        <VelarLogo />
+        <VelarBrand size="lg" />
 
-        <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#a9c8ff] bg-white/72 px-4 py-2 text-sm font-medium text-[#1f5eff] backdrop-blur-sm">
+        <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#a9c8ff] bg-white/72 px-4 py-2 text-sm font-medium text-[#1f5eff] backdrop-blur-sm">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z" />
           </svg>
           Transparencia que se puede verificar.
         </div>
 
-        <h1 className="velar-brand-text mt-5 text-[2.85rem] font-extrabold leading-[0.96] tracking-[-0.035em] text-[#10235d] xl:text-[3.45rem] 2xl:text-[4rem]">
+        <h1 className="velar-brand-text mt-6 max-w-[9ch] text-[2.85rem] font-extrabold leading-[0.96] tracking-[-0.03em] text-[#10235d] xl:text-[3.25rem] 2xl:text-[3.55rem]">
           Bienvenido a
           <span className="mt-1.5 block text-[#1f63ff]">VELAR</span>
         </h1>
 
-        <p className="mt-4 max-w-[450px] text-[15px] leading-7 text-[#53658f] xl:text-[1.04rem] xl:leading-8">
+        <p className="mt-4 max-w-[470px] text-[15px] leading-7 text-[#53658f] xl:text-[1rem] xl:leading-8">
           La plataforma de trazabilidad verificable que fortalece la transparencia, la integridad y la
           confianza en cada decision publica.
         </p>
 
-        <div className="mt-6 flex gap-4 xl:mt-8 xl:gap-6">
+        <div className="mt-7 grid max-w-[520px] grid-cols-3 gap-4 xl:mt-8 xl:gap-5">
           <Feature icon={ShieldIcon} title="Verificable" desc="Evidencia inmutable y verificable." />
           <Feature icon={UsersIcon} title="Confiable" desc="Datos publicos, seguros y auditables." />
           <Feature icon={BankIcon} title="Publica" desc="Tecnologia al servicio del control ciudadano." />
         </div>
       </div>
 
-      <div className="pointer-events-none relative z-10 mt-4 flex min-h-[220px] items-end justify-center xl:min-h-[290px]">
+      <div className="pointer-events-none relative z-10 mt-5 flex min-h-[180px] items-end justify-center xl:min-h-[230px]">
         <HeroArt compact={false} />
       </div>
 
@@ -95,7 +84,7 @@ function CompactBranding() {
       <div className="absolute inset-x-0 bottom-[-18%] h-[56%] bg-[radial-gradient(circle_at_20%_100%,rgba(37,99,235,0.12),transparent_44%),radial-gradient(circle_at_82%_24%,rgba(96,165,250,0.12),transparent_30%)]" />
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <VelarLogo compact />
+          <VelarBrand size="md" />
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#bfd2ff] bg-[#edf4ff] px-3 py-1.5 text-xs font-medium text-[#1f5eff]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z" />

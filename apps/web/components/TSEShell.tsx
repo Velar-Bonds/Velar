@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutGrid, ClipboardCheck, Send, ScrollText, Waypoints, Search, Settings, LogOut,
-  ShieldCheck, Landmark, BarChart3, FileText, Shield,
+  ShieldCheck, BarChart3, FileText, Shield,
 } from 'lucide-react';
 import { createClient } from '../lib/supabase/client';
 import type { Me } from '../lib/api';
 import { useRoleGuard } from '../lib/role-guard';
+import { VelarBrand } from './VelarBrand';
 
 const NAV = [
   { href: '/tse', label: 'Dashboard', Icon: LayoutGrid, exact: true },
@@ -44,11 +45,8 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
       {/* Sidebar */}
       <aside className="sticky top-0 z-40 flex h-full w-64 shrink-0 flex-col justify-between overflow-y-auto border-r border-surface-variant/40 bg-white/80 backdrop-blur-md">
         <div className="px-5 py-7">
-          <Link href="/tse" className="mb-10 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Landmark className="h-4 w-4 text-white" strokeWidth={2.2} />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-primary" style={{ fontFamily: 'Geist' }}>VELAR</span>
+          <Link href="/tse" className="mb-10 flex items-center" aria-label="VELAR">
+            <VelarBrand size="sm" />
           </Link>
           <nav className="flex flex-col gap-1">
             {NAV.map(({ href, label, Icon, exact }) => {
