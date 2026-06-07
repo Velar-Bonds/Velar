@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Keypair, Networks, TransactionBuilder } from '@stellar/stellar-sdk';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export type CustodyWalletCreation = {
   publicKey: string;
@@ -10,12 +11,6 @@ export type CustodyWalletCreation = {
   error?: string;
 };
 
-/**
- * Custodia asistida (SOLO testnet / demo).
- * Carga las llaves de apps/api/.stellar-wallets.json y firma XDR en nombre de
- * una dirección pública. En producción esto se reemplaza por firmas del lado
- * del usuario (wallet propia) : ver docs/BACKEND.md.
- */
 @Injectable()
 export class WalletService {
   private readonly logger = new Logger(WalletService.name);
@@ -23,27 +18,87 @@ export class WalletService {
   private readonly nameToPublic = new Map<string, string>();
   private readonly file = path.join(process.cwd(), '.stellar-wallets.json');
   private store: Record<string, { publicKey: string; secret: string }> = {};
+  private supabase: SupabaseClient | null = null;
 
   constructor() {
-    if (!fs.existsSync(this.file)) {
-      this.logger.warn(
-        '.stellar-wallets.json no encontrado: el escrow on-chain quedará deshabilitado. Corré "npm run provision:wallets".',
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      this.supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
       );
-      return;
     }
-    this.store = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-    for (const [name, kp] of Object.entries(this.store)) {
-      this.secretByPublic.set(kp.publicKey, kp.secret);
-      this.nameToPublic.set(name, kp.publicKey);
+
+    // 1. Wallets fijas desde STELLAR_WALLETS_JSON (producción) o archivo local (dev)
+    const fromEnv = process.env.STELLAR_WALLETS_JSON;
+    if (fromEnv) {
+      try {
+        this.store = JSON.parse(fromEnv);
+        for (const [name, kp] of Object.entries(this.store)) {
+          this.secretByPublic.set(kp.publicKey, kp.secret);
+          this.nameToPublic.set(name, kp.publicKey);
+        }
+        this.logger.log(`Custodia base cargada desde STELLAR_WALLETS_JSON: ${this.secretByPublic.size} wallets`);
+      } catch (e) {
+        this.logger.error(`STELLAR_WALLETS_JSON inválido: ${(e as Error).message}`);
+      }
+    } else if (fs.existsSync(this.file)) {
+      this.store = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+      for (const [name, kp] of Object.entries(this.store)) {
+        this.secretByPublic.set(kp.publicKey, kp.secret);
+        this.nameToPublic.set(name, kp.publicKey);
+      }
+      this.logger.log(`Custodia base cargada desde archivo: ${this.secretByPublic.size} wallets`);
+    } else {
+      this.logger.warn('.stellar-wallets.json no encontrado y STELLAR_WALLETS_JSON no definido.');
     }
-    this.logger.log(`Custodia cargada: ${this.secretByPublic.size} wallets testnet`);
+
+    // 2. Wallets de usuarios desde Supabase (async)
+    this.loadWalletsFromSupabase().catch((e) =>
+      this.logger.warn(`No se pudieron cargar wallets de Supabase: ${(e as Error).message}`),
+    );
   }
 
-  /**
-   * Crea una wallet de custodia nueva para un usuario/partido recién registrado:
-   * genera el par de llaves, la fondea con XLM (Friendbot, testnet) y la guarda.
-   * Devuelve la dirección pública (que se guarda en profiles.stellar_wallet).
-   */
+  private async loadWalletsFromSupabase(): Promise<void> {
+    if (!this.supabase) return;
+    try {
+      const { data, error } = await this.supabase
+        .from('custody_wallets')
+        .select('label, public_key, secret');
+      if (error) throw new Error(error.message);
+      if (!data?.length) return;
+      for (const row of data) {
+        if (!this.secretByPublic.has(row.public_key)) {
+          this.secretByPublic.set(row.public_key, row.secret);
+          this.nameToPublic.set(row.label, row.public_key);
+        }
+      }
+      this.logger.log(`Wallets de usuarios cargadas desde Supabase: ${data.length}`);
+    } catch (e) {
+      this.logger.warn(`loadWalletsFromSupabase: ${(e as Error).message}`);
+    }
+  }
+
+  private async persistWallet(label: string, publicKey: string, secret: string): Promise<void> {
+    if (this.supabase) {
+      try {
+        await this.supabase.from('custody_wallets').upsert(
+          { label, public_key: publicKey, secret },
+          { onConflict: 'public_key' },
+        );
+      } catch (e) {
+        this.logger.warn(`No se pudo guardar wallet en Supabase: ${(e as Error).message}`);
+      }
+    }
+    if (!process.env.STELLAR_WALLETS_JSON && fs.existsSync(path.dirname(this.file))) {
+      try {
+        this.store[label] = { publicKey, secret };
+        fs.writeFileSync(this.file, JSON.stringify(this.store, null, 2));
+      } catch (e) {
+        this.logger.warn(`No se pudo guardar wallet en archivo: ${(e as Error).message}`);
+      }
+    }
+  }
+
   async createWalletRecord(label: string): Promise<CustodyWalletCreation> {
     const kp = Keypair.random();
     const publicKey = kp.publicKey();
@@ -60,9 +115,10 @@ export class WalletService {
       status = 'failed';
       this.logger.warn(`Friendbot falló para ${label}: ${error}`);
     }
-    this.store[`user:${label}:${publicKey.slice(0, 6)}`] = { publicKey, secret: kp.secret() };
+    const key = `user:${label}:${publicKey.slice(0, 6)}`;
     this.secretByPublic.set(publicKey, kp.secret());
-    fs.writeFileSync(this.file, JSON.stringify(this.store, null, 2));
+    this.nameToPublic.set(key, publicKey);
+    await this.persistWallet(key, publicKey, kp.secret());
     this.logger.log(`Wallet de custodia creada para ${label}: ${publicKey}`);
     return { publicKey, status, network: 'testnet', error };
   }
@@ -72,42 +128,21 @@ export class WalletService {
     return wallet.publicKey;
   }
 
-  get enabled(): boolean {
-    return this.secretByPublic.size > 0;
-  }
+  get enabled(): boolean { return this.secretByPublic.size > 0; }
+  get platformAddress(): string | undefined { return this.nameToPublic.get('platform'); }
+  get issuerAddress(): string | undefined { return this.nameToPublic.get('platform'); }
+  get escrowAddress(): string | undefined { return this.nameToPublic.get('escrow'); }
+  hasKeyFor(publicKey: string): boolean { return this.secretByPublic.has(publicKey); }
 
-  /** Dirección pública de la plataforma (emisora de los tokens de bono). */
-  get platformAddress(): string | undefined {
-    return this.nameToPublic.get('platform');
-  }
-
-  /** Cuenta emisora de los activos de bono (= plataforma). */
-  get issuerAddress(): string | undefined {
-    return this.nameToPublic.get('platform');
-  }
-
-  /** Cuenta de la canasta de escrow. */
-  get escrowAddress(): string | undefined {
-    return this.nameToPublic.get('escrow');
-  }
-
-  hasKeyFor(publicKey: string): boolean {
-    return this.secretByPublic.has(publicKey);
-  }
-
-  /** Keypair en custodia para una dirección pública (para firmar transacciones). */
   keypairFor(publicKey: string): Keypair {
     const secret = this.secretByPublic.get(publicKey);
     if (!secret) throw new Error(`No hay llave en custodia para ${publicKey}`);
     return Keypair.fromSecret(secret);
   }
 
-  /** Firma un XDR (Soroban/Stellar) en nombre de `publicKey` y devuelve el XDR firmado. */
   signXdr(unsignedXdr: string, publicKey: string): string {
     const secret = this.secretByPublic.get(publicKey);
-    if (!secret) {
-      throw new Error(`No hay llave en custodia para ${publicKey}`);
-    }
+    if (!secret) throw new Error(`No hay llave en custodia para ${publicKey}`);
     const tx = TransactionBuilder.fromXDR(unsignedXdr, Networks.TESTNET);
     tx.sign(Keypair.fromSecret(secret));
     return tx.toXDR();
