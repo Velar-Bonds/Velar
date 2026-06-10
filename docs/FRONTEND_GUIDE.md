@@ -31,7 +31,7 @@ Páginas ya construidas en `apps/web/app/` (Next.js App Router, Tailwind v4, luc
 | `/tse` | `app/tse/` (page + `TSEPageClient`) | Panel del TSE (ve todo) |
 
 Convenciones del proyecto (seguilas):
-- **Rutas normales** (NO `/dashboard/*`). El middleware `proxy.ts` protege `/marketplace`, `/partido`, `/tse`, `/admin`.
+- **Rutas normales** (NO `/dashboard/*`). El middleware `middleware.ts` protege `/marketplace`, `/partido`, `/tse`, `/admin`.
 - **Patrón page + Client**: `page.tsx` exporta `metadata` y renderiza un `XPageClient` (`'use client'`).
 - **Tokens de diseño** en `app/globals.css` (`@theme`): usá clases como `text-primary`, `bg-surface-container`, `glass-card`, etc. No hardcodees hex si hay token.
 - **Íconos**: `lucide-react` o Material Symbols (clase `material-symbols-outlined`).

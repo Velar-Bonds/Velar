@@ -20,8 +20,8 @@
 Servicios clave: `StellarBondService` (emite/mueve/libera el token), `WalletService` (custodia/firma).
 Para verlo funcionar: `docs/DEMO.md`  a  `npm run demo:flow`.
 
-> Nota histórica: se exploró Trustless Work (escrow de DINERO/USDC) pero se descartó: el caso de
-> VELAR requiere bloquear el TOKEN del bono, no plata. Esa integración fue removida.
+> **Trustless Work:** VELAR integra Trustless Work para crear contratos Soroban de escrow individuales
+> por cada venta. El token del bono entra al contrato hasta que ambas partes confirman. Ver `TrustlessWorkService`.
 
 ---
 

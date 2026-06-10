@@ -1,15 +1,14 @@
-![Texto descriptivo](docs/banner.png)
+![VELAR](docs/banner.png)
+
 # VELAR
 
 **Infraestructura blockchain para el traspaso digital de propiedad de bonos de partidos políticos.**
 
-> Trazabilidad, custodia y auditoría en tiempo real sobre Stellar : para el TSE, partidos y ciudadanos.
+> Trazabilidad, custodia y auditoría en tiempo real sobre Stellar — para el TSE, partidos y ciudadanos.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template)
 
 ---
-
-## Stack tecnológico
 
 <div align="center">
 
@@ -26,36 +25,130 @@
 
 ---
 
-## ¿Qué es VELAR?
+## El problema
 
-Hoy los bonos de partidos políticos se traspasan en papel: sin control de quién es el dueño, sin historial verificable, sin trazabilidad para el TSE. **VELAR lo digitaliza.**
+En Costa Rica, los bonos de deuda de partidos políticos se traspasan en papel, sin registro verificable. No hay un registro público de quién es el dueño actual, cuántas veces cambió de manos ni a qué precio. El TSE no tiene visibilidad en tiempo real sobre estas operaciones, y los compradores no tienen garantías de transparencia.
 
-Cada bono es un **token único en la blockchain de Stellar** (análogo a un NFT institucional). La propiedad, el escrow durante el traspaso y todo el historial de cambios de dueño viven on-chain : verificables por cualquier persona, en tiempo real.
-
----
-
-## Las tres perspectivas
-
-| Actor | Rol | Capacidades |
-|---|---|---|
-| 🏛️ **TSE** | Autoridad fiscalizadora | Emite bonos, supervisa todos los traspasos, audita historial, puede congelar |
-| 🎗️ **Partido** | Emisor / Vendedor | Recibe bonos emitidos, los pone en venta, confirma pagos |
-| 👤 **Usuario** | Comprador / Recomprador | Compra bonos al partido o a otros usuarios, revende |
+**El resultado:** un mercado opaco donde la información depende de documentos físicos y la buena fe de las partes.
 
 ---
 
-## El flujo completo
+## La solución
+
+VELAR convierte cada bono en un **token único en la blockchain de Stellar** — como un NFT institucional. La propiedad, el escrow durante el traspaso y todo el historial de cambios de dueño quedan registrados de forma **pública, inmutable y verificable** por cualquier persona.
+
+---
+
+## Tres actores, un flujo
+
+| Actor | Rol en VELAR |
+|---|---|
+| **TSE** (Tribunal Supremo de Elecciones) | Emite bonos, supervisa traspasos, audita el historial completo, puede congelar |
+| **Partido político** | Recibe bonos emitidos a su nombre, los pone en venta, confirma pagos |
+| **Usuario / Comprador** | Compra bonos al partido o a otros usuarios, revende con trazabilidad completa |
+
+---
+
+## El flujo en 6 pasos
 
 ```
-1. TSE emite el bono  ────────────────►  a nombre de un PARTIDO  (token minteado en Stellar)
-2. El PARTIDO pone el bono en venta
-3. Un USUARIO solicita comprarlo
-4. El dueño ACEPTA  ──────────────────►  el token entra a ESCROW (bloqueado on-chain) 🔒
-5. El comprador registra el PAGO (hash del comprobante físico)
-6. El vendedor CONFIRMA el pago  ──────►  el token pasa al nuevo dueño 🎉
+1. TSE emite el bono ────────────► Token minteado en Stellar, enviado al PARTIDO
+2. PARTIDO publica el bono ──────► Visible en el marketplace
+3. USUARIO solicita comprar ─────► Oferta registrada (con monto negociable)
+4. PARTIDO acepta ───────────────► Token entra al ESCROW on-chain 🔒 (bloqueado)
+5. USUARIO registra el pago ─────► Hash del comprobante físico guardado on-chain
+6. PARTIDO confirma el pago ─────► Token liberado al nuevo dueño 🎉
 ```
 
-Cada paso queda como una **transacción inmutable en Stellar**, auditable en [`stellar.expert`](https://stellar.expert/explorer/testnet).
+Cada paso genera una **transacción inmutable en Stellar**, auditable públicamente en [stellar.expert](https://stellar.expert/explorer/testnet).
+
+---
+
+## Cómo funciona cada tecnología
+
+### Stellar — la blockchain
+
+[Stellar](https://stellar.org) es una blockchain de capa 1 diseñada para movimiento de activos digitales. VELAR la eligió por tres razones:
+
+- **Activos nativos sin contrato**: cualquier cuenta puede emitir un activo único (cantidad `1`, no divisible) sin necesidad de escribir código. Cada bono es un activo así — funcionalmente idéntico a un NFT pero sin gas fees.
+- **Finality en ~5 segundos**: las transacciones son definitivas, sin reorganizaciones de bloque.
+- **Fees mínimos**: fracciones de centavo por operación (no hay costos impredecibles como en Ethereum).
+
+**"Ser dueño del bono" = tener ese token en una cuenta Stellar.** No hay base de datos que lo declare: la blockchain es la fuente de verdad.
+
+---
+
+### Soroban — contratos inteligentes en Rust
+
+[Soroban](https://soroban.stellar.org) es el entorno de contratos inteligentes de Stellar, introducido en 2024. Los contratos se escriben en **Rust**, se compilan a **WebAssembly** y se ejecutan directamente en la blockchain.
+
+VELAR tiene su propio contrato `VelarBond` (`contracts/velar-bond/`). Cada bono emitido puede tener **su propio contrato desplegado** con toda la metadata on-chain:
+
+```rust
+pub struct BondDetails {
+    pub bond_id:            String,    // ID interno del bono
+    pub party_id:           String,    // partido emisor
+    pub certificate_number: String,    // número de certificado físico
+    pub face_value:         i128,      // valor en colones
+    pub interest_rate_bps:  u32,       // tasa de interés (basis points)
+    pub maturity_date:      u64,       // vencimiento (unix timestamp)
+    pub document_hash:      BytesN<32>,// SHA-256 del PDF del certificado
+    pub current_owner:      Address,   // dueño actual (verificable on-chain)
+    pub status:             Status,    // Active / InEscrow / Frozen / Sold
+}
+```
+
+**Funciones del contrato:** `initialize`, `transfer`, `freeze/unfreeze`, `set_in_escrow/set_active`, `details`, `current_owner`, `status`.
+
+Si `SOROBAN_VELAR_BOND_WASM_HASH` no está configurado, el sistema usa solo Classic Assets (modo por defecto en desarrollo).
+
+---
+
+### Trustless Work — escrow como servicio
+
+[Trustless Work](https://trustlesswork.com) es una API que despliega **contratos Soroban de escrow** sobre Stellar. Cuando un vendedor acepta una oferta:
+
+1. VELAR llama a Trustless Work para crear un contrato escrow (Single-Release).
+2. El token del bono entra al contrato y queda **bloqueado** hasta que se cumplan las condiciones.
+3. Al confirmar el pago, el contrato libera el token al comprador y registra la transacción como `milestone approved`.
+
+Esto deja una **huella pública on-chain** de todo el lifecycle del trade: `deployed → milestone completed → milestone approved`. Cualquier persona puede verificarlo abriendo el `escrow_contract_id` en [stellar.expert](https://stellar.expert/explorer/testnet).
+
+---
+
+### Supabase — autenticación e índice
+
+Supabase maneja **solo dos cosas**:
+
+1. **Auth**: usuarios, sesiones, JWTs. La clave `anon` solo se usa en el frontend para login/signup; todas las operaciones críticas las ejecuta el backend con la `service_role` key.
+2. **Índice**: Postgres actúa como cache de lectura rápida para el frontend. Si Postgres se pierde, el estado real de los bonos se puede reconstruir desde Stellar.
+
+La tabla `audit_events` es **append-only** por política RLS — no se puede actualizar ni borrar. Es el registro inmutable de todas las acciones del sistema.
+
+---
+
+### NestJS — el backend
+
+El backend (`apps/api`) es un servidor [NestJS](https://nestjs.com) con TypeScript que actúa como intermediario entre el frontend y la blockchain:
+
+- Valida JWTs de Supabase en cada request (`AuthGuard`)
+- Firma transacciones Stellar usando las wallets custodiales del servidor
+- Coordina el flujo de 6 pasos, emitiendo eventos de auditoría en cada acción
+- Expone endpoints REST para TSE, partidos y compradores según su rol
+
+**Módulos:** `bonds`, `transfers`, `escrow` (Stellar + Soroban + Trustless Work), `analytics`, `audit`, `parties`, `reports`, `explorer`.
+
+---
+
+### Next.js — el frontend
+
+El frontend (`apps/web`) usa [Next.js](https://nextjs.org) 16 con App Router y [Tailwind CSS](https://tailwindcss.com) v4. Tiene tres shells visuales separados:
+
+- **Shell del comprador** — marketplace, mis bonos, negociaciones, trazabilidad
+- **Shell del partido** — mis bonos, solicitar bonos, negociaciones, reportes al TSE
+- **Shell del TSE** — emisión, registros, revisión, analytics, auditoría, escrows, retiros
+
+La autenticación y la protección de rutas corre en el middleware de Next.js (`middleware.ts`) contra Supabase.
 
 ---
 
@@ -64,31 +157,28 @@ Cada paso queda como una **transacción inmutable en Stellar**, auditable en [`s
 ```
 VELAR/
 ├── apps/
-│   ├── api/          # NestJS : lógica de negocio + integración Stellar/Soroban
-│   └── web/          # Next.js : UI para TSE, partidos y usuarios
+│   ├── api/                # NestJS: lógica de negocio + integración Stellar/Soroban/TW
+│   └── web/                # Next.js: UI para TSE, partidos y compradores
 ├── contracts/
-│   └── velar-bond/   # Contrato Soroban en Rust (metadata on-chain por bono)
+│   └── velar-bond/         # Contrato Soroban en Rust (VelarBond)
 ├── packages/
-│   └── types/        # Tipos TypeScript compartidos
+│   └── types/              # @velar/types: tipos TypeScript compartidos (fuente de verdad)
 ├── supabase/
-│   └── migrations/   # Esquema de base de datos
-└── docs/             # Documentación técnica detallada
+│   └── migrations/         # Schema SQL versionado (append-only)
+└── docs/                   # Documentación técnica detallada
+    ├── AGENTS.md            # Reglas para contribuidores y agentes IA
+    ├── BACKEND.md           # Estado del backend
+    ├── FRONTEND_GUIDE.md    # Guía del frontend
+    ├── SOROBAN.md           # Contratos Soroban
+    ├── WEB3.md              # Conceptos Web3 aplicados
+    └── DEMO.md              # Cómo probar el flujo completo
 ```
 
 ---
 
-## Cómo los bonos viven en blockchain
-
-- Cada bono es un **Classic Asset de Stellar** (cantidad `1`, no divisible) : único por diseño, como un NFT pero sin gas fees prohibitivos.
-- **Opcionalmente**, cada bono tiene un **contrato Soroban** individual con toda su metadata on-chain (monto, fechas, certificado, partido, estado).
-- **"Ser dueño del bono" = tener ese token en una cuenta de Stellar.** No hay base de datos que lo diga: la blockchain es la fuente de verdad.
-- Cada actor tiene una **wallet de custodia** creada y administrada por el backend : el usuario nunca maneja llaves privadas ni crypto.
-- El **escrow** es una cuenta Stellar separada donde el token queda bloqueado (multisig) durante el proceso de traspaso.
-- El **pago es externo** (fiat / físico): solo se registra el hash SHA-256 de su comprobante.
-
----
-
 ## Cómo correrlo
+
+**Requisitos:** Node.js 22+ (Node 20 no funciona con el cliente de Supabase).
 
 ```bash
 # 1. Instalar dependencias
@@ -96,47 +186,35 @@ npm install
 
 # 2. Configurar variables de entorno
 cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
 # Editar con tus claves de Supabase
 
-# 3. Crear wallets de custodia en testnet
-cd apps/api
-npm run provision:wallets
-
-# 4. Sembrar datos de demo
-npm run seed
-
-# 5. Levantar la API
-npm run start        #  a  http://localhost:3001/api
-
-# 6. Levantar el frontend (en otra terminal)
-cd ../web
-npm run dev          #  a  http://localhost:3000
+# 3. Levantar API y frontend en paralelo
+npm run dev
+# API en http://localhost:3001/api
+# Web en http://localhost:3000
 ```
 
 ### Probar sin frontend
 
-El backend sirve una **consola web** con flujo de un clic:
+El backend incluye una consola HTML con botones para ejecutar el flujo completo:
 
 ```
 http://localhost:3001/api/console
 ```
 
-O por terminal:
+O desde la terminal:
 
 ```bash
 npm run demo:flow         # flujo completo con cuentas sembradas
-npm run demo:register     # registra partido + usuario nuevos y corre el flujo
+npm run demo:register     # crea partido + usuario nuevos y corre el flujo
 ```
 
 ---
 
-## La problemática
+## Contribuir
 
-En Costa Rica, los bonos de deuda de partidos políticos se traspasan de forma manual y sin trazabilidad verificable. No existe un registro público de quién es el dueño actual, cuántas veces cambió de manos, ni a qué precio. El TSE no tiene visibilidad en tiempo real sobre estas operaciones, y los compradores no tienen garantías de que el proceso sea transparente o seguro.
-
-**El resultado:** un mercado opaco, sin auditoría, donde la información depende de documentos en papel y la buena fe de las partes.
-
-VELAR resuelve esto convirtiendo cada bono en un token único en la blockchain de Stellar. La propiedad, el historial de traspasos y el escrow durante la negociación quedan registrados de forma inmutable y pública, sin depender de ninguna base de datos centralizada que pueda ser alterada.
+Ver [CONTRIBUTING.md](CONTRIBUTING.md) y el [ROADMAP.md](ROADMAP.md) para saber qué tareas están abiertas.
 
 ---
 

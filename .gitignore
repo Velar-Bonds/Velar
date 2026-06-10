@@ -158,3 +158,9 @@ target/
 **/*.rs.bk
 Cargo.lock
 
+# Claude Code / AI tooling (no relevante para contribuidores)
+.agents/
+.claude/
+.impeccable/
+skills-lock.json
+

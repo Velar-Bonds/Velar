@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { SupabaseModule } from './common/supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
 import { BondsModule } from './bonds/bonds.module';
@@ -30,6 +29,5 @@ import { ExplorerModule } from './explorer/explorer.module';
     ExplorerModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
