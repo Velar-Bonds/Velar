@@ -9,6 +9,7 @@ import { createClient } from '../lib/supabase/client';
 import type { Me } from '../lib/api';
 import { useRoleGuard } from '../lib/role-guard';
 import { VelarBrand } from './VelarBrand';
+import { NotificationBell } from './NotificationBell';
 
 const NAV = [
   { href: '/partido', label: 'Dashboard', Icon: LayoutDashboard, exact: true },
@@ -41,9 +42,12 @@ export function PartidoShell({ me, children }: { me: Me; children: ReactNode }) 
     <div className="flex min-h-screen bg-background text-on-background" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Sidebar */}
       <nav className="fixed left-0 top-0 z-50 flex h-screen w-[240px] flex-col border-r border-outline-variant bg-white py-6 shadow-sm">
-        <Link href="/partido" className="mb-6 flex items-center px-6" aria-label="VELAR">
-          <VelarBrand size="sm" />
-        </Link>
+        <div className="mb-6 flex items-center justify-between px-4">
+          <Link href="/partido" className="flex items-center" aria-label="VELAR">
+            <VelarBrand size="sm" />
+          </Link>
+          <NotificationBell role={me.role} panelAlign="left" />
+        </div>
 
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2">
           {NAV.map(({ href, label, Icon, exact }) => {
