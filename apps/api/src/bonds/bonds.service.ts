@@ -11,7 +11,8 @@ import { AuditService } from '../audit/audit.service';
 import { StellarBondService } from '../escrow/stellar-bond.service';
 import { SorobanBondService } from '../escrow/soroban-bond.service';
 import { WalletService } from '../escrow/wallet.service';
-import { RegisterBondInput, BondRequestInput, BondStatus, Role, AuditEventType } from '@velar/types';
+import { NotificationsService } from '../notifications/notifications.service';
+import { RegisterBondInput, BondRequestInput, BondStatus, Role, AuditEventType, NotificationType } from '@velar/types';
 
 /** Roles de AUTORIDAD: ven todo y emiten bonos. Solo el TSE (y admin) emite. */
 export const AUTHORITY: Role[] = ['tse', 'admin'];
@@ -57,6 +58,7 @@ export class BondsService {
     private stellar: StellarBondService,
     private wallets: WalletService,
     private soroban: SorobanBondService,
+    private notifications: NotificationsService,
   ) {}
 
   /**
@@ -404,6 +406,12 @@ export class BondsService {
         payload: { owner: owner.id, party: req.party_id, requestId, holder: stellarResult.owner },
         txHash: stellarResult.txHash,
       });
+      await this.notifications.emit(req.requested_by, NotificationType.BOND_APPROVED, {
+        requestId,
+        bondTokenId: bond.token_id,
+        bondId: bond.bond_id,
+        faceValue: req.face_value,
+      });
     }
 
     await this.supabase.admin
@@ -430,7 +438,7 @@ export class BondsService {
     if (!AUTHORITY.includes(roleNorm)) throw new ForbiddenException(`Solo el TSE puede rechazar solicitudes (rol actual: ${actorRole})`);
     const { data: req, error: findError } = await this.supabase.admin
       .from('bond_requests')
-      .select('id, bond_token_id')
+      .select('id, bond_token_id, requested_by')
       .eq('id', requestId)
       .single();
     if (findError || !req) throw new NotFoundException('Solicitud no encontrada');
@@ -445,6 +453,11 @@ export class BondsService {
       bondTokenId: req.bond_token_id ?? undefined,
       actorId,
       payload: { requestId, reason, entity: 'bond_request' },
+    });
+    await this.notifications.emit(req.requested_by, NotificationType.BOND_REJECTED, {
+      requestId,
+      bondTokenId: req.bond_token_id ?? null,
+      reason,
     });
     return { ok: true };
   }

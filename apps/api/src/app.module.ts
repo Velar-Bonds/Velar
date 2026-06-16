@@ -12,6 +12,7 @@ import { PartiesModule } from './parties/parties.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ReportsModule } from './reports/reports.module';
 import { ExplorerModule } from './explorer/explorer.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ExplorerModule } from './explorer/explorer.module';
     AnalyticsModule,
     ReportsModule,
     ExplorerModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
 })

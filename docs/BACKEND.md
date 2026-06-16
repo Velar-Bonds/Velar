@@ -41,11 +41,14 @@ Módulos implementados:
 | `transfers` | ✅ | Flujo completo: request a accept a registerPayment a validate a release a cancel. |
 | `escrow` | 🟡 | Cliente HTTP a Trustless Work. Init/fund/approve/release/refund. Ver §3. |
 | `audit` | ✅ | emit() + consultas. Tabla append-only con trigger que bloquea UPDATE/DELETE. |
+| `notifications` | ✅ | emit(userId, type, payload) + GET/PATCH. Notificaciones in-app por evento del ciclo de vida. |
 
 Schema (`supabase/migrations/20260601000000_initial_schema.sql`): tablas `parties`,
 `profiles`, `bonds`, `transfers`, `audit_events`; enums de estado; triggers de `updated_at`;
 trigger de inmutabilidad de auditoría; trigger `handle_new_user`; índices; políticas RLS;
 seed de partidos. **Sólido.**
+
+Migración de notificaciones (`supabase/migrations/20260608000000_notifications.sql`): tabla `notifications` (`id`, `user_id` FK a `profiles` con `ON DELETE CASCADE`, `type`, `payload jsonb`, `read`, `created_at`), índices por usuario / fecha / no-leídas, y RLS que limita cada fila a su dueño (`user_id = auth.uid()`). El módulo `NotificationsModule` expone `emit()` y se inyecta en `TransfersService` y `BondsService`, que disparan notificaciones en: `offer_received`, `offer_accepted`, `offer_rejected`, `counter_offer_received`, `payment_confirmed`, `bond_approved`, `bond_rejected`.
 
 ### Endpoints actuales
 
@@ -75,6 +78,10 @@ PATCH  /api/transfers/:id/release
 PATCH  /api/transfers/:id/cancel
 
 GET    /api/audit/...             (timeline/eventos)
+
+GET    /api/notifications                 (propias; { notifications, unreadCount })
+PATCH  /api/notifications/read-all
+PATCH  /api/notifications/:id/read
 ```
 
 ---
