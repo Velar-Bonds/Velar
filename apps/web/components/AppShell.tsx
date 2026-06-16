@@ -3,9 +3,10 @@ import { ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Store, Wallet, Handshake, GitBranch, Radio, Settings, LogOut, Bell, Search, ChevronDown, Boxes,
+  Store, Wallet, Handshake, GitBranch, Radio, Settings, LogOut, Search, ChevronDown, Boxes,
 } from 'lucide-react';
 import { useSession, type Me } from '../lib/api';
+import { NotificationBell } from './NotificationBell';
 import { useRoleGuard } from '../lib/role-guard';
 
 const TABS = [
@@ -40,7 +41,7 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="relative rounded-full p-2 text-on-surface-variant transition hover:bg-primary-container/5 hover:text-primary-container"><Bell size={20} /><span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-error" /></button>
+            <NotificationBell role={me?.role} />
             <div className="relative">
               <button onClick={() => setMenu((m) => !m)} className="flex items-center gap-2 rounded-full border border-transparent p-1 pr-2 transition hover:border-outline-variant/30 hover:bg-surface-container-low">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-xs font-semibold text-white">{initials(me?.full_name)}</span>

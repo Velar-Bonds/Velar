@@ -6,9 +6,10 @@ import { SupabaseService } from '../common/supabase/supabase.service';
 import { AuditService } from '../audit/audit.service';
 import { StellarBondService } from '../escrow/stellar-bond.service';
 import { TrustlessWorkService } from '../escrow/trustless-work.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   AuditEventType, BondStatus, NON_TRANSFERABLE_STATUSES,
-  RequestTransferInput, Role, TransferStatus,
+  NotificationType, RequestTransferInput, Role, TransferStatus,
 } from '@velar/types';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class TransfersService {
     private audit: AuditService,
     private stellar: StellarBondService,
     private trustlessWork: TrustlessWorkService,
+    private notifications: NotificationsService,
   ) {}
 
   private async getBond(tokenId: string) {
@@ -68,6 +70,7 @@ export class TransfersService {
     if (error) throw new BadRequestException(error.message);
 
     await this.audit.emit({ type: AuditEventType.TRANSFER_SOLICITADA, bondTokenId: input.bondTokenId, transferId: transfer.id, actorId, payload: { buyer: actorId, seller: bond.current_owner, amount: input.amount } });
+    await this.notifications.emit(bond.current_owner, NotificationType.OFFER_RECEIVED, { transferId: transfer.id, bondTokenId: input.bondTokenId, bondId: bond.bond_id, amount: input.amount ?? null, buyerId: actorId });
     return transfer;
   }
 
@@ -146,6 +149,7 @@ export class TransfersService {
       actorId,
       payload: { twContractId, twDeployTx, twFundTx, lockTx, amountUsdc },
     });
+    await this.notifications.emit(transfer.to_owner, NotificationType.OFFER_ACCEPTED, { transferId, bondTokenId: transfer.bond_token_id, bondId: bond.bond_id, amount: transfer.amount });
     return updated;
   }
 
@@ -162,6 +166,7 @@ export class TransfersService {
       this.supabase.admin.from('bonds').update({ status: BondStatus.EN_VENTA }).eq('token_id', transfer.bond_token_id),
     ]);
     await this.audit.emit({ type: AuditEventType.TRANSFER_RECHAZADA, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: {} });
+    await this.notifications.emit(transfer.to_owner, NotificationType.OFFER_REJECTED, { transferId, bondTokenId: transfer.bond_token_id });
     return { success: true };
   }
 
@@ -194,6 +199,7 @@ export class TransfersService {
       actorId,
       payload: { counterOfferAmount: amount, message },
     });
+    await this.notifications.emit(transfer.to_owner, NotificationType.COUNTER_OFFER_RECEIVED, { transferId, bondTokenId: transfer.bond_token_id, counterOfferAmount: amount, message: message ?? null });
     return updated;
   }
 
@@ -263,6 +269,7 @@ export class TransfersService {
       actorId,
       payload: { acceptedCounterOffer: transfer.counter_offer_amount, twContractId, twDeployTx, twFundTx, lockTx, amountUsdc },
     });
+    await this.notifications.emit(transfer.from_owner, NotificationType.OFFER_ACCEPTED, { transferId, bondTokenId: transfer.bond_token_id, bondId: bond.bond_id, amount: transfer.counter_offer_amount });
     return updated;
   }
 
@@ -317,6 +324,8 @@ export class TransfersService {
     const { data: updated } = await this.supabase.admin
       .from('transfers').update({ status: TransferStatus.PAGO_VALIDADO, validated_by: actorId }).eq('id', transferId).select().single();
     await this.audit.emit({ type: AuditEventType.PAGO_VALIDADO, bondTokenId: transfer.bond_token_id, transferId, actorId, payload: {} });
+    await this.notifications.emit(transfer.from_owner, NotificationType.PAYMENT_CONFIRMED, { transferId, bondTokenId: transfer.bond_token_id });
+    await this.notifications.emit(transfer.to_owner, NotificationType.PAYMENT_CONFIRMED, { transferId, bondTokenId: transfer.bond_token_id });
     return updated;
   }
 

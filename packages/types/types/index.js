@@ -20,3 +20,4 @@ __exportStar(require("./transfer"), exports);
 __exportStar(require("./audit"), exports);
 __exportStar(require("./escrow"), exports);
 __exportStar(require("./api"), exports);
+__exportStar(require("./notification"), exports);
