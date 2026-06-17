@@ -186,3 +186,29 @@ fn cannot_unfreeze_when_not_frozen() {
 
     c.unfreeze();
 }
+
+/// Only the current owner can move the bond into escrow. `set_in_escrow`
+/// enforces this via `current_owner.require_auth()`, so without the
+/// owner's signature the call panics with an authorization error.
+#[test]
+#[should_panic]
+fn non_owner_cannot_set_in_escrow() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    env.mock_auths(&[]); // owner no longer signs
+    c.set_in_escrow();
+}
+
+/// Only the current owner can return the bond to active. Same
+/// authorization path as set_in_escrow.
+#[test]
+#[should_panic]
+fn non_owner_cannot_set_active() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    c.set_in_escrow(); // valid owner action
+    env.mock_auths(&[]); // drop the owner's signature
+    c.set_active();
+}
