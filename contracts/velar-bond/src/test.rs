@@ -148,3 +148,41 @@ fn non_owner_cannot_transfer() {
     // `party` (current owner) never signs, so require_auth() panics.
     c.transfer(&buyer);
 }
+
+/// Only the TSE can freeze the bond. `freeze` calls the internal
+/// `require_tse` helper which loads the stored TSE address and calls
+/// `require_auth()` on it, so without the TSE signature the call panics
+/// with an authorization error.
+#[test]
+#[should_panic]
+fn non_tse_cannot_freeze() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    env.mock_auths(&[]); // TSE no longer signs
+    c.freeze();
+}
+
+/// Only the TSE can unfreeze the bond. Same authorization path as freeze.
+#[test]
+#[should_panic]
+fn non_tse_cannot_unfreeze() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    c.freeze(); // valid TSE freeze
+    env.mock_auths(&[]); // now drop the TSE signature
+    c.unfreeze();
+}
+
+/// Unfreezing a bond that is not currently frozen is rejected with the
+/// typed `InvalidStatus` (#5) error. Right after init the status is
+/// Active, so unfreeze must fail.
+#[test]
+#[should_panic(expected = "Error(Contract, #5)")] // InvalidStatus
+fn cannot_unfreeze_when_not_frozen() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    c.unfreeze();
+}
