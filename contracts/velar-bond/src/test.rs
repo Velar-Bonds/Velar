@@ -130,3 +130,21 @@ fn second_owner_can_resell() {
 
     assert_eq!(c.current_owner(), third);
 }
+
+/// An address that is NOT the current owner cannot transfer the bond.
+/// The contract enforces ownership via `from.require_auth()`, so an
+/// unauthorized caller fails with an authorization error (not a typed
+/// Contract error). We drop all mocked auths after init so the owner's
+/// signature is missing and the call panics.
+#[test]
+#[should_panic]
+fn non_owner_cannot_transfer() {
+    let (env, contract_id, tse, party, buyer) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    // Remove every mocked authorization: nobody is authorized now.
+    env.mock_auths(&[]);
+
+    // `party` (current owner) never signs, so require_auth() panics.
+    c.transfer(&buyer);
+}
