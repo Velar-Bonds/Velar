@@ -1,8 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
+import {
+  EXPLORER_NETWORK,
+  explorerAccountUrl,
+  explorerAssetUrl,
+  explorerContractUrl,
+} from '../escrow/stellar.config';
 import { WalletService } from '../escrow/wallet.service';
-
-const NET = 'testnet';
 
 /**
  * Endpoints PÚBLICOS (sin auth) para el explorador del ledger de VELAR.
@@ -36,16 +40,16 @@ export class ExplorerController {
     const totalEmitted = bonds.reduce((s: number, b: any) => s + (Number(b.face_value) || 0), 0);
 
     return {
-      network: NET,
+      network: EXPLORER_NETWORK,
 
       // Accounts críticas
       platform_account: {
         address: issuer,
-        explorer_url: `https://stellar.expert/explorer/${NET}/account/${issuer}`,
+        explorer_url: explorerAccountUrl(issuer),
       },
       escrow_account: {
         address: escrow,
-        explorer_url: `https://stellar.expert/explorer/${NET}/account/${escrow}`,
+        explorer_url: explorerAccountUrl(escrow),
       },
 
       // Assets emitidos por la plataforma
@@ -54,7 +58,7 @@ export class ExplorerController {
           symbol: 'VCRC',
           issuer,
           purpose: 'Representación on-chain del precio de cada venta en colones',
-          explorer_url: `https://stellar.expert/explorer/${NET}/asset/VCRC-${issuer}`,
+          explorer_url: explorerAssetUrl('VCRC', issuer),
         },
       },
 
@@ -75,9 +79,9 @@ export class ExplorerController {
         face_value: b.face_value,
         currency: b.currency ?? 'CRC',
         status: b.status,
-        asset_url: `https://stellar.expert/explorer/${NET}/asset/${assetCode(b.bond_id)}-${issuer}`,
+        asset_url: explorerAssetUrl(assetCode(b.bond_id), issuer),
         soroban_contract_url: b.soroban_contract_id
-          ? `https://stellar.expert/explorer/${NET}/contract/${b.soroban_contract_id}`
+          ? explorerContractUrl(b.soroban_contract_id)
           : null,
         soroban_contract_id: b.soroban_contract_id,
       })),
@@ -86,7 +90,7 @@ export class ExplorerController {
       soroban_nfts: (sorobanRes.data ?? []).map((b: any) => ({
         bond_id: b.bond_id,
         contract_id: b.soroban_contract_id,
-        url: `https://stellar.expert/explorer/${NET}/contract/${b.soroban_contract_id}`,
+        url: explorerContractUrl(b.soroban_contract_id),
       })),
 
       // Últimos contratos Trustless Work (escrow de coordinación)
@@ -95,7 +99,7 @@ export class ExplorerController {
         bond_id: t.bonds?.bond_id,
         status: t.status,
         contract_id: t.escrow_contract_id,
-        url: `https://stellar.expert/explorer/${NET}/contract/${t.escrow_contract_id}`,
+        url: explorerContractUrl(t.escrow_contract_id),
       })),
 
       // Glosario de memos para que cualquiera entienda las txs
