@@ -2,7 +2,9 @@
 import { useEffect, useState } from 'react';
 import { Shield, ExternalLink, ArrowRight, CheckCircle, Clock } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
+import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 
 const fmtCRC = (n: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ':';
@@ -19,13 +21,21 @@ const STATUS_LBL: Record<string, [string, string, any]> = {
 export default function EscrowsPage() {
   const { token, me, loading, error } = useSession();
   const [transfers, setTransfers] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
   const [tab, setTab] = useState<'all' | 'with' | 'without'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
   useEffect(() => {
     if (!token) return;
-    apiFetch(token, 'GET', '/transfers').then(setTransfers).catch(() => {});
-  }, [token]);
+    apiFetch(token, 'GET', `/transfers?${paginatedQuery(page, limit)}`)
+      .then((res) => {
+        setTransfers(unwrapPaginated(res));
+        setTotal(paginationMeta(res).total);
+      })
+      .catch(() => {});
+  }, [token, page, limit]);
 
   if (loading || !token || !me) {
     return (
@@ -57,7 +67,7 @@ export default function EscrowsPage() {
           <p className="text-sm text-on-surface-variant">
             <span className="font-semibold text-amber-700">{enCanasta.length}</span> token{enCanasta.length !== 1 ? 's' : ''} en canasta ahora
             · <span className="font-semibold text-emerald-700">{withEscrow.length}</span> con Trustless Work
-            · <span className="text-on-surface-variant">{transfers.length}</span> totales
+            · <span className="text-on-surface-variant">{total}</span> totales
           </p>
         </div>
       </header>
@@ -85,7 +95,7 @@ export default function EscrowsPage() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex overflow-hidden rounded-xl border border-outline-variant/40 bg-white">
             {([
-              ['all',     'Todas',          transfers.length],
+              ['all',     'Todas',          total],
               ['with',    'En canasta',     enCanasta.length],
               ['without', 'Cerradas',       liberadas.length + canceladas.length],
             ] as const).map(([key, label, count]) => (
@@ -125,6 +135,7 @@ export default function EscrowsPage() {
             </p>
           </div>
         ) : (
+          <>
           <div className="flex flex-col gap-3">
             {list.map((t) => {
               const [cls, lbl, Icon] = STATUS_LBL[t.status] ?? ['bg-gray-100 text-gray-600 border-gray-200', t.status, Clock];
@@ -179,7 +190,9 @@ export default function EscrowsPage() {
               );
             })}
           </div>
+          </>
         )}
+        <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
       </div>
     </TSEShell>
   );

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { FileText, Send, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { unwrapPaginated } from '../../../lib/pagination';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : ':';
 const fmtCRC = (n?: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -28,7 +29,7 @@ export default function PartidoReportesPage() {
   const load = () =>
     Promise.all([
       apiFetch(token, 'GET', '/reports').then(setReports).catch(() => {}),
-      apiFetch(token, 'GET', '/bonds').then(setBonds).catch(() => {}),
+      apiFetch(token, 'GET', '/bonds?page=1&limit=100').then((res) => setBonds(unwrapPaginated(res))).catch(() => {}),
     ]);
 
   useEffect(() => { if (token) load(); /* eslint-disable-next-line */ }, [token]);

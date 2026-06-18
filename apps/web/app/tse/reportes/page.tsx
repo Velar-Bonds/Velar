@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CheckCircle, AlertCircle, Eye, X, ExternalLink, User, Waypoints, Coins } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -30,8 +31,8 @@ export default function TSEReportesPage() {
   const load = () =>
     Promise.all([
       apiFetch(token, 'GET', '/reports').then(setReports).catch(() => {}),
-      apiFetch(token, 'GET', '/bonds').then(setAllBonds).catch(() => {}),
-      apiFetch(token, 'GET', '/transfers').then(setAllTransfers).catch(() => {}),
+      apiFetch(token, 'GET', '/bonds?page=1&limit=100').then((res) => setAllBonds(unwrapPaginated(res))).catch(() => {}),
+      apiFetch(token, 'GET', '/transfers?page=1&limit=100').then((res) => setAllTransfers(unwrapPaginated(res))).catch(() => {}),
     ]);
 
   useEffect(() => { if (token) load(); /* eslint-disable-next-line */ }, [token]);

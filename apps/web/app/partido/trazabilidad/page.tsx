@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 import { Waypoints, ArrowRight, ExternalLink, User } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
 
-type Bond = { token_id: string; bond_id: string; status: string; face_value: number | null };
+type Bond = { token_id: string; bond_id: string; status: string; face_value: number | null; soroban_contract_id?: string | null };
 type Transfer = {
   id: string; status: string; bond_token_id: string; created_at?: string;
   from_profile?: { full_name?: string }; to_profile?: { full_name?: string };
@@ -31,10 +32,13 @@ export default function PartidoTrazabilidadPage() {
   useEffect(() => {
     if (!token) return;
     Promise.all([
-      apiFetch(token, 'GET', '/bonds').catch(() => []),
-      apiFetch(token, 'GET', '/transfers').catch(() => []),
+      apiFetch(token, 'GET', '/bonds?page=1&limit=100').catch(() => []),
+      apiFetch(token, 'GET', '/transfers?page=1&limit=100').catch(() => []),
     ]).then(([bs, trs]) => {
-      setBonds(bs); setTransfers(trs); if (bs[0]) setSel(bs[0].token_id);
+      const bonds = unwrapPaginated<Bond>(bs);
+      setBonds(bonds);
+      setTransfers(unwrapPaginated<Transfer>(trs));
+      if (bonds[0]) setSel(bonds[0].token_id);
     });
     /* eslint-disable-next-line */
   }, [token]);

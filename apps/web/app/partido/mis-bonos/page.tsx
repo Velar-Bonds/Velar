@@ -1,10 +1,12 @@
 'use client';
-import { notify } from '../../components/Toast';
+import { notify } from '../../../components/Toast';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Wallet, Boxes, ExternalLink, ShoppingCart, TrendingUp } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
+import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
 
 type Bond = {
@@ -18,6 +20,7 @@ type Bond = {
   series?: string;
   issue_date?: string;
   maturity_date?: string;
+  soroban_contract_id?: string | null;
   parties?: { name?: string };
 };
 
@@ -42,15 +45,21 @@ const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { da
 export default function PartidoMisBonosPage() {
   const { token, me, loading, error } = useSession();
   const [bonds, setBonds] = useState<Bond[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   
 
-  const load = (tok: string) =>
-    apiFetch(tok, 'GET', '/bonds')
-      .then((bs) => { if (Array.isArray(bs)) setBonds(bs); })
+  const load = (tok: string, p = page) =>
+    apiFetch(tok, 'GET', `/bonds?${paginatedQuery(p, limit)}`)
+      .then((res) => {
+        setBonds(unwrapPaginated(res));
+        setTotal(paginationMeta(res).total);
+      })
       .catch(() => setBonds([]));
 
-  useEffect(() => { if (token) load(token); /* eslint-disable-next-line */ }, [token]);
+  useEffect(() => { if (token) load(token, page); /* eslint-disable-next-line */ }, [token, page]);
 
   if (loading || !token || !me) {
     return (
@@ -66,7 +75,7 @@ export default function PartidoMisBonosPage() {
     try {
       await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`);
       notify.ok('Bono publicado en el marketplace.');
-      load(token);
+      load(token, page);
     } catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
   }
 
@@ -89,7 +98,7 @@ export default function PartidoMisBonosPage() {
         {/* Stats */}
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {([
-            ['Total de bonos', bonds.length, <Boxes size={20} key="a" />],
+            ['Total de bonos', total, <Boxes size={20} key="a" />],
             ['Valor total (CRC)', fmtMoney(totalCRC), <Wallet size={20} key="b" />],
             ['En marketplace', enVenta, <ShoppingCart size={20} key="c" />],
           ] as const).map(([label, val, icon]: any) => (
@@ -150,6 +159,7 @@ export default function PartidoMisBonosPage() {
               })}
             </tbody>
           </table>
+          <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
         </div>
       </div>
     </PartidoShell>

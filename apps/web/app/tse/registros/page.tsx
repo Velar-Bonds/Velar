@@ -4,7 +4,9 @@ import { useEffect, useState, Fragment } from 'react';
 import { Filter, Search, ExternalLink, ChevronDown, ChevronUp, FileCheck, Link2 } from 'lucide-react';
 import Link from 'next/link';
 import { TSEShell } from '../../../components/TSEShell';
+import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
 
 type Bond = {
@@ -34,6 +36,10 @@ const shortContract = (id?: string | null) => id ? `${id.slice(0, 2)}…${id.sli
 export default function RegistrosPage() {
   const { token, me, loading, error } = useSession();
   const [bonds, setBonds] = useState<Bond[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [partyOptions, setPartyOptions] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyOnchain, setBusyOnchain] = useState<string | null>(null);
   
@@ -47,12 +53,21 @@ export default function RegistrosPage() {
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
   const [sortAsc, setSortAsc] = useState(false);
 
-  const load = (tok: string) =>
-    apiFetch(tok, 'GET', '/bonds').then((bs) => {
-      setBonds(Array.isArray(bs) ? bs : []);
-    }).catch(() => setBonds([]));
+  const load = (tok: string, p = page) =>
+    apiFetch(tok, 'GET', `/bonds?${paginatedQuery(p, limit)}`)
+      .then((res) => {
+        setBonds(unwrapPaginated(res));
+        setTotal(paginationMeta(res).total);
+      })
+      .catch(() => { setBonds([]); setTotal(0); });
 
-  useEffect(() => { if (token) load(token); }, [token]); // eslint-disable-line
+  useEffect(() => { if (token) load(token, page); }, [token, page]); // eslint-disable-line
+  useEffect(() => {
+    if (!token) return;
+    apiFetch(token, 'GET', '/parties')
+      .then((rows) => setPartyOptions((Array.isArray(rows) ? rows : []).map((p: { name?: string }) => p.name).filter(Boolean)))
+      .catch(() => {});
+  }, [token]);
 
   async function issueOnchain(tokenId: string) {
     if (!token) return;
@@ -60,7 +75,7 @@ export default function RegistrosPage() {
     try {
       const res = await apiFetch(token, 'PATCH', `/bonds/${tokenId}/issue-onchain`);
       notify.ok(`Token emitido on-chain. TX: ${res.txHash ?? 'ok'}`);
-      load(token);
+      load(token, page);
     } catch (e: any) { notify.err(e.message); } finally { setBusyOnchain(null); }
   }
 
@@ -72,7 +87,7 @@ export default function RegistrosPage() {
     );
   }
 
-  const parties = Array.from(new Set(bonds.map((b) => b.parties?.name).filter(Boolean))) as string[];
+  const parties = partyOptions;
 
   const filtered = bonds
     .filter((b) => {
@@ -106,7 +121,7 @@ export default function RegistrosPage() {
       <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>Registros de bonos</h1>
-          <p className="text-sm text-on-surface-variant">{filtered.length} de {bonds.length} bonos</p>
+          <p className="text-sm text-on-surface-variant">{filtered.length} en esta página · {total} bonos en total</p>
         </div>
       </header>
 
@@ -250,6 +265,7 @@ export default function RegistrosPage() {
             </tbody>
           </table>
           </div>
+          <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
         </div>
       </div>
     </TSEShell>

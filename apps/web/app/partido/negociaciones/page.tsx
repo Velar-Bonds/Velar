@@ -1,9 +1,11 @@
 'use client';
-import { notify } from '../../components/Toast';
+import { notify } from '../../../components/Toast';
 import { useEffect, useState } from 'react';
 import { Handshake, ArrowRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
+import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch, type Me } from '../../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 
 type Transfer = {
   id: string; status: string; amount: number | null;
@@ -31,11 +33,19 @@ const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { da
 export default function PartidoNegociacionesPage() {
   const { token, me, loading, error } = useSession();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   
 
-  const load = (tok: string) => apiFetch(tok, 'GET', '/transfers').then(setTransfers).catch((e: any) => notify.err(e.message));
-  useEffect(() => { if (token) load(token); /* eslint-disable-next-line */ }, [token]);
+  const load = (tok: string, p = page) => apiFetch(tok, 'GET', `/transfers?${paginatedQuery(p, limit)}`)
+    .then((res) => {
+      setTransfers(unwrapPaginated(res));
+      setTotal(paginationMeta(res).total);
+    })
+    .catch((e: any) => notify.err(e.message));
+  useEffect(() => { if (token) load(token, page); /* eslint-disable-next-line */ }, [token, page]);
 
   if (loading || !token || !me) {
     return (
@@ -57,7 +67,7 @@ export default function PartidoNegociacionesPage() {
     try {
       await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, body);
       notify.ok(action === 'request-return' ? 'Solicitud enviada al TSE' : 'Acción realizada');
-      load(token);
+      load(token, page);
     } catch (e: any) { notify.err(e.message); }
     finally { setBusy(null); }
   }
@@ -160,6 +170,7 @@ export default function PartidoNegociacionesPage() {
             <div className="flex flex-col gap-3 opacity-80">{historial.map((t) => <Card key={t.id} t={t} />)}</div>
           </>
         )}
+        <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
       </div>
     </PartidoShell>
   );

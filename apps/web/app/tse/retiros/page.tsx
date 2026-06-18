@@ -3,7 +3,9 @@ import { notify } from '../../../components/Toast';
 import { useEffect, useState } from 'react';
 import { ArrowRight, AlertTriangle, CheckCircle, XCircle, Shield } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
+import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 
 const fmtCRC = (n: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ':';
@@ -11,12 +13,20 @@ const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '
 export default function RetirosPage() {
   const { token, me, loading, error } = useSession();
   const [transfers, setTransfers] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const load = () => apiFetch(token, 'GET', '/transfers').then(setTransfers).catch(() => {});
-  useEffect(() => { if (token) load(); /* eslint-disable-next-line */ }, [token]);
+  const load = (p = page) => apiFetch(token, 'GET', `/transfers?${paginatedQuery(p, limit)}`)
+    .then((res) => {
+      setTransfers(unwrapPaginated(res));
+      setTotal(paginationMeta(res).total);
+    })
+    .catch(() => {});
+  useEffect(() => { if (token) load(page); /* eslint-disable-next-line */ }, [token, page]);
 
   if (loading || !token || !me) {
     return (
@@ -31,7 +41,7 @@ export default function RetirosPage() {
     try {
       await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, { notes: notes[id] });
       notify.ok(action === 'approve-return' ? 'Bono devuelto al dueño on-chain' : 'Solicitud rechazada');
-      load();
+      load(page);
     } catch (e: any) { notify.err(e.message); }
     finally { setBusy(null); }
   }
@@ -145,6 +155,7 @@ export default function RetirosPage() {
             </div>
           </>
         )}
+        <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
       </div>
     </TSEShell>
   );

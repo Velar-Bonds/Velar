@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { PartidoShell } from '../../components/PartidoShell';
 import { useSession } from '../../lib/api';
 import { apiFetch } from '../../lib/api';
+import { unwrapPaginated } from '../../lib/pagination';
 
 const fmt = (n: number | null | undefined, cur = 'CRC') => {
   if (n == null) return '—';
@@ -36,11 +37,11 @@ export default function PartidoPageClient() {
 
   const load = (tok: string) =>
     Promise.all([
-      apiFetch(tok, 'GET', '/bonds').catch(() => null),
-      apiFetch(tok, 'GET', '/transfers').catch(() => null),
+      apiFetch(tok, 'GET', '/bonds?page=1&limit=20').catch(() => null),
+      apiFetch(tok, 'GET', '/transfers?page=1&limit=20').catch(() => null),
     ]).then(([bs, trs]) => {
-      setBonds(Array.isArray(bs) ? bs : []);
-      setTransfers(Array.isArray(trs) ? trs : []);
+      setBonds(unwrapPaginated(bs ?? []));
+      setTransfers(unwrapPaginated(trs ?? []));
     });
 
   useEffect(() => { if (token) load(token); /* eslint-disable-next-line */ }, [token]);

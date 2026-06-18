@@ -61,8 +61,8 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
         {/* Tabs */}
         <nav className="border-t border-outline-variant/20 bg-white/50">
           <div className="mx-auto flex h-12 max-w-[1440px] items-center gap-1 overflow-x-auto px-2 md:justify-center md:gap-6 md:px-8">
-            {TABS.map(({ href, label, Icon, exact }) => {
-              const active = exact ? pathname === href : (pathname === href || pathname.startsWith(href + '/'));
+            {TABS.map(({ href, label, Icon }) => {
+              const active = pathname === href || pathname.startsWith(`${href}/`);
               return (
                 <Link key={href} href={href} className={`flex h-full shrink-0 items-center gap-2 border-b-2 px-3 pb-[2px] text-sm transition-colors ${active ? 'border-primary-container font-bold text-primary-container' : 'border-transparent font-medium text-on-surface-variant hover:text-primary-container'}`}>
                   <Icon size={18} /> {label}

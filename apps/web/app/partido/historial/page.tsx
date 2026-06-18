@@ -2,7 +2,9 @@
 import { useEffect, useState } from 'react';
 import { History, ArrowRight } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
+import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 
 type Transfer = {
   id: string; status: string; created_at?: string; amount: number | null;
@@ -16,11 +18,20 @@ const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { da
 export default function PartidoHistorialPage() {
   const { token, me, loading, error } = useSession();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    if (token) apiFetch(token, 'GET', '/transfers').then(setTransfers).catch(() => {});
+    if (!token) return;
+    apiFetch(token, 'GET', `/transfers?${paginatedQuery(page, limit)}`)
+      .then((res) => {
+        setTransfers(unwrapPaginated(res));
+        setTotal(paginationMeta(res).total);
+      })
+      .catch(() => {});
     /* eslint-disable-next-line */
-  }, [token]);
+  }, [token, page, limit]);
 
   if (loading || !token || !me) {
     return (
@@ -71,6 +82,7 @@ export default function PartidoHistorialPage() {
                 ))}
               </tbody>
             </table>
+            <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
           </div>
         )}
       </div>

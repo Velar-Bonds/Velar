@@ -3,8 +3,10 @@ import { notify } from '../../components/Toast';
 import { useEffect, useState } from 'react';
 import { Handshake, ArrowRight, Shield, ExternalLink } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
+import { PaginationControls } from '../../components/PaginationControls';
 import { StatusBadge, EmptyState, fmtMoney, fmtDate } from '../../components/ui';
 import { apiFetch, type Me } from '../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../lib/pagination';
 
 type Transfer = {
   id: string; status: string; amount: number | null; from_owner: string; to_owner: string;
@@ -21,11 +23,19 @@ export default function NegociacionesPage() {
 
 function Content({ token, me }: { token: string; me: Me }) {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
   
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = () => apiFetch(token, 'GET', '/transfers').then(setTransfers).catch((e) => notify.err(e.message));
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  const load = (p = page) => apiFetch(token, 'GET', `/transfers?${paginatedQuery(p, limit)}`)
+    .then((res) => {
+      setTransfers(unwrapPaginated(res));
+      setTotal(paginationMeta(res).total);
+    })
+    .catch((e) => notify.err(e.message));
+  useEffect(() => { load(page); /* eslint-disable-next-line */ }, [page]);
 
   async function act(id: string, action: string) {
     let body: any = undefined;
@@ -39,7 +49,7 @@ function Content({ token, me }: { token: string; me: Me }) {
     try {
       await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, body);
       notify.ok(action === 'request-return' ? 'Solicitud enviada al TSE' : 'Acción realizada');
-      load();
+      load(page);
     } catch (e: any) { notify.err(e.message); }
     finally { setBusy(null); }
   }
@@ -107,6 +117,7 @@ function Content({ token, me }: { token: string; me: Me }) {
           <div className="flex flex-col gap-3 opacity-90">{historial.map((t) => <Row key={t.id} t={t} />)}</div>
         </>
       )}
+      <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
     </>
   );
 }

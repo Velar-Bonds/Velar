@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { Wallet, TrendingUp, Boxes, ShoppingCart } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { StellarExpertButton, StatusBadge, EmptyState, fmtMoney } from '../../components/ui';
+import { PaginationControls } from '../../components/PaginationControls';
 import { apiFetch } from '../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../lib/pagination';
 import { bondExplorerUrl } from '../../lib/stellar';
 
-type Bond = { token_id: string; bond_id: string; status: string; face_value: number | null; parties?: { name?: string }; created_at?: string };
+type Bond = { token_id: string; bond_id: string; status: string; face_value: number | null; soroban_contract_id?: string | null; parties?: { name?: string }; created_at?: string };
 
 export default function MisBonosPage() {
   return <AppShell>{({ token }) => <Content token={token} />}</AppShell>;
@@ -15,24 +17,32 @@ export default function MisBonosPage() {
 
 function Content({ token }: { token: string }) {
   const [bonds, setBonds] = useState<Bond[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   
 
-  const load = () => apiFetch(token, 'GET', '/bonds').then(setBonds).catch(() => {});
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  const load = (p = page) => apiFetch(token, 'GET', `/bonds?${paginatedQuery(p, limit)}`)
+    .then((res) => {
+      setBonds(unwrapPaginated(res));
+      setTotal(paginationMeta(res).total);
+    })
+    .catch(() => {});
+  useEffect(() => { load(page); /* eslint-disable-next-line */ }, [page]);
 
   async function publicar(tokenId: string) {
     setBusy(tokenId); 
-    try { await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`); notify.ok('Bono publicado en el marketplace.'); load(); }
+    try { await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`); notify.ok('Bono publicado en el marketplace.'); load(page); }
     catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
   }
 
-  const total = bonds.reduce((s, b) => s + (Number(b.face_value) || 0), 0);
+  const portfolioTotal = bonds.reduce((s, b) => s + (Number(b.face_value) || 0), 0);
   const activos = bonds.filter((b) => b.status === 'activo').length;
 
   const stats = [
-    ['Bonos en cartera', bonds.length, <Boxes size={20} key="a" />],
-    ['Valor total', fmtMoney(total), <Wallet size={20} key="b" />],
+    ['Bonos en cartera', total, <Boxes size={20} key="a" />],
+    ['Valor total', fmtMoney(portfolioTotal), <Wallet size={20} key="b" />],
     ['Disponibles', activos, <TrendingUp size={20} key="c" />],
   ] as const;
 
@@ -83,6 +93,7 @@ function Content({ token }: { token: string }) {
               })}
             </tbody>
           </table>
+          <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
         </div>
       )}
     </>

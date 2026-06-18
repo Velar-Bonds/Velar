@@ -4,9 +4,10 @@ import { GitBranch, ArrowRight, Boxes } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { StellarExpertButton, StatusBadge, EmptyState, fmtDate } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
+import { unwrapPaginated } from '../../lib/pagination';
 import { bondExplorerUrl } from '../../lib/stellar';
 
-type Bond = { token_id: string; bond_id: string; status: string };
+type Bond = { token_id: string; bond_id: string; status: string; soroban_contract_id?: string | null };
 type Transfer = { id: string; status: string; bond_token_id: string; created_at?: string; from_profile?: { full_name?: string }; to_profile?: { full_name?: string } };
 
 export default function TrazabilidadPage() {
@@ -20,9 +21,14 @@ function Content({ token }: { token: string }) {
 
   useEffect(() => {
     Promise.all([
-      apiFetch(token, 'GET', '/bonds').catch(() => []),
-      apiFetch(token, 'GET', '/transfers').catch(() => []),
-    ]).then(([b, t]) => { setBonds(b); setTransfers(t); if (b[0]) setSel(b[0].token_id); });
+      apiFetch(token, 'GET', '/bonds?page=1&limit=100').catch(() => []),
+      apiFetch(token, 'GET', '/transfers?page=1&limit=100').catch(() => []),
+    ]).then(([b, t]) => {
+      const bonds = unwrapPaginated<Bond>(b);
+      setBonds(bonds);
+      setTransfers(unwrapPaginated<Transfer>(t));
+      if (bonds[0]) setSel(bonds[0].token_id);
+    });
     /* eslint-disable-next-line */
   }, []);
 
