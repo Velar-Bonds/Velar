@@ -19,7 +19,7 @@ fn setup() -> (Env, Address, Address, Address, Address) {
     (env, contract_id, tse, party, buyer)
 }
 
-fn init(env: &Env, contract_id: &Address, tse: &Address, party: &Address) -> VelarBondClient<'_> {
+fn init<'a>(env: &'a Env, contract_id: &'a Address, tse: &'a Address, party: &'a Address) -> VelarBondClient<'a> {
     let client = VelarBondClient::new(env, contract_id);
     let args = InitArgs {
         party_id: String::from_str(env, "party-aurora-001"),
@@ -129,4 +129,134 @@ fn second_owner_can_resell() {
     c.transfer(&third);
 
     assert_eq!(c.current_owner(), third);
+}
+
+/// An address that is NOT the current owner cannot transfer the bond.
+/// The contract enforces ownership via `from.require_auth()`, so an
+/// unauthorized caller fails with an authorization error (not a typed
+/// Contract error). We drop all mocked auths after init so the owner's
+/// signature is missing and the call panics.
+#[test]
+#[should_panic]
+fn non_owner_cannot_transfer() {
+    let (env, contract_id, tse, party, buyer) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    // Remove every mocked authorization: nobody is authorized now.
+    env.mock_auths(&[]);
+
+    // `party` (current owner) never signs, so require_auth() panics.
+    c.transfer(&buyer);
+}
+
+/// Only the TSE can freeze the bond. `freeze` calls the internal
+/// `require_tse` helper which loads the stored TSE address and calls
+/// `require_auth()` on it, so without the TSE signature the call panics
+/// with an authorization error.
+#[test]
+#[should_panic]
+fn non_tse_cannot_freeze() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    env.mock_auths(&[]); // TSE no longer signs
+    c.freeze();
+}
+
+/// Only the TSE can unfreeze the bond. Same authorization path as freeze.
+#[test]
+#[should_panic]
+fn non_tse_cannot_unfreeze() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    c.freeze(); // valid TSE freeze
+    env.mock_auths(&[]); // now drop the TSE signature
+    c.unfreeze();
+}
+
+/// Unfreezing a bond that is not currently frozen is rejected with the
+/// typed `InvalidStatus` (#5) error. Right after init the status is
+/// Active, so unfreeze must fail.
+#[test]
+#[should_panic(expected = "Error(Contract, #5)")] // InvalidStatus
+fn cannot_unfreeze_when_not_frozen() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    c.unfreeze();
+}
+
+/// Only the current owner can move the bond into escrow. `set_in_escrow`
+/// enforces this via `current_owner.require_auth()`, so without the
+/// owner's signature the call panics with an authorization error.
+#[test]
+#[should_panic]
+fn non_owner_cannot_set_in_escrow() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    env.mock_auths(&[]); // owner no longer signs
+    c.set_in_escrow();
+}
+
+/// Only the current owner can return the bond to active. Same
+/// authorization path as set_in_escrow.
+#[test]
+#[should_panic]
+fn non_owner_cannot_set_active() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    c.set_in_escrow(); // valid owner action
+    env.mock_auths(&[]); // drop the owner's signature
+    c.set_active();
+}
+
+/// `details` on an uninitialized contract fails with NotInitialized (#2).
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")] // NotInitialized
+fn details_before_init_fails() {
+    let (env, contract_id, _, _, _) = setup();
+    let c = VelarBondClient::new(&env, &contract_id);
+    c.details();
+}
+
+/// `current_owner` on an uninitialized contract fails with NotInitialized (#2).
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")] // NotInitialized
+fn current_owner_before_init_fails() {
+    let (env, contract_id, _, _, _) = setup();
+    let c = VelarBondClient::new(&env, &contract_id);
+    c.current_owner();
+}
+
+/// `status` on an uninitialized contract fails with NotInitialized (#2).
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")] // NotInitialized
+fn status_before_init_fails() {
+    let (env, contract_id, _, _, _) = setup();
+    let c = VelarBondClient::new(&env, &contract_id);
+    c.status();
+}
+
+/// `tse` on an uninitialized contract fails with NotInitialized (#2).
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")] // NotInitialized
+fn tse_before_init_fails() {
+    let (env, contract_id, _, _, _) = setup();
+    let c = VelarBondClient::new(&env, &contract_id);
+    c.tse();
+}
+
+/// All four read-only views return consistent state after initialization.
+#[test]
+fn views_return_initialized_state() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    assert_eq!(c.current_owner(), party);
+    assert_eq!(c.status(), Status::Active);
+    assert_eq!(c.tse(), tse);
+    assert_eq!(c.details().current_owner, party);
 }

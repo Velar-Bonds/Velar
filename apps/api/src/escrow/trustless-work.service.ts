@@ -1,7 +1,8 @@
 import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
-import { Networks, TransactionBuilder } from '@stellar/stellar-sdk';
+import { TransactionBuilder } from '@stellar/stellar-sdk';
 import { WalletService } from './wallet.service';
 import { StellarBondService } from './stellar-bond.service';
+import { NETWORK_PASSPHRASE, explorerContractUrl, explorerTxUrl } from './stellar.config';
 
 /**
  * Trustless Work como escrow REAL del token del bono.
@@ -57,7 +58,7 @@ export class TrustlessWorkService {
     signerAddress: string,
   ): Promise<{ txHash: string; ledger?: number; contractId?: string }> {
     const kp = this.wallets.keypairFor(signerAddress);
-    const tx = TransactionBuilder.fromXDR(unsignedXdr, Networks.TESTNET);
+    const tx = TransactionBuilder.fromXDR(unsignedXdr, NETWORK_PASSPHRASE);
     tx.sign(kp);
     const signedXdr = tx.toXDR();
     const result = await this.call<{ status?: string; hash?: string; ledger?: number; contractId?: string }>(
@@ -230,10 +231,10 @@ export class TrustlessWorkService {
   }
 
   contractExplorerUrl(contractId: string): string {
-    return `https://stellar.expert/explorer/testnet/contract/${contractId}`;
+    return explorerContractUrl(contractId);
   }
 
   txExplorerUrl(txHash: string): string {
-    return `https://stellar.expert/explorer/testnet/tx/${txHash}`;
+    return explorerTxUrl(txHash);
   }
 }
