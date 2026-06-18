@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  Asset, Horizon, Memo, Networks, Operation, TransactionBuilder, BASE_FEE,
+  Asset, Horizon, Memo, Operation, TransactionBuilder, BASE_FEE,
 } from '@stellar/stellar-sdk';
+import {
+  STELLAR_NETWORK, NETWORK_PASSPHRASE, HORIZON_URL, explorerAssetUrl, explorerTxUrl,
+} from './stellar.config';
 import { WalletService } from './wallet.service';
 
 /**
@@ -17,15 +20,10 @@ import { WalletService } from './wallet.service';
  * Custodia asistida: el backend firma con las llaves (WalletService). El usuario
  * no maneja wallets. No hay dinero involucrado: solo se mueve el token del bono.
  */
-const NETWORK = process.env.STELLAR_NETWORK ?? 'testnet';
-const HORIZON = process.env.STELLAR_HORIZON_URL ?? 'https://horizon-testnet.stellar.org';
-const NET = NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
-const EXPLORER_NETWORK = NETWORK === 'mainnet' ? 'public' : 'testnet';
-
 // USDC en Stellar testnet (Circle)
 const USDC_ISSUER_TESTNET = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
 const USDC_ISSUER_MAINNET = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
-const USDC_ISSUER = NETWORK === 'mainnet' ? USDC_ISSUER_MAINNET : USDC_ISSUER_TESTNET;
+const USDC_ISSUER = STELLAR_NETWORK === 'mainnet' ? USDC_ISSUER_MAINNET : USDC_ISSUER_TESTNET;
 
 type StellarBalance = {
   asset_code?: string;
@@ -41,7 +39,7 @@ type StellarAssetAccount = {
 @Injectable()
 export class StellarBondService {
   private readonly logger = new Logger(StellarBondService.name);
-  private readonly server = new Horizon.Server(HORIZON);
+  private readonly server = new Horizon.Server(HORIZON_URL);
 
   constructor(private wallets: WalletService) {}
 
@@ -70,12 +68,12 @@ export class StellarBondService {
 
   /** URL del explorador para ver el asset VCRC y sus volúmenes acumulados. */
   paymentAssetExplorerUrl(): string {
-    return `https://stellar.expert/explorer/${EXPLORER_NETWORK}/asset/VCRC-${this.wallets.issuerAddress}`;
+    return explorerAssetUrl('VCRC', this.wallets.issuerAddress!);
   }
 
   /** Explorador público para ver el activo del bono en la blockchain. */
   explorerUrl(bondId: string): string {
-    return `https://stellar.expert/explorer/${EXPLORER_NETWORK}/asset/${this.assetCodeFor(bondId)}-${this.wallets.issuerAddress}`;
+    return explorerAssetUrl(this.assetCodeFor(bondId), this.wallets.issuerAddress!);
   }
 
   private async hasTrustline(account: string, asset: Asset): Promise<boolean> {
@@ -124,7 +122,7 @@ export class StellarBondService {
     if (!hasTrustline) {
       throw new Error('La cuenta plataforma no tiene USDC. Correr npm run provision:usdc');
     }
-    const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
+    const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
       .addOperation(Operation.payment({
         destination: buyerAddress,
         asset: usdc,
@@ -144,7 +142,7 @@ export class StellarBondService {
     if (await this.hasTrustline(account, asset)) return;
     const kp = this.wallets.keypairFor(account);
     const src = await this.server.loadAccount(account);
-    const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
+    const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
       .addOperation(Operation.changeTrust({ asset, limit: '1' }))
       .setTimeout(60)
       .build();
@@ -156,7 +154,7 @@ export class StellarBondService {
   private async payOne(from: string, to: string, asset: Asset, memoText?: string): Promise<{ txHash: string; ledger: number }> {
     const kp = this.wallets.keypairFor(from);
     const src = await this.server.loadAccount(from);
-    const builder = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NET })
+    const builder = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
       .addOperation(Operation.payment({ destination: to, asset, amount: '1' }))
       .setTimeout(60);
     if (memoText) {
@@ -201,7 +199,7 @@ export class StellarBondService {
     }
     const issuerKp = this.wallets.keypairFor(this.wallets.issuerAddress!);
     const issuerSrc = await this.server.loadAccount(this.wallets.issuerAddress!);
-    const tx = new TransactionBuilder(issuerSrc, { fee: BASE_FEE, networkPassphrase: NET })
+    const tx = new TransactionBuilder(issuerSrc, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
       .addOperation(Operation.payment({
         destination: sellerAddress,
         asset: vcrc,
@@ -266,7 +264,7 @@ export class StellarBondService {
     const escrowSrc = await this.server.loadAccount(this.wallets.escrowAddress!);
     const memo = amount ? `sold:${amount}CRC` : `sold:${bondId}`;
 
-    const builder = new TransactionBuilder(escrowSrc, { fee: BASE_FEE, networkPassphrase: NET })
+    const builder = new TransactionBuilder(escrowSrc, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
       .addOperation(Operation.payment({
         destination: newOwnerAddress,
         asset,
@@ -317,6 +315,6 @@ export class StellarBondService {
 
   /** Link a una transacción Stellar en el explorador público. */
   txExplorerUrl(txHash: string): string {
-    return `https://stellar.expert/explorer/${EXPLORER_NETWORK}/tx/${txHash}`;
+    return explorerTxUrl(txHash);
   }
 }
