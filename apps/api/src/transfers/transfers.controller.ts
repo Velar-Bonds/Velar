@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { TransfersService } from './transfers.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -10,8 +10,12 @@ export class TransfersController {
   constructor(private transfers: TransfersService) {}
 
   @Get()
-  findAll(@CurrentUser() user: any) {
-    return this.transfers.findMyTransfers(user.id, user.profile?.role as Role);
+  findAll(
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @CurrentUser() user: any,
+  ) {
+    return this.transfers.findMyTransfers(user.id, user.profile?.role as Role, page, limit);
   }
 
   @Get(':id')

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
+import { paginatedResponse, parsePagination } from '../common/pagination';
 import { AuditEventType, BondSearchQuery } from '@velar/types';
 
 @Injectable()
@@ -64,12 +65,14 @@ export class AuditService {
     return data ?? [];
   }
 
-  async getRecentEvents(limit = 50) {
-    const { data } = await this.supabase.admin
+  async getRecentEvents(page?: string, limit?: string) {
+    const { page: p, limit: l, from, to } = parsePagination(page, limit);
+    const { data, count, error } = await this.supabase.admin
       .from('audit_events')
-      .select('*, bonds(bond_id, status), profiles!audit_events_actor_id_fkey(full_name, email)')
+      .select('*, bonds(bond_id, status), profiles!audit_events_actor_id_fkey(full_name, email)', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .limit(limit);
-    return data ?? [];
+      .range(from, to);
+    if (error) throw new BadRequestException(error.message);
+    return paginatedResponse(data ?? [], count ?? 0, p, l);
   }
 }

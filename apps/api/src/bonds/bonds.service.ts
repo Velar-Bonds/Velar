@@ -7,6 +7,7 @@ import {
 import * as crypto from 'crypto';
 import { Logger } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
+import { paginatedResponse, parsePagination } from '../common/pagination';
 import { AuditService } from '../audit/audit.service';
 import { StellarBondService } from '../escrow/stellar-bond.service';
 import { SorobanBondService } from '../escrow/soroban-bond.service';
@@ -283,10 +284,11 @@ export class BondsService {
     return updated ?? data;
   }
 
-  async findAll(actorId: string, actorRole: Role, partyId?: string) {
+  async findAll(actorId: string, actorRole: Role, partyId?: string, page?: string, limit?: string) {
+    const { page: p, limit: l, from, to } = parsePagination(page, limit);
     let q = this.supabase.admin
       .from('bonds')
-      .select('*, parties(*), profiles!bonds_current_owner_fkey(id, full_name, email)')
+      .select('*, parties(*), profiles!bonds_current_owner_fkey(id, full_name, email)', { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (AUTHORITY.includes(actorRole)) {
@@ -298,8 +300,9 @@ export class BondsService {
       // Comprador ve solo los bonos que posee
       q = q.eq('current_owner', actorId);
     }
-    const { data } = await q;
-    return data ?? [];
+    const { data, count, error } = await q.range(from, to);
+    if (error) throw new BadRequestException(error.message);
+    return paginatedResponse(data ?? [], count ?? 0, p, l);
   }
 
   /** Solicitudes de bono enviadas por el partido. */
