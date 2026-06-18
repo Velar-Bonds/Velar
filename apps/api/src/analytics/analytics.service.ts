@@ -1,8 +1,9 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, Injectable, ForbiddenException } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { Role } from '@velar/types';
 
 const AUTHORITY: Role[] = ['tse', 'admin'];
+const CSV_HEADERS = ['bond_id', 'transfer_date', 'seller_name', 'buyer_name', 'amount_colones', 'party_name'] as const;
 
 @Injectable()
 export class AnalyticsService {
@@ -10,6 +11,10 @@ export class AnalyticsService {
 
   private assertAuth(role: Role) {
     if (!AUTHORITY.includes(role)) throw new ForbiddenException('Solo TSE/admin');
+  }
+
+  private assertTseOnly(role: Role) {
+    if (role !== 'tse') throw new ForbiddenException('Solo TSE');
   }
 
   /** Overview general del sistema. */
@@ -205,6 +210,37 @@ export class AnalyticsService {
     return [...agg.values()].sort((a, b) => b.volume - a.volume).slice(0, limit);
   }
 
+  /** CSV de transferencias liberadas para auditores externos. Solo rol TSE. */
+  async exportTransfersCsv(role: Role, format: string | undefined) {
+    this.assertTseOnly(role);
+    if (format !== 'csv') throw new BadRequestException('format=csv requerido');
+
+    const { data, error } = await this.supabase.admin
+      .from('transfers')
+      .select(`
+        amount,
+        created_at,
+        from_profile:profiles!transfers_from_owner_fkey(full_name),
+        to_profile:profiles!transfers_to_owner_fkey(full_name),
+        bonds(bond_id, parties(name))
+      `)
+      .eq('status', 'liberada')
+      .order('created_at', { ascending: true });
+
+    if (error) throw new BadRequestException(error.message);
+
+    const rows = ((data ?? []) as any[]).map((t) => [
+      t.bonds?.bond_id ?? '',
+      (t.created_at ?? '').slice(0, 10),
+      t.from_profile?.full_name ?? '',
+      t.to_profile?.full_name ?? '',
+      Number(t.amount) || 0,
+      t.bonds?.parties?.name ?? '',
+    ]);
+
+    return `\uFEFF${[CSV_HEADERS.join(','), ...rows.map((row) => row.map((cell) => this.csvCell(cell)).join(','))].join('\r\n')}\r\n`;
+  }
+
   /** Serie temporal del volumen movido por día. */
   async volumeOverTime(role: Role, days = 30) {
     this.assertAuth(role);
@@ -235,5 +271,10 @@ export class AnalyticsService {
       acc[k] = (acc[k] ?? 0) + 1;
       return acc;
     }, {});
+  }
+
+  private csvCell(value: string | number): string {
+    const s = String(value);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   }
 }
