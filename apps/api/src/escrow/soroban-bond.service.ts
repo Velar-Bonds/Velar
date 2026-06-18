@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   Address,
   Contract,
-  Networks,
+  Keypair,
   Operation,
   StrKey,
   TransactionBuilder,
@@ -10,11 +10,15 @@ import {
   scValToNative,
   nativeToScVal,
   rpc,
+  xdr,
 } from '@stellar/stellar-sdk';
 import { WalletService } from './wallet.service';
-
-const SOROBAN_RPC = 'https://soroban-testnet.stellar.org';
-const NET = Networks.TESTNET;
+import {
+  SOROBAN_RPC_URL,
+  NETWORK_PASSPHRASE,
+  explorerContractUrl,
+  describeContractError,
+} from './stellar.config';
 
 /**
  * Despliega y opera contratos Soroban `VelarBond`.
@@ -35,7 +39,7 @@ export class SorobanBondService {
   private readonly logger = new Logger(SorobanBondService.name);
   private readonly wasmHash = process.env.SOROBAN_VELAR_BOND_WASM_HASH ?? '';
   private readonly tseAddress = process.env.SOROBAN_TSE_ADDRESS ?? '';
-  private readonly server = new rpc.Server(SOROBAN_RPC);
+  private readonly server = new rpc.Server(SOROBAN_RPC_URL);
 
   constructor(private wallets: WalletService) {}
 
@@ -78,7 +82,6 @@ export class SorobanBondService {
     const sourceKp = this.wallets.keypairFor(sourceAddress);
 
     // ── Paso 1: deploy del contrato (crea una instancia a partir del WASM ya subido)
-    const account = await this.server.getAccount(sourceAddress);
     const wasmHashBuf = Buffer.from(this.wasmHash, 'hex');
 
     const deployOp = Operation.createCustomContract({
@@ -86,30 +89,18 @@ export class SorobanBondService {
       wasmHash: wasmHashBuf,
     });
 
-    const deployTx = new TransactionBuilder(account, {
-      fee: BASE_FEE,
-      networkPassphrase: NET,
-    })
-      .addOperation(deployOp)
-      .setTimeout(60)
-      .build();
-
-    const prepared = await this.server.prepareTransaction(deployTx);
-    prepared.sign(sourceKp);
-    const deployRes = await this.server.sendTransaction(prepared);
-    if (deployRes.status === 'ERROR') {
-      throw new Error(`Soroban deploy falló: ${JSON.stringify(deployRes.errorResult)}`);
-    }
-
-    const deployStatus = await this.pollUntilSuccess(deployRes.hash);
+    const { hash: deployHash, result: deployStatus } = await this.submitOp(
+      deployOp,
+      sourceKp,
+      'deploy',
+    );
     const contractId = this.extractContractId(deployStatus);
-    this.logger.log(`Bono ${input.bondId} desplegado: contract=${contractId} tx=${deployRes.hash}`);
+    this.logger.log(`Bono ${input.bondId} desplegado: contract=${contractId} tx=${deployHash}`);
 
     // ── Paso 2: initialize con todos los atributos.
     // Soroban limita las funciones a 10 parámetros, así que el contrato
     // recibe `(tse, args)` donde `args` es un struct InitArgs.
     const contract = new Contract(contractId);
-    const initAccount = await this.server.getAccount(sourceAddress);
 
     const initArgs = nativeToScVal(
       {
@@ -148,25 +139,10 @@ export class SorobanBondService {
       initArgs,
     );
 
-    const initTx = new TransactionBuilder(initAccount, {
-      fee: BASE_FEE,
-      networkPassphrase: NET,
-    })
-      .addOperation(initOp)
-      .setTimeout(60)
-      .build();
-
-    const preparedInit = await this.server.prepareTransaction(initTx);
-    preparedInit.sign(sourceKp);
-
     let initTxHash: string | undefined;
     try {
-      const initRes = await this.server.sendTransaction(preparedInit);
-      if (initRes.status === 'ERROR') {
-        throw new Error(`Soroban initialize falló: ${JSON.stringify(initRes.errorResult)}`);
-      }
-      await this.pollUntilSuccess(initRes.hash);
-      initTxHash = initRes.hash;
+      const { hash } = await this.submitOp(initOp, sourceKp, 'initialize');
+      initTxHash = hash;
       this.logger.log(`Bono ${input.bondId} inicializado on-chain (${initTxHash})`);
     } catch (e) {
       // El contrato se desplegó pero initialize falló. Devolvemos el contractId
@@ -182,18 +158,18 @@ export class SorobanBondService {
   async readDetails(contractId: string): Promise<unknown> {
     const contract = new Contract(contractId);
     const account = await this.server.getAccount(this.wallets.platformAddress!);
-    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NET })
+    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
       .addOperation(contract.call('details'))
       .setTimeout(60)
       .build();
     const sim = await this.server.simulateTransaction(tx);
-    if ('error' in sim) throw new Error(sim.error);
+    if ('error' in sim) throw new Error(describeContractError(sim.error));
     const retval = (sim as any).result?.retval;
     return retval ? scValToNative(retval) : null;
   }
 
   contractExplorerUrl(contractId: string): string {
-    return `https://stellar.expert/explorer/testnet/contract/${contractId}`;
+    return explorerContractUrl(contractId);
   }
 
   // ─── Internos ────────────────────────────────────────────────────────────
@@ -206,6 +182,34 @@ export class SorobanBondService {
       await new Promise((res) => setTimeout(res, 1000));
     }
     throw new Error(`Soroban tx timeout: ${hash}`);
+  }
+
+  /**
+   * Construye, prepara, firma y envía una operación Soroban, esperando a que
+   * confirme. Devuelve el hash y el resultado final de la tx. Lanza un error
+   * legible (mapeado con describeContractError) si la red rechaza la operación.
+   */
+  private async submitOp(
+    op: xdr.Operation,
+    signerKp: Keypair,
+    label: string,
+  ): Promise<{ hash: string; result: any }> {
+    const account = await this.server.getAccount(signerKp.publicKey());
+    const tx = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(op)
+      .setTimeout(60)
+      .build();
+    const prepared = await this.server.prepareTransaction(tx);
+    prepared.sign(signerKp);
+    const res = await this.server.sendTransaction(prepared);
+    if (res.status === 'ERROR') {
+      throw new Error(`Soroban ${label} falló: ${describeContractError(res.errorResult)}`);
+    }
+    const result = await this.pollUntilSuccess(res.hash);
+    return { hash: res.hash, result };
   }
 
   private extractContractId(txResult: any): string {
