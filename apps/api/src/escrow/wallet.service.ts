@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Keypair, Networks, TransactionBuilder } from '@stellar/stellar-sdk';
+import { Keypair, TransactionBuilder } from '@stellar/stellar-sdk';
+import { NETWORK_PASSPHRASE } from './stellar.config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export type CustodyWalletCreation = {
@@ -143,7 +144,7 @@ export class WalletService {
   signXdr(unsignedXdr: string, publicKey: string): string {
     const secret = this.secretByPublic.get(publicKey);
     if (!secret) throw new Error(`No hay llave en custodia para ${publicKey}`);
-    const tx = TransactionBuilder.fromXDR(unsignedXdr, Networks.TESTNET);
+    const tx = TransactionBuilder.fromXDR(unsignedXdr, NETWORK_PASSPHRASE);
     tx.sign(Keypair.fromSecret(secret));
     return tx.toXDR();
   }
