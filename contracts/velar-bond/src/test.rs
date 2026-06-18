@@ -212,3 +212,51 @@ fn non_owner_cannot_set_active() {
     env.mock_auths(&[]); // drop the owner's signature
     c.set_active();
 }
+
+/// `details` on an uninitialized contract fails with NotInitialized (#2).
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")] // NotInitialized
+fn details_before_init_fails() {
+    let (env, contract_id, _, _, _) = setup();
+    let c = VelarBondClient::new(&env, &contract_id);
+    c.details();
+}
+
+/// `current_owner` on an uninitialized contract fails with NotInitialized (#2).
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")] // NotInitialized
+fn current_owner_before_init_fails() {
+    let (env, contract_id, _, _, _) = setup();
+    let c = VelarBondClient::new(&env, &contract_id);
+    c.current_owner();
+}
+
+/// `status` on an uninitialized contract fails with NotInitialized (#2).
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")] // NotInitialized
+fn status_before_init_fails() {
+    let (env, contract_id, _, _, _) = setup();
+    let c = VelarBondClient::new(&env, &contract_id);
+    c.status();
+}
+
+/// `tse` on an uninitialized contract fails with NotInitialized (#2).
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")] // NotInitialized
+fn tse_before_init_fails() {
+    let (env, contract_id, _, _, _) = setup();
+    let c = VelarBondClient::new(&env, &contract_id);
+    c.tse();
+}
+
+/// All four read-only views return consistent state after initialization.
+#[test]
+fn views_return_initialized_state() {
+    let (env, contract_id, tse, party, _) = setup();
+    let c = init(&env, &contract_id, &tse, &party);
+
+    assert_eq!(c.current_owner(), party);
+    assert_eq!(c.status(), Status::Active);
+    assert_eq!(c.tse(), tse);
+    assert_eq!(c.details().current_owner, party);
+}
