@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, StreamableFile, UseGuards } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -37,5 +37,15 @@ export class AnalyticsController {
   @Get('volume-over-time')
   volume(@Query('days') days: string | undefined, @CurrentUser() user: any) {
     return this.analytics.volumeOverTime(user.profile?.role as Role, days ? Number(days) : 30);
+  }
+
+  @Get('export')
+  async export(@Query('format') format: string | undefined, @CurrentUser() user: any) {
+    const csv = await this.analytics.exportTransfersCsv(user.profile?.role as Role, format);
+    const filename = `velar-transfers-${new Date().toISOString().slice(0, 10)}.csv`;
+    return new StreamableFile(Buffer.from(csv, 'utf-8'), {
+      type: 'text/csv; charset=utf-8',
+      disposition: `attachment; filename="${filename}"`,
+    });
   }
 }

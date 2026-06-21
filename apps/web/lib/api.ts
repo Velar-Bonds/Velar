@@ -48,6 +48,40 @@ export async function apiFetch(token: string, method: string, path: string, body
   return requestJson(method, path, body, token);
 }
 
+function filenameFromDisposition(header: string | null, fallback: string) {
+  const match = header?.match(/filename="([^"]+)"/);
+  return match?.[1] ?? fallback;
+}
+
+/** Descarga un archivo autenticado desde el backend (p. ej. CSV). */
+export async function apiDownload(token: string, path: string, fallbackFilename: string) {
+  const url = buildApiUrl(path);
+  let res: Response;
+
+  try {
+    res = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error(`No se pudo conectar con la API en ${url}. Verifica que el backend este corriendo y que NEXT_PUBLIC_API_URL apunte a la URL correcta.`);
+  }
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(messageFromPayload(json, `Error ${res.status} en ${url}`));
+  }
+
+  const blob = await res.blob();
+  const filename = filenameFromDisposition(res.headers.get('Content-Disposition'), fallbackFilename);
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
 export type Me = {
   id: string; email: string; full_name?: string; role?: string;
   party_id?: string | null; stellar_wallet?: string | null;

@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, DollarSign, Activity, Boxes, Users, BarChart3, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, Boxes, Users, BarChart3, Download } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
-import { useSession, apiFetch } from '../../../lib/api';
+import { useSession, apiFetch, apiDownload } from '../../../lib/api';
 
 const fmtCRC = (n: number) => new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n || 0);
 const fmtNum = (n: number) => new Intl.NumberFormat('es-CR').format(n || 0);
@@ -17,6 +17,8 @@ export default function AnalyticsPage() {
   const [selBond, setSelBond] = useState<string | null>(null);
   const [priceHistory, setPriceHistory] = useState<any>(null);
   const [owners, setOwners] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   useEffect(() => {
     if (!token) return;
@@ -52,6 +54,20 @@ export default function AnalyticsPage() {
 
   const maxVolume = Math.max(...byParty.map((p) => p.volume_moved), 1);
   const maxDayVol = Math.max(...volume.map((v) => v.volume), 1);
+  const exportFilename = `velar-transfers-${new Date().toISOString().slice(0, 10)}.csv`;
+
+  const handleExportCsv = async () => {
+    if (!token) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      await apiDownload(token, '/analytics/export?format=csv', exportFilename);
+    } catch (e: any) {
+      setExportError(e.message ?? 'No se pudo exportar el CSV');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <TSEShell me={me}>
@@ -59,6 +75,18 @@ export default function AnalyticsPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>Análisis de bonos</h1>
           <p className="text-sm text-on-surface-variant">Métricas, precios y propietarios</p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={exporting}
+            className="flex items-center gap-2 rounded-xl border border-primary/30 bg-white px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary/5 disabled:opacity-60"
+          >
+            <Download size={16} />
+            {exporting ? 'Exportando…' : 'Exportar CSV'}
+          </button>
+          {exportError && <p className="text-xs text-red-600">{exportError}</p>}
         </div>
       </header>
 
