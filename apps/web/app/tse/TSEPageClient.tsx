@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ClipboardCheck, BadgeCheck, Send, Activity, ArrowRight, CheckCircle, Clock } from 'lucide-react';
 import { TSEShell } from '../../components/TSEShell';
 import { useSession, apiFetch } from '../../lib/api';
+import { paginationMeta, unwrapPaginated } from '../../lib/pagination';
 
 const fmtDate = (s?: string) =>
   s ? new Date(s).toLocaleString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -24,19 +25,25 @@ const CHIP: Record<string, string> = {
 export default function TSEPageClient() {
   const { token, me, loading, error } = useSession();
   const [bonds, setBonds] = useState<any[]>([]);
+  const [bondsTotal, setBondsTotal] = useState(0);
   const [requests, setRequests] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
+  const [transfersTotal, setTransfersTotal] = useState(0);
 
   useEffect(() => {
     if (!token) return;
     Promise.all([
-      apiFetch(token, 'GET', '/bonds').catch(() => null),
+      apiFetch(token, 'GET', '/bonds?page=1&limit=20').catch(() => null),
       apiFetch(token, 'GET', '/bonds/requests').catch(() => null),
-      apiFetch(token, 'GET', '/transfers').catch(() => null),
+      apiFetch(token, 'GET', '/transfers?page=1&limit=20').catch(() => null),
     ]).then(([bs, rqs, trs]) => {
-      setBonds(Array.isArray(bs) ? bs : []);
+      const bondRows = unwrapPaginated(bs ?? []);
+      const transferRows = unwrapPaginated(trs ?? []);
+      setBonds(bondRows);
+      setBondsTotal(paginationMeta(bs, bondRows.length).total);
       setRequests(Array.isArray(rqs) ? rqs : []);
-      setTransfers(Array.isArray(trs) ? trs : []);
+      setTransfers(transferRows);
+      setTransfersTotal(paginationMeta(trs, transferRows.length).total);
     });
   }, [token]); // eslint-disable-line
 
@@ -76,8 +83,8 @@ export default function TSEPageClient() {
           {([
             { label: 'Pendientes de revisión', value: pendientes.length, Icon: ClipboardCheck, bg: 'bg-primary/10', color: 'text-primary', delta: '+6 desde ayer' },
             { label: 'Aprobados', value: aprobados, Icon: BadgeCheck, bg: 'bg-emerald-50', color: 'text-emerald-600', delta: '+18 desde ayer' },
-            { label: 'Bonos emitidos', value: bonds.length, Icon: Send, bg: 'bg-blue-50', color: 'text-blue-500', delta: '+12 desde ayer' },
-            { label: 'Movimientos registrados', value: transfers.length, Icon: Activity, bg: 'bg-teal-50', color: 'text-teal-500', delta: '+27 desde ayer' },
+            { label: 'Bonos emitidos', value: bondsTotal, Icon: Send, bg: 'bg-blue-50', color: 'text-blue-500', delta: '+12 desde ayer' },
+            { label: 'Movimientos registrados', value: transfersTotal, Icon: Activity, bg: 'bg-teal-50', color: 'text-teal-500', delta: '+27 desde ayer' },
           ] as const).map(({ label, value, Icon, bg, color, delta }: any) => (
             <div key={label} className="glass-card flex items-center gap-4 rounded-xl p-5 transition-transform hover:-translate-y-0.5">
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${bg}`}>

@@ -26,9 +26,13 @@ export class AuditController {
   }
 
   @Get('events')
-  getRecentEvents(@Query('limit') limit: string, @CurrentUser() user: any) {
+  getRecentEvents(
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @CurrentUser() user: any,
+  ) {
     const role: Role = user.profile?.role;
     if (!['tse', 'admin'].includes(role)) throw new ForbiddenException('TSE/Admin only');
-    return this.audit.getRecentEvents(limit ? Number(limit) : 50);
+    return this.audit.getRecentEvents(page, limit);
   }
 }

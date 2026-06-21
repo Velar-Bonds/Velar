@@ -2,7 +2,9 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle, ArrowRightLeft, Send, FileText, Shield } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
+import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 
 const ICON_MAP: Record<string, any> = {
   bond_aprobado: CheckCircle, bond_emitido: Send, transfer: ArrowRightLeft,
@@ -21,12 +23,21 @@ const fmtDate = (s: string) => new Date(s).toLocaleString('es-CR', { day: '2-dig
 export default function AuditoriaPage() {
   const { token, me, loading, error } = useSession();
   const [events, setEvents] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [total, setTotal] = useState(0);
   const [filterType, setFilterType] = useState('');
   const [filterParty, setFilterParty] = useState('');
 
   useEffect(() => {
-    if (token) apiFetch(token, 'GET', '/audit/events').then((ev) => { if (Array.isArray(ev)) setEvents(ev); }).catch(() => {});
-  }, [token]);
+    if (!token) return;
+    apiFetch(token, 'GET', `/audit/events?${paginatedQuery(page, limit)}`)
+      .then((res) => {
+        setEvents(unwrapPaginated(res));
+        setTotal(paginationMeta(res).total);
+      })
+      .catch(() => {});
+  }, [token, page, limit]);
 
   if (loading || !token || !me) {
     return (
@@ -71,7 +82,7 @@ export default function AuditoriaPage() {
             {parties.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
           {(filterType || filterParty) && (
-            <button onClick={() => { setFilterType(''); setFilterParty(''); }} className="rounded-xl border border-outline-variant/40 px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:bg-surface-container-low">
+            <button onClick={() => { setFilterType(''); setFilterParty(''); setPage(1); }} className="rounded-xl border border-outline-variant/40 px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:bg-surface-container-low">
               Limpiar filtros
             </button>
           )}
@@ -79,7 +90,7 @@ export default function AuditoriaPage() {
 
         <div className="glass-card overflow-hidden rounded-2xl">
           <div className="border-b border-surface-variant/30 bg-surface-container-low/40 px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-            {filtered.length} evento{filtered.length !== 1 ? 's' : ''}
+            {filtered.length} evento{filtered.length !== 1 ? 's' : ''} en esta página · {total} en total
           </div>
           <div className="divide-y divide-surface-variant/20">
             {filtered.map((ev) => {
@@ -111,6 +122,7 @@ export default function AuditoriaPage() {
             })}
             {filtered.length === 0 && <p className="py-10 text-center text-sm text-on-surface-variant">Sin eventos registrados.</p>}
           </div>
+          <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
         </div>
       </div>
     </TSEShell>

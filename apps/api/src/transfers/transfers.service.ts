@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { SupabaseService } from '../common/supabase/supabase.service';
+import { paginatedResponse, parsePagination } from '../common/pagination';
 import { AuditService } from '../audit/audit.service';
 import { StellarBondService } from '../escrow/stellar-bond.service';
 import { TrustlessWorkService } from '../escrow/trustless-work.service';
@@ -494,10 +495,11 @@ export class TransfersService {
     return { success: true };
   }
 
-  async findMyTransfers(actorId: string, actorRole: Role) {
+  async findMyTransfers(actorId: string, actorRole: Role, page?: string, limit?: string) {
+    const { page: p, limit: l, from, to } = parsePagination(page, limit);
     let q = this.supabase.admin
       .from('transfers')
-      .select('*, bonds!inner(bond_id, status, face_value, issuer_party_id), from_profile:profiles!transfers_from_owner_fkey(id, full_name, email), to_profile:profiles!transfers_to_owner_fkey(id, full_name, email)')
+      .select('*, bonds!inner(bond_id, status, face_value, issuer_party_id), from_profile:profiles!transfers_from_owner_fkey(id, full_name, email), to_profile:profiles!transfers_to_owner_fkey(id, full_name, email)', { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (!['tse', 'admin'].includes(actorRole)) {
@@ -517,8 +519,9 @@ export class TransfersService {
         q = q.or(`from_owner.eq.${actorId},to_owner.eq.${actorId}`);
       }
     }
-    const { data } = await q;
-    return data ?? [];
+    const { data, count, error } = await q.range(from, to);
+    if (error) throw new BadRequestException(error.message);
+    return paginatedResponse(data ?? [], count ?? 0, p, l);
   }
 
   async findOne(transferId: string) {

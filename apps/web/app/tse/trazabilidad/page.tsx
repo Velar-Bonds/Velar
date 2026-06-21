@@ -6,6 +6,7 @@ import { ArrowRight, ExternalLink, User, Clock, CheckCircle } from 'lucide-react
 import Link from 'next/link';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
 
 const fmtDate = (s?: string) => s ? new Date(s).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -34,11 +35,11 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
 
   useEffect(() => {
     Promise.all([
-      apiFetch(token, 'GET', '/bonds').catch(() => null),
-      apiFetch(token, 'GET', '/transfers').catch(() => null),
+      apiFetch(token, 'GET', '/bonds?page=1&limit=100').catch(() => null),
+      apiFetch(token, 'GET', '/transfers?page=1&limit=100').catch(() => null),
     ]).then(([bs, trs]) => {
-      const b = Array.isArray(bs) ? bs : [];
-      const t = Array.isArray(trs) ? trs : [];
+      const b = unwrapPaginated<any>(bs ?? []);
+      const t = unwrapPaginated<any>(trs ?? []);
       setBonds(b); setTransfers(t);
       const init = initialBono ? b.find((x: any) => x.bond_id === initialBono)?.token_id : b[0]?.token_id;
       setSel(init ?? b[0]?.token_id ?? '');

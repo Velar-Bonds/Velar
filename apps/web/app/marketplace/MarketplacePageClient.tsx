@@ -6,6 +6,7 @@ import { Handshake, ShieldCheck, SlidersHorizontal, Store } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { EmptyState, fmtMoney, StatusBadge, StellarExpertButton } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
+import { unwrapPaginated } from '../../lib/pagination';
 import { bondExplorerUrl } from '../../lib/stellar';
 
 type Bond = {
@@ -42,7 +43,7 @@ function Content({ token }: { token: string }) {
 
   const load = useCallback(() => {
     apiFetch(token, 'GET', '/bonds/available').then(setBonds).catch((e) => notify.err(e.message));
-    apiFetch(token, 'GET', '/transfers').then(setTransfers).catch(() => undefined);
+    apiFetch(token, 'GET', '/transfers?page=1&limit=100').then((res) => setTransfers(unwrapPaginated(res))).catch(() => undefined);
   }, [token]);
 
   useEffect(() => { load(); }, [load]);

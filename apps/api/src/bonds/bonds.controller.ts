@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { BondsService } from './bonds.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -15,8 +15,12 @@ export class BondsController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: any) {
-    return this.bonds.findAll(user.id, user.profile?.role as Role, user.profile?.party_id);
+  findAll(
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @CurrentUser() user: any,
+  ) {
+    return this.bonds.findAll(user.id, user.profile?.role as Role, user.profile?.party_id, page, limit);
   }
 
   @Get('requests')

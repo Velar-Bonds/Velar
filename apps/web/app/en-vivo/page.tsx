@@ -4,6 +4,7 @@ import { Radio, Activity, ExternalLink } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { StatusBadge, EmptyState, fmtDate } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
+import { unwrapPaginated } from '../../lib/pagination';
 import { stellarExpert } from '../../lib/stellar';
 
 type Transfer = { id: string; status: string; created_at?: string; bonds?: { bond_id?: string }; from_profile?: { full_name?: string }; to_profile?: { full_name?: string } };
@@ -15,7 +16,7 @@ export default function EnVivoPage() {
 function Content({ token }: { token: string }) {
   const [items, setItems] = useState<Transfer[]>([]);
 
-  const load = () => apiFetch(token, 'GET', '/transfers').then((t) => setItems((t as Transfer[]).slice(0, 30))).catch(() => {});
+  const load = () => apiFetch(token, 'GET', '/transfers?page=1&limit=30').then((res) => setItems(unwrapPaginated(res))).catch(() => {});
   useEffect(() => { load(); const id = setInterval(load, 15000); return () => clearInterval(id); /* eslint-disable-next-line */ }, []);
 
   return (
