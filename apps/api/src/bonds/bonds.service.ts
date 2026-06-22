@@ -698,6 +698,110 @@ export class BondsService {
     };
   }
 
+  /**
+   * Recibe el PDF del certificado del bono, computa SHA-256 server-side,
+   * lo sube a Supabase Storage y sincroniza el hash con el contrato Soroban.
+   * Solo el TSE puede subir documentos.
+   */
+  async uploadDocument(
+    tokenId: string,
+    file: Express.Multer.File,
+    actorId: string,
+    actorRole: Role,
+  ): Promise<{ documentHash: string; sorobanTxHash?: string }> {
+    if (!AUTHORITY.includes(actorRole)) {
+      throw new ForbiddenException('Solo el TSE puede subir documentos de bonos');
+    }
+    if (!file) throw new BadRequestException('Se requiere un archivo PDF');
+    if (file.mimetype !== 'application/pdf') {
+      throw new BadRequestException('Solo se aceptan archivos PDF');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new BadRequestException('El archivo no puede superar 10 MB');
+    }
+
+    const { data: bond, error: findErr } = await this.supabase.admin
+      .from('bonds')
+      .select('token_id, bond_id, soroban_contract_id')
+      .eq('token_id', tokenId)
+      .single();
+    if (findErr || !bond) throw new NotFoundException('Bono no encontrado');
+
+    const documentHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
+
+    const storagePath = `${tokenId}/certificate.pdf`;
+    const { error: uploadErr } = await this.supabase.admin.storage
+      .from('bond-documents')
+      .upload(storagePath, file.buffer, { contentType: 'application/pdf', upsert: true });
+    if (uploadErr) {
+      throw new BadRequestException(`Error al subir el archivo: ${uploadErr.message}`);
+    }
+
+    await this.supabase.admin
+      .from('bonds')
+      .update({ document_hash: documentHash })
+      .eq('token_id', tokenId);
+
+    let sorobanTxHash: string | undefined;
+    const contractId: string | null = (bond as any).soroban_contract_id ?? null;
+    if (contractId && this.soroban.enabled) {
+      try {
+        sorobanTxHash = await this.soroban.setDocumentHash(contractId, documentHash);
+      } catch (e) {
+        this.logger.warn(
+          `set_document_hash falló en Soroban (hash guardado en DB): ${(e as Error).message}`,
+        );
+      }
+    }
+
+    await this.audit.emit({
+      type: AuditEventType.DOCUMENTO_SUBIDO,
+      bondTokenId: tokenId,
+      actorId,
+      payload: {
+        documentHash,
+        contractId: contractId ?? null,
+        sorobanTxHash: sorobanTxHash ?? null,
+        filename: file.originalname,
+        sizeBytes: file.size,
+      },
+    });
+
+    return { documentHash, sorobanTxHash };
+  }
+
+  /**
+   * Descarga el certificado PDF del bono desde Supabase Storage.
+   * Solo el dueño actual del bono o TSE/admin pueden descargar.
+   */
+  async downloadDocument(tokenId: string, actorId: string, actorRole: Role): Promise<Buffer> {
+    const { data: bond, error: findErr } = await this.supabase.admin
+      .from('bonds')
+      .select('token_id, current_owner')
+      .eq('token_id', tokenId)
+      .single();
+    if (findErr || !bond) throw new NotFoundException('Bono no encontrado');
+
+    if (!AUTHORITY.includes(actorRole) && (bond as any).current_owner !== actorId) {
+      throw new ForbiddenException(
+        'Solo el dueño actual del bono puede descargar el certificado',
+      );
+    }
+
+    const storagePath = `${tokenId}/certificate.pdf`;
+    const { data, error } = await this.supabase.admin.storage
+      .from('bond-documents')
+      .download(storagePath);
+
+    if (error || !data) {
+      throw new NotFoundException(
+        'Documento no encontrado. El bono aún no tiene un certificado PDF subido.',
+      );
+    }
+
+    return Buffer.from(await (data as Blob).arrayBuffer());
+  }
+
   static hashDocument(content: string): string {
     return crypto.createHash('sha256').update(content).digest('hex');
   }
