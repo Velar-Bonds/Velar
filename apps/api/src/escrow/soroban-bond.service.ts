@@ -168,6 +168,26 @@ export class SorobanBondService {
     return retval ? scValToNative(retval) : null;
   }
 
+  /** Actualiza el hash del documento PDF on-chain. Requiere Soroban habilitado. */
+  async setDocumentHash(contractId: string, documentHash: string): Promise<string> {
+    if (!this.enabled) throw new Error('Soroban no habilitado');
+    if (!/^[a-fA-F0-9]{64}$/.test(documentHash)) {
+      throw new Error('documentHash debe ser exactamente 64 caracteres hexadecimales (SHA-256)');
+    }
+
+    const contract = new Contract(contractId);
+    const sourceKp = this.wallets.keypairFor(this.wallets.platformAddress!);
+
+    const op = contract.call(
+      'set_document_hash',
+      nativeToScVal(Buffer.from(documentHash, 'hex'), { type: 'bytes' }),
+    );
+
+    const { hash } = await this.submitOp(op, sourceKp, 'set_document_hash');
+    this.logger.log(`set_document_hash en ${contractId}: tx=${hash}`);
+    return hash;
+  }
+
   contractExplorerUrl(contractId: string): string {
     return explorerContractUrl(contractId);
   }

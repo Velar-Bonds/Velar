@@ -53,6 +53,22 @@ function filenameFromDisposition(header: string | null, fallback: string) {
   return match?.[1] ?? fallback;
 }
 
+/** Descarga un archivo autenticado y devuelve el Blob sin disparar diálogo de descarga. */
+export async function apiFetchBlob(token: string, path: string): Promise<Blob> {
+  const url = buildApiUrl(path);
+  let res: Response;
+  try {
+    res = await fetch(url, { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
+  } catch {
+    throw new Error(`No se pudo conectar con la API en ${url}.`);
+  }
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(messageFromPayload(json, `Error ${res.status} en ${url}`));
+  }
+  return res.blob();
+}
+
 /** Descarga un archivo autenticado desde el backend (p. ej. CSV). */
 export async function apiDownload(token: string, path: string, fallbackFilename: string) {
   const url = buildApiUrl(path);

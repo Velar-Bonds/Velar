@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { CheckCircle, Info, Send } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { CheckCircle, FileUp, Info, Send } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
-import { useSession, apiFetch } from '../../../lib/api';
+import { useSession, apiFetch, API_URL } from '../../../lib/api';
 
 export default function EmisionPage() {
   const { token, me, loading, error } = useSession();
@@ -10,7 +10,10 @@ export default function EmisionPage() {
     party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: 'CRC',
     interest_rate: '', series: '', issue_date: '', maturity_date: '',
   });
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState('');
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [parties, setParties] = useState<any[]>([]);
 
@@ -32,13 +35,13 @@ export default function EmisionPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.party_id || !form.face_value) { setMsg({ type: 'err', text: 'Completá el partido y el monto.' }); return; }
-    setBusy(true); setMsg(null);
+    setBusy(true); setMsg(null); setStep('Emitiendo bono…');
     try {
       const bondId = form.bond_id || `SOL-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
-      await apiFetch(token, 'POST', '/bonds', {
+      const bond = await apiFetch(token, 'POST', '/bonds', {
         bondId,
         issuerPartyId: form.party_id,
-        documentHash: 'manual-' + Date.now(),
+        documentHash: 'pending-' + bondId,
         faceValue: Number(form.face_value),
         certificateNumber: form.certificate_number || undefined,
         currency: form.currency,
@@ -47,12 +50,34 @@ export default function EmisionPage() {
         issueDate: form.issue_date || undefined,
         maturityDate: form.maturity_date || undefined,
       });
-      setMsg({ type: 'ok', text: `Bono ${bondId} emitido correctamente y asignado al partido.` });
+
+      if (docFile && bond?.token_id) {
+        setStep('Subiendo certificado PDF…');
+        const formData = new FormData();
+        formData.append('file', docFile);
+        const uploadRes = await fetch(
+          `${API_URL.replace(/\/$/, '')}/bonds/${bond.token_id}/document`,
+          { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData },
+        );
+        if (!uploadRes.ok) {
+          const errJson = await uploadRes.json().catch(() => ({}));
+          const errMsg = (errJson as any)?.message ?? `Error ${uploadRes.status}`;
+          setMsg({ type: 'err', text: `Bono emitido pero falló la subida del PDF: ${errMsg}` });
+          return;
+        }
+        const uploadData = await uploadRes.json();
+        setMsg({ type: 'ok', text: `Bono ${bondId} emitido. Hash del certificado: ${uploadData.documentHash}` });
+      } else {
+        setMsg({ type: 'ok', text: `Bono ${bondId} emitido correctamente y asignado al partido.` });
+      }
+
       setForm({ party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: 'CRC', interest_rate: '', series: '', issue_date: '', maturity_date: '' });
+      setDocFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err: any) {
       setMsg({ type: 'err', text: err.message });
     } finally {
-      setBusy(false);
+      setBusy(false); setStep('');
     }
   }
 
@@ -71,7 +96,7 @@ export default function EmisionPage() {
         {msg && (
           <div className={`mb-5 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${msg.type === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-600'}`}>
             {msg.type === 'ok' ? <CheckCircle size={16} className="mt-0.5 shrink-0" /> : <Info size={16} className="mt-0.5 shrink-0" />}
-            {msg.text}
+            <span className="break-all">{msg.text}</span>
           </div>
         )}
 
@@ -130,8 +155,34 @@ export default function EmisionPage() {
             </div>
           </div>
 
+          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4">
+            <label className="field-label flex items-center gap-1.5">
+              <FileUp size={14} className="text-primary/60" /> Certificado PDF
+              <span className="text-on-surface-variant font-normal normal-case">opcional · máx. 10 MB</span>
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
+              className="field-input mt-1 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-primary"
+            />
+            {docFile && (
+              <p className="mt-1.5 text-xs text-emerald-700">
+                Seleccionado: {docFile.name} ({(docFile.size / 1024).toFixed(0)} KB) — el SHA-256 se calculará y guardará on-chain.
+              </p>
+            )}
+            {!docFile && (
+              <p className="mt-1 text-xs text-on-surface-variant">
+                El hash SHA-256 del PDF se almacenará en el contrato Soroban para verificación de autenticidad.
+              </p>
+            )}
+          </div>
+
           <button type="submit" disabled={busy} className="flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60">
-            {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Emitiendo…</> : <><Send size={16} /> Emitir bono al partido</>}
+            {busy
+              ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> {step || 'Procesando…'}</>
+              : <><Send size={16} /> Emitir bono al partido</>}
           </button>
         </form>
       </div>

@@ -16,6 +16,7 @@ export declare const AuditEventType: {
     readonly BOND_CONGELADO: "bond_congelado";
     readonly BOND_DESCONGELADO: "bond_descongelado";
     readonly BOND_CANCELADO: "bond_cancelado";
+    readonly DOCUMENTO_SUBIDO: "documento_subido";
 };
 export type AuditEventType = (typeof AuditEventType)[keyof typeof AuditEventType];
 export interface AuditEvent {

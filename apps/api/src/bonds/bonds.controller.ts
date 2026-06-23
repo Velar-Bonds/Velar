@@ -1,4 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body, Controller, Get, Param, Patch, Post, Query, UseGuards,
+  UseInterceptors, UploadedFile, Res,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { BondsService } from './bonds.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -84,6 +89,32 @@ export class BondsController {
   @Patch(':tokenId/unfreeze')
   unfreeze(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.unfreeze(tokenId, user.id, user.profile?.role as Role);
+  }
+
+  /** Sube el certificado PDF del bono y almacena su SHA-256 on-chain. Solo TSE. */
+  @Post(':tokenId/document')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadDocument(
+    @Param('tokenId') tokenId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any,
+  ) {
+    return this.bonds.uploadDocument(tokenId, file, user.id, user.profile?.role as Role);
+  }
+
+  /** Descarga el certificado PDF. Solo el dueño actual del bono o TSE/admin. */
+  @Get(':tokenId/document')
+  async downloadDocument(
+    @Param('tokenId') tokenId: string,
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.bonds.downloadDocument(tokenId, user.id, user.profile?.role as Role);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="bono-${tokenId}.pdf"`,
+    });
+    res.send(buffer);
   }
 
   @Post('hash')

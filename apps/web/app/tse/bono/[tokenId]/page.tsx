@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, ExternalLink, ShieldCheck, Calendar, DollarSign, Percent, FileText,
-  User, Hash, Boxes, CheckCircle2, AlertTriangle,
+  ShieldCheck, Calendar, DollarSign, Percent, FileText,
+  User, Hash, Boxes, CheckCircle2, AlertTriangle, ShieldAlert, ShieldX, FileDown,
 } from 'lucide-react';
 import { TSEShell } from '../../../../components/TSEShell';
-import { useSession, apiFetch } from '../../../../lib/api';
+import { useSession, apiFetch, apiFetchBlob, API_URL } from '../../../../lib/api';
 
 const fmtCRC = (n: number | null, cur = 'CRC') =>
   n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -41,6 +41,14 @@ function friendlySorobanReadError(message?: string) {
   return message.split('\n')[0].slice(0, 180);
 }
 
+async function computeSha256Hex(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export default function BonoDetallePage() {
   const { token, me, loading, error } = useSession();
   const params = useParams<{ tokenId: string }>();
@@ -48,6 +56,26 @@ export default function BonoDetallePage() {
 
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{
+    ok: boolean; computedHash: string; onChainHash: string; error?: string;
+  } | null>(null);
+
+  async function verifyAuthenticity() {
+    if (!data?.document_hash_hex || !tokenId || !token) return;
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      const blob = await apiFetchBlob(token, `/bonds/${tokenId}/document`);
+      const computedHash = await computeSha256Hex(blob);
+      const onChainHash = data.document_hash_hex.toLowerCase();
+      setVerifyResult({ ok: computedHash === onChainHash, computedHash, onChainHash });
+    } catch (e: any) {
+      setVerifyResult({ ok: false, computedHash: '', onChainHash: data.document_hash_hex ?? '', error: e.message });
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   useEffect(() => {
     if (!token || !tokenId) return;
@@ -217,6 +245,107 @@ export default function BonoDetallePage() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Autenticidad del certificado PDF */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <ShieldAlert size={18} className="text-primary" />
+                <p className="font-semibold text-slate-900">Verificar autenticidad del certificado</p>
+              </div>
+              <p className="mb-4 text-sm text-on-surface-variant">
+                Descarga el certificado PDF almacenado por el TSE, calcula su SHA-256 en el navegador
+                y compara con el hash guardado on-chain en el contrato Soroban.
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={verifyAuthenticity}
+                  disabled={verifying || !data?.document_hash_hex}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {verifying
+                    ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Verificando…</>
+                    : <><ShieldCheck size={15} /> Verificar autenticidad</>}
+                </button>
+
+                {data?.document_hash_hex && tokenId && token && (
+                  <a
+                    href={`${API_URL.replace(/\/$/, '')}/bonds/${tokenId}/document`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      fetch(`${API_URL.replace(/\/$/, '')}/bonds/${tokenId}/document`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                      }).then((r) => {
+                        if (!r.ok) { alert('Certificado no disponible o acceso denegado'); return; }
+                        r.blob().then((blob) => {
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url; a.download = `bono-${tokenId}.pdf`; a.click();
+                          URL.revokeObjectURL(url);
+                        });
+                      });
+                    }}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <FileDown size={15} /> Descargar certificado
+                  </a>
+                )}
+              </div>
+
+              {!data?.document_hash_hex && (
+                <p className="mt-3 text-sm text-amber-700">
+                  Este bono aún no tiene un hash de certificado almacenado on-chain.
+                  El TSE debe subir el PDF desde la página de emisión.
+                </p>
+              )}
+
+              {verifyResult && (
+                <div className={`mt-4 rounded-xl border p-4 ${verifyResult.ok ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
+                  {verifyResult.error ? (
+                    <div className="flex items-start gap-2 text-red-700">
+                      <ShieldX size={16} className="mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold">Error al verificar</p>
+                        <p className="mt-0.5 text-xs">{verifyResult.error}</p>
+                      </div>
+                    </div>
+                  ) : verifyResult.ok ? (
+                    <div className="flex items-start gap-2 text-emerald-700">
+                      <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold">Documento auténtico</p>
+                        <p className="mt-0.5 text-xs text-emerald-600">
+                          El SHA-256 del PDF coincide con el hash almacenado en el contrato Soroban.
+                        </p>
+                        <p className="mt-1 break-all font-mono text-[11px] text-emerald-700">
+                          {verifyResult.computedHash}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2 text-red-700">
+                      <ShieldX size={16} className="mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold">Documento NO coincide</p>
+                        <p className="mt-0.5 text-xs text-red-600">
+                          El SHA-256 del PDF descargado no coincide con el hash on-chain. El documento pudo haber sido alterado.
+                        </p>
+                        <p className="mt-1 text-xs">
+                          <span className="font-semibold">Calculado:</span>{' '}
+                          <span className="break-all font-mono text-[10px]">{verifyResult.computedHash}</span>
+                        </p>
+                        <p className="mt-0.5 text-xs">
+                          <span className="font-semibold">On-chain:</span>{' '}
+                          <span className="break-all font-mono text-[10px]">{verifyResult.onChainHash}</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}

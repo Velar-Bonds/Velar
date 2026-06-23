@@ -16,6 +16,7 @@ export const AuditEventType = {
   BOND_CONGELADO: 'bond_congelado',
   BOND_DESCONGELADO: 'bond_descongelado',
   BOND_CANCELADO: 'bond_cancelado',
+  DOCUMENTO_SUBIDO: 'documento_subido',
 } as const;
 
 export type AuditEventType =

@@ -201,6 +201,16 @@ impl VelarBond {
         env.events().publish((symbol_short!("active"),), ());
     }
 
+    /// El TSE actualiza el hash SHA-256 del PDF del certificado.
+    /// Solo el TSE puede invocarla; se puede llamar después de initialize.
+    pub fn set_document_hash(env: Env, document_hash: BytesN<32>) {
+        Self::require_tse(&env);
+        let mut details: BondDetails = Self::require_details(&env);
+        details.document_hash = document_hash;
+        env.storage().instance().set(&DataKey::Details, &details);
+        env.events().publish((symbol_short!("dochash"),), ());
+    }
+
     // ─── Vistas (read-only, gratis) ─────────────────────────────────────────
 
     pub fn details(env: Env) -> BondDetails {
