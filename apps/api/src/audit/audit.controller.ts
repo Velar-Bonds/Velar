@@ -25,6 +25,12 @@ export class AuditController {
     return this.audit.getBondTimeline(tokenId);
   }
 
+  @Get('bonds/:tokenId/traceability')
+  getBondTraceability(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
+    // No per-role check — all authenticated roles can access traceability
+    return this.audit.getBondTraceability(tokenId);
+  }
+
   @Get('events')
   getRecentEvents(
     @Query('page') page: string | undefined,

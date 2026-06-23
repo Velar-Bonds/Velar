@@ -44,3 +44,19 @@ export interface BondTimeline {
     }>;
     events: AuditEvent[];
 }
+/** Una entrada en la cadena de propietarios derivada cronológicamente. */
+export interface OwnerEntry {
+    ownerId: string;
+    name: string;
+    since: string;
+    until: string | null;
+    paid: boolean;
+    current: boolean;
+}
+/** Respuesta consolidada del endpoint de trazabilidad. */
+export interface TraceabilityResponse {
+    bond: import('./bond').BondToken;
+    events: AuditEvent[];
+    transfers: import('./transfer').Transfer[];
+    owners: OwnerEntry[];
+}

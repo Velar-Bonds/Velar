@@ -123,12 +123,45 @@ nuevos en paralelo.
 
 > Nota: ya no hay rol "validador" en el flujo; el propio vendedor confirma el pago recibido.
 
-### Auditoría (TSE)
-- Endpoints bajo `/audit/...` para timeline y eventos de un bono. Ver `audit.controller.ts`
-  para las rutas exactas y úsalos para el panel del TSE (búsqueda + línea de tiempo).
+### Auditoría (TSE y trazabilidad para todos los roles)
+
+Endpoints bajo `/audit/...`:
+
+| Endpoint | Auth | Propósito |
+|----------|------|-----------|
+| `GET /audit/bonds` | TSE/Admin | Buscar bonos con filtros |
+| `GET /audit/bonds/:tokenId/timeline` | TSE/Admin | Línea de tiempo (bond + events + transfers con perfiles) |
+| `GET /audit/bonds/:tokenId/traceability` | **Todos los roles** | Trazabilidad consolidada (bond, events, transfers sin perfiles, owners[] derivado) |
+| `GET /audit/events` | TSE/Admin | Eventos de auditoría recientes |
+
+#### Trazabilidad (nuevo): `GET /audit/bonds/:tokenId/traceability`
+
+Endpoint canónico para la página de trazabilidad. Reemplaza el patrón anterior de dos fetch paralelos (`/bonds` + `/transfers`) con derivación manual de owners.
+
+**Características clave:**
+- Accesible a **todos los roles autenticados** (no requiere TSE/admin)
+- La respuesta usa el contrato compartido `TraceabilityResponse` (`BondToken`, `AuditEvent`, `Transfer`, `OwnerEntry`) en camelCase
+- Las transfers NO incluyen `from_profile` / `to_profile` (usa solo UUIDs)
+- Los owners vienen derivados del servidor como `owners[]`, con `current: true` en el último
+- `paid: true` solo en transfers con status `liberada`
+- 404 para tokenId desconocido
+
+**Uso recomendado:**
+```typescript
+// Reemplaza 2 fetch paralelos:
+//   apiFetch(token, 'GET', '/bonds?page=1&limit=100')     → sidebar (se mantiene)
+//   apiFetch(token, 'GET', '/transfers?page=1&limit=100')  → deprecated for traceability
+
+// Por un solo fetch:
+const trace = await apiFetch(token, 'GET', `/audit/bonds/${sel}/traceability`);
+const owners = trace.owners;   // cadena de propietarios lista para renderizar
+const current = owners.find(o => o.current); // dueño actual
+```
+
+**Sidebar:** La lista de bonos en la barra lateral se mantiene como un fetch separado a `/bonds?page=1&limit=100`. Una futura optimización podría cachear la lista o exponer un endpoint `/bonds/summary` para sidebar, pero está fuera del alcance actual.
 
 > ⚠️ Antes de implementar, confirmá los nombres exactos de campos contra `packages/types`
-> (`BondToken`, `Transfer`, `AuditEvent`, `Role`, `BondStatus`, `TransferStatus`). Son la fuente
+> (`BondToken`, `Transfer`, `AuditEvent`, `Role`, `BondStatus`, `TransferStatus`, `OwnerEntry`, `TraceabilityResponse`). Son la fuente
 > de verdad de los enums y formas de datos.
 
 ## 5. UX que el backend espera / facilita
