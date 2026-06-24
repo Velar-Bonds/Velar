@@ -28,23 +28,36 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
   const initialBono = params.get('bono') ?? '';
 
   const [bonds, setBonds] = useState<any[]>([]);
-  const [transfers, setTransfers] = useState<any[]>([]);
+  const [trace, setTrace] = useState<any>(null);
+  const [traceError, setTraceError] = useState<string | null>(null);
+  const [loadingTrace, setLoadingTrace] = useState(false);
   const [sel, setSel] = useState<string>('');
   const [filterParty, setFilterParty] = useState('');
   const [search, setSearch] = useState('');
 
+  // Sidebar bond list: separate /bonds fetch (unchanged)
   useEffect(() => {
-    Promise.all([
-      apiFetch(token, 'GET', '/bonds?page=1&limit=100').catch(() => null),
-      apiFetch(token, 'GET', '/transfers?page=1&limit=100').catch(() => null),
-    ]).then(([bs, trs]) => {
+    apiFetch(token, 'GET', '/bonds?page=1&limit=100').then((bs) => {
       const b = unwrapPaginated<any>(bs ?? []);
-      const t = unwrapPaginated<any>(trs ?? []);
-      setBonds(b); setTransfers(t);
+      setBonds(b);
       const init = initialBono ? b.find((x: any) => x.bond_id === initialBono)?.token_id : b[0]?.token_id;
       setSel(init ?? b[0]?.token_id ?? '');
-    });
+    }).catch(() => null);
   }, [token]); // eslint-disable-line
+
+  // Traceability fetch: single endpoint replaces old transfers fetch + client-side derivation
+  useEffect(() => {
+    if (!sel) return;
+    setLoadingTrace(true);
+    setTraceError(null);
+    apiFetch(token, 'GET', `/audit/bonds/${sel}/traceability`)
+      .then((data) => setTrace(data))
+      .catch(() => {
+        setTrace(null);
+        setTraceError('No se pudo cargar la trazabilidad.');
+      })
+      .finally(() => setLoadingTrace(false));
+  }, [sel, token]);
 
   const parties = Array.from(new Set(bonds.map((b) => b.parties?.name).filter(Boolean)));
 
@@ -55,26 +68,8 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
   });
 
   const bond = bonds.find((b) => b.token_id === sel);
-
-  // Historial de este bono: transfers + seed traceability
-  const realMovs = transfers
-    .filter((t) => t.bond_token_id === sel)
-    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? '')) // cronológico ASC
-    .map((t) => ({
-      owner: t.from_profile?.full_name ?? '?',
-      to: t.to_profile?.full_name,
-      since: t.created_at,
-      status: t.status,
-      amount: t.amount,
-      tx: t.escrow_contract_id,
-      escrowContractId: t.escrow_contract_id,
-    }));
-
-  const movs = realMovs;
-
-  // La verdad del dueño actual viene de la BD (bond.profiles), no de los movs
-  const lastReleased = [...realMovs].reverse().find((m) => m.status === 'liberada');
-  const currentOwner = bond?.profiles?.full_name ?? lastReleased?.to ?? '—';
+  const owners = trace?.owners ?? [];
+  const currentOwner = owners.find((o: any) => o.current)?.name ?? '—';
 
   return (
     <TSEShell me={me}>
@@ -111,7 +106,15 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
 
           {/* Timeline */}
           <div className="lg:col-span-8">
-            {bond ? (
+            {loadingTrace ? (
+              <div className="flex h-48 items-center justify-center rounded-2xl border-2 border-dashed border-outline-variant/40">
+                <span className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : traceError ? (
+              <div className="flex h-48 items-center justify-center rounded-2xl border-2 border-dashed border-red-200 bg-red-50 px-6 text-center text-sm text-red-700">
+                {traceError}
+              </div>
+            ) : bond && trace ? (
               <div className="glass-card rounded-2xl p-6">
                 {/* Info del bono */}
                 <div className="mb-5 grid grid-cols-2 gap-4 rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4 md:grid-cols-4">
@@ -121,7 +124,7 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Partido emisor</p>
-                    <p className="mt-0.5 text-sm font-semibold">{bond.parties?.name ?? '—'}</p>
+                    <p className="mt-0.5 text-sm font-semibold">{trace.owners?.[0]?.name ?? '—'}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Monto</p>
@@ -141,43 +144,34 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
                   </a>
                 </div>
 
-                {movs.length === 0 ? (
+                {owners.length === 0 ? (
                   <p className="py-8 text-center text-sm text-on-surface-variant">No hay movimientos registrados para este bono.</p>
                 ) : (
                   <div className="relative space-y-4 before:absolute before:bottom-2 before:left-[19px] before:top-2 before:w-0.5 before:bg-outline-variant/40">
-                    {(movs as any[]).map((m, i) => {
-                      const colorCls = STATUS_COLOR[m.status] ?? 'bg-gray-100 text-gray-500 border-gray-200';
-                      const isLast = i === movs.length - 1;
-                      // Solo marcar "dueño actual" si este mov terminó la cadena con liberada y el `to` coincide
-                      const showsCurrent = isLast && m.status === 'liberada' && m.to === currentOwner;
+                    {owners.map((o: any, i: number) => {
+                      const isCurrent = o.current;
+                      const isLast = i === owners.length - 1;
+                      const hasTransfer = i > 0; // first is issuer seed
+                      const prevOwner = i > 0 ? owners[i - 1] : null;
                       return (
                         <div key={i} className="relative flex gap-4">
-                          <span className={`z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm ${colorCls}`}>
-                            {showsCurrent ? <CheckCircle size={16} /> : <ArrowRight size={16} />}
+                          <span className={`z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm ${isCurrent ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-blue-100 text-primary border-blue-200'}`}>
+                            {isCurrent ? <CheckCircle size={16} /> : <ArrowRight size={16} />}
                           </span>
-                          <div className={`flex-1 rounded-xl border p-3.5 ${showsCurrent ? 'border-emerald-200 bg-emerald-50/30' : 'border-outline-variant/20 bg-white'}`}>
+                          <div className={`flex-1 rounded-xl border p-3.5 ${isCurrent ? 'border-emerald-200 bg-emerald-50/30' : 'border-outline-variant/20 bg-white'}`}>
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <div>
                                 <p className="text-sm font-semibold">
-                                  {m.owner}
-                                  {m.to && <><span className="mx-1.5 text-on-surface-variant">→</span><span className={showsCurrent ? 'text-emerald-700' : ''}>{m.to}</span></>}
-                                  {showsCurrent && <span className="ml-2 text-xs font-normal text-emerald-600">(dueño actual)</span>}
+                                  {prevOwner?.name ?? o.name}
+                                  <span className="mx-1.5 text-on-surface-variant">→</span>
+                                  <span className={isCurrent ? 'text-emerald-700' : ''}>{o.name}</span>
+                                  {isCurrent && <span className="ml-2 text-xs font-normal text-emerald-600">(dueño actual)</span>}
                                 </p>
-                                {m.amount && <p className="text-xs font-medium text-on-surface-variant">{fmtMoney(m.amount)}</p>}
-                                {(m as any).escrowContractId && (
-                                  <a
-                                    href={`https://stellar.expert/explorer/testnet/contract/${(m as any).escrowContractId}`}
-                                    target="_blank" rel="noopener noreferrer"
-                                    className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 transition hover:bg-emerald-100"
-                                  >
-                                    Canasta on-chain
-                                  </a>
-                                )}
                               </div>
                               <div className="text-right">
-                                <p className="text-xs text-on-surface-variant">{fmtDate(m.since)}</p>
-                                {m.until && <p className="text-[11px] text-on-surface-variant">hasta {fmtDate(m.until)}</p>}
-                                <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium ${colorCls}`}>{m.status}</span>
+                                <p className="text-xs text-on-surface-variant">{fmtDate(o.since)}</p>
+                                {o.until && <p className="text-[11px] text-on-surface-variant">hasta {fmtDate(o.until)}</p>}
+                                {hasTransfer && <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium ${o.paid ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-primary border-blue-200'}`}>{o.paid ? 'liberada' : 'pendiente'}</span>}
                               </div>
                             </div>
                           </div>

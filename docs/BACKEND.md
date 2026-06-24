@@ -40,7 +40,7 @@ Módulos implementados:
 | `bonds` | ✅ | register, findAll (filtrado por rol), findOne, freeze/unfreeze (TSE). |
 | `transfers` | ✅ | Flujo completo: request a accept a registerPayment a validate a release a cancel. |
 | `escrow` | 🟡 | Cliente HTTP a Trustless Work. Init/fund/approve/release/refund. Ver §3. |
-| `audit` | ✅ | emit() + consultas. Tabla append-only con trigger que bloquea UPDATE/DELETE. |
+| `audit` | ✅ | emit() + consultas. Tabla append-only con trigger que bloquea UPDATE/DELETE. Incluye `GET /audit/bonds/:tokenId/traceability` (todos los roles, sin restricción TSE). |
 | `notifications` | ✅ | emit(userId, type, payload) + GET/PATCH. Notificaciones in-app por evento del ciclo de vida. |
 
 Schema (`supabase/migrations/20260601000000_initial_schema.sql`): tablas `parties`,
@@ -77,6 +77,7 @@ PATCH  /api/transfers/:id/validate
 PATCH  /api/transfers/:id/release
 PATCH  /api/transfers/:id/cancel
 
+GET    /api/audit/bonds/:tokenId/traceability   (trazabilidad completa, todos los roles auth)
 GET    /api/audit/...             (timeline/eventos)
 
 GET    /api/notifications                 (propias; { notifications, unreadCount })
@@ -161,6 +162,45 @@ Para que sea real end-to-end hace falta:
 3. P2: seed de datos demo (script idempotente) + smoke test del flujo completo vía API.
 4. Escrow real en testnet (requiere insumos del humano, §3).
 5. Limpiar/añadir tests y lint; documentar la API (este archivo + ejemplos de request/response).
+
+### Endpoints del módulo audit
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/audit/bonds` | TSE/Admin | Buscar bonos con filtros |
+| GET | `/audit/bonds/:tokenId/timeline` | TSE/Admin | Línea de tiempo completa del bono (bond + eventos + transfers con perfiles) |
+| GET | `/audit/bonds/:tokenId/traceability` | Todos los roles | Trazabilidad consolidada: bond, events, transfers (sin perfiles embebidos), y `owners[]` derivado del servidor |
+| GET | `/audit/events` | TSE/Admin | Eventos de auditoría recientes (paginados) |
+
+#### GET /audit/bonds/:tokenId/traceability
+
+Endpoint de trazabilidad consolidada. Reemplaza el patrón de dos fetch paralelos + derivación manual en el frontend.
+
+**Auth:** Solo requiere `@UseGuards(AuthGuard)` — cualquier rol autenticado (tse, emisor, comprador, recomprador, validador, admin) puede acceder. **No tiene restricción TSE/admin**.
+
+**Respuesta 200 OK:**
+```json
+{
+  "bond": { /* BondToken camelCase */ },
+  "events": [ /* AuditEvent[] camelCase */ ],
+  "transfers": [ /* Transfer[] camelCase, SIN from_profile/to_profile */ ],
+  "owners": [
+    { "ownerId": "party-id", "name": "Partido Aurora", "since": "...", "until": "...", "paid": false, "current": false },
+    { "ownerId": "user-id",  "name": "Juan Pérez",     "since": "...", "until": null,       "paid": true,  "current": true }
+  ]
+}
+```
+
+**Derivación de owners:**
+1. Seed: `issuer_party_id` + `parties.name` desde el bono, con `since: bond.created_at`
+2. Se iteran las transfers en orden cronológico ASC
+3. Cada transfer cierra el owner anterior (`until`, `current=false`) y crea el nuevo
+4. `paid: true` solo para transfers con status `liberada`
+5. El último owner siempre tiene `current: true`
+
+**404:** `HttpException` — retorna `{ error: "Bond not found", statusCode: 404 }` para tokenId desconocido.
+
+**Seguridad:** Las transfers en la respuesta NO incluyen `from_profile` / `to_profile` (no hay fuga de datos de perfil).
 
 ## 5. Qué se necesita del humano
 

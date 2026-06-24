@@ -7,41 +7,42 @@ import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
 
 type Bond = { token_id: string; bond_id: string; status: string; face_value: number | null; soroban_contract_id?: string | null };
-type Transfer = {
-  id: string; status: string; bond_token_id: string; created_at?: string;
-  from_profile?: { full_name?: string }; to_profile?: { full_name?: string };
-};
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmt = (n: number | null | undefined) => n == null ? '—' : '₡' + Number(n).toLocaleString('es-CR');
 
-const STATUS_COLOR: Record<string, string> = {
-  solicitada: 'bg-blue-100 text-primary',
-  liberada: 'bg-emerald-100 text-emerald-700',
-  cancelada: 'bg-gray-100 text-gray-500',
-  en_escrow: 'bg-amber-100 text-amber-700',
-  pago_registrado: 'bg-purple-100 text-purple-700',
-};
-
 export default function PartidoTrazabilidadPage() {
   const { token, me, loading, error } = useSession();
   const [bonds, setBonds] = useState<Bond[]>([]);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [trace, setTrace] = useState<any>(null);
+  const [traceError, setTraceError] = useState<string | null>(null);
+  const [loadingTrace, setLoadingTrace] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
 
+  // Sidebar bond list: separate /bonds call (unchanged)
   useEffect(() => {
     if (!token) return;
-    Promise.all([
-      apiFetch(token, 'GET', '/bonds?page=1&limit=100').catch(() => []),
-      apiFetch(token, 'GET', '/transfers?page=1&limit=100').catch(() => []),
-    ]).then(([bs, trs]) => {
-      const bonds = unwrapPaginated<Bond>(bs);
-      setBonds(bonds);
-      setTransfers(unwrapPaginated<Transfer>(trs));
-      if (bonds[0]) setSel(bonds[0].token_id);
-    });
+    apiFetch(token, 'GET', '/bonds?page=1&limit=100').then((bs) => {
+      const b = unwrapPaginated<Bond>(bs);
+      setBonds(b);
+      if (b[0] && !sel) setSel(b[0].token_id);
+    }).catch(() => []);
     /* eslint-disable-next-line */
   }, [token]);
+
+  // Traceability fetch: single endpoint replaces old /transfers fetch + client-side derivation
+  useEffect(() => {
+    if (!sel || !token) return;
+    setLoadingTrace(true);
+    setTraceError(null);
+    apiFetch(token, 'GET', `/audit/bonds/${sel}/traceability`)
+      .then((data) => setTrace(data))
+      .catch(() => {
+        setTrace(null);
+        setTraceError('No se pudo cargar la trazabilidad.');
+      })
+      .finally(() => setLoadingTrace(false));
+  }, [sel, token]);
 
   if (loading || !token || !me) {
     return (
@@ -52,14 +53,8 @@ export default function PartidoTrazabilidadPage() {
   }
 
   const bond = bonds.find((b) => b.token_id === sel);
-  const movs = transfers
-    .filter((t) => t.bond_token_id === sel)
-    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''));
-
-  // El dueño actual viene de la BD (bond.profiles.full_name), fallback al último mov liberado
-  const currentOwner = (bond as any)?.profiles?.full_name
-    ?? movs.filter((t) => t.status === 'liberada').at(-1)?.to_profile?.full_name
-    ?? '—';
+  const owners = trace?.owners ?? [];
+  const currentOwner = owners.find((o: any) => o.current)?.name ?? '—';
 
   return (
     <PartidoShell me={me}>
@@ -116,25 +111,39 @@ export default function PartidoTrazabilidadPage() {
                   </a>
                 )}
 
-                {movs.length === 0 ? (
+                {loadingTrace ? (
+                  <div className="flex h-48 items-center justify-center">
+                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  </div>
+                ) : traceError ? (
+                  <div className="flex h-48 items-center justify-center rounded-2xl border-2 border-dashed border-red-200 bg-red-50 px-6 text-center text-sm text-red-700">
+                    {traceError}
+                  </div>
+                ) : owners.length === 0 ? (
                   <p className="py-8 text-center text-sm text-on-surface-variant">Este bono todavía no tiene transferencias registradas.</p>
                 ) : (
                   <div className="relative space-y-5 before:absolute before:bottom-2 before:left-[18px] before:top-2 before:w-0.5 before:bg-outline-variant/40">
-                    {movs.map((t) => {
-                      const colorCls = STATUS_COLOR[t.status] ?? 'bg-gray-100 text-gray-500';
+                    {owners.map((o: any, i: number) => {
+                      const isCurrent = o.current;
+                      const prevOwner = i > 0 ? owners[i - 1] : null;
                       return (
-                        <div key={t.id} className="relative flex gap-4">
-                          <span className={`z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm ${colorCls}`}>
+                        <div key={i} className="relative flex gap-4">
+                          <span className={`z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm ${isCurrent ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-primary'}`}>
                             <ArrowRight size={15} />
                           </span>
                           <div className="flex-1 rounded-xl border border-outline-variant/20 bg-white p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <p className="text-sm font-semibold">
-                                {t.from_profile?.full_name ?? '—'} <span className="text-on-surface-variant mx-1">a</span> {t.to_profile?.full_name ?? '—'}
+                                {prevOwner?.name ?? o.name}
+                                <span className="text-on-surface-variant mx-1">→</span>
+                                <span className={isCurrent ? 'text-emerald-700' : ''}>{o.name}</span>
+                                {isCurrent && <span className="ml-1.5 text-xs font-normal text-emerald-600">(actual)</span>}
                               </p>
-                              <span className="text-xs text-on-surface-variant">{fmtDate(t.created_at)}</span>
+                              <span className="text-xs text-on-surface-variant">{fmtDate(o.since)}</span>
                             </div>
-                            <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${colorCls}`}>{t.status}</span>
+                            <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${o.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-50 text-primary'}`}>
+                              {o.paid ? 'liberada' : 'pendiente'}
+                            </span>
                           </div>
                         </div>
                       );
