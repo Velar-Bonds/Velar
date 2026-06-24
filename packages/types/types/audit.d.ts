@@ -44,3 +44,26 @@ export interface BondTimeline {
     }>;
     events: AuditEvent[];
 }
+/** Entrada de la cadena de propietarios derivada server-side. */
+export interface OwnerEntry {
+    ownerId: string;
+    name: string;
+    since: string;
+    until: string | null;
+    paid: boolean;
+    current: boolean;
+}
+/** Respuesta unificada del endpoint GET /audit/bonds/:tokenId/traceability. */
+export interface TraceabilityResponse {
+    bond: import('./bond').BondToken;
+    events: AuditEvent[];
+    transfers: import('./transfer').Transfer[];
+    owners: OwnerEntry[];
+}
+/** Resumen ligero para sidebar. */
+export interface BondSummary {
+    id: string;
+    name: string;
+    value: number | null;
+    status: string;
+}
