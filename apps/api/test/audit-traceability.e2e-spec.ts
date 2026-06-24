@@ -1,24 +1,53 @@
 /**
- * E2E tests for the Audit Traceability Endpoint.
+ * Integration tests for AuditService.getBondTraceability and
+ * GET /audit/bonds/:tokenId/traceability endpoint.
  *
- * These tests verify the full flow: auth enforcement, 404 handling,
- * role-agnostic access, profile stripping, and backward compat.
- *
- * Uses mocked Supabase and Stellar layers (same pattern as bonds-flow.e2e-spec.ts).
+ * These tests verify the server-side ownership derivation, paid flag logic,
+ * current-owner marking, camelCase response shape, profile stripping,
+ * 404 handling, and 401 auth enforcement.
  */
 import { Test } from '@nestjs/testing';
 import { INestApplication, NotFoundException } from '@nestjs/common';
 import * as request from 'supertest';
-import { AuditController } from '../src/audit/audit.controller';
+import { Role } from '@velar/types';
 import { AuditService } from '../src/audit/audit.service';
+import { BondsService } from '../src/bonds/bonds.service';
+import { StellarBondService } from '../src/escrow/stellar-bond.service';
+import { SorobanBondService } from '../src/escrow/soroban-bond.service';
+import { WalletService } from '../src/escrow/wallet.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { SupabaseService } from '../src/common/supabase/supabase.service';
-import { AuthGuard } from '../src/auth/auth.guard';
+import { AuditModule } from '../src/audit/audit.module';
+import { SupabaseModule } from '../src/common/supabase/supabase.module';
+import { BondsModule } from '../src/bonds/bonds.module';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mocks
+// Helpers para mockear el query builder fluído de Supabase
 // ─────────────────────────────────────────────────────────────────────────────
 
-type FakeRow = Record<string, any>;
+type FakeValue = string | number | boolean | null | undefined | FakeRow | FakeValue[];
+type FakeRow = { [key: string]: FakeValue };
+type QueryExecution = {
+  data: FakeRow[] | FakeRow | null;
+  error: { message: string } | null;
+};
+type QueryBuilder = {
+  select: (sel?: string) => QueryBuilder;
+  eq: (col: string, val: unknown) => QueryBuilder;
+  in: () => QueryBuilder;
+  neq: () => QueryBuilder;
+  not: () => QueryBuilder;
+  gte: () => QueryBuilder;
+  order: () => QueryBuilder;
+  limit: () => QueryBuilder;
+  maybeSingle: () => Promise<QueryExecution>;
+  single: () => Promise<QueryExecution>;
+  then: <TResult1 = QueryExecution, TResult2 = never>(
+    onfulfilled?: ((value: QueryExecution) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ) => Promise<TResult1 | TResult2>;
+};
+
 let dbStore: Record<string, FakeRow[]> = {};
 
 function resetDb() {
@@ -26,326 +55,378 @@ function resetDb() {
     bonds: [],
     audit_events: [],
     transfers: [],
+    profiles: [
+      { id: 'party-1', full_name: 'Partido Aurora' },
+      { id: 'user-2', full_name: 'Juan Pérez' },
+      { id: 'user-3', full_name: 'María García' },
+      { id: 'user-4', full_name: 'Carlos López' },
+    ],
   };
 }
 
 function mockSupabase(): SupabaseService {
   const builder = (table: string) => {
-    const ctx: any = { table, filters: [] };
-
-    const chain: any = {
-      select: () => chain,
-      eq: (col: string, val: any) => { ctx.filters.push([col, val]); return chain; },
+    const ctx = { table, where: [] as Array<[string, unknown]>, select: '*', isSingle: false };
+    const exec = (): Promise<QueryExecution> => {
+      let rows = dbStore[ctx.table] ?? [];
+      for (const [col, val] of ctx.where) rows = rows.filter((r) => r[col] === val);
+      if (ctx.isSingle) {
+        return Promise.resolve({ data: rows[0] ?? null, error: rows[0] ? null : { message: 'not found' } });
+      }
+      return Promise.resolve({ data: rows, error: null });
+    };
+    const chain: QueryBuilder = {
+      select: (sel?: string) => { ctx.select = sel ?? '*'; return chain; },
+      eq: (col: string, val: unknown) => { ctx.where.push([col, val]); return chain; },
+      in: () => chain,
+      neq: () => chain,
+      not: () => chain,
+      gte: () => chain,
       order: () => chain,
-      single: () => {
-        let rows = dbStore[ctx.table] ?? [];
-        for (const [col, val] of ctx.filters) {
-          rows = rows.filter((r) => r[col] === val);
-        }
-        const row = rows[0] ?? null;
-        return Promise.resolve({ data: row, error: row ? null : { message: 'not found', code: 'PGRST116' } });
-      },
-      then: (resolve: any) => {
-        let rows = dbStore[ctx.table] ?? [];
-        for (const [col, val] of ctx.filters) {
-          rows = rows.filter((r) => r[col] === val);
-        }
-        return Promise.resolve(resolve({ data: rows, error: null }));
-      },
+      limit: () => chain,
+      maybeSingle: () => { ctx.isSingle = true; return exec(); },
+      single: () => { ctx.isSingle = true; return exec(); },
+      then: (onfulfilled, onrejected) => exec().then(onfulfilled, onrejected),
     };
     return chain;
   };
 
   return {
-    admin: { from: builder },
-  } as any;
+    admin: { from: builder, auth: { admin: {} } },
+    getUser: async () => ({ id: 'mock' }),
+  } as unknown as SupabaseService;
 }
 
-// AuthGuard mock that simulates an authenticated user with the given role
-class MockAuthGuard {
-  private role: string;
-
-  constructor(role: string) {
-    this.role = role;
-  }
-
-  canActivate(ctx: any) {
-    const req = ctx.switchToHttp().getRequest();
-    req.user = {
-      id: 'mock-user',
-      profile: { id: 'mock-user', full_name: 'Mock User', email: 'mock@test.cr', role: this.role },
-    };
-    return true;
-  }
+function setAuthenticatedProfile(role: Role = 'admin') {
+  dbStore.profiles.push({ id: 'mock', full_name: 'Mock User', role });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Fixtures
-// ─────────────────────────────────────────────────────────────────────────────
-
-const BASE_DATE = '2026-06-01T12:00:00Z';
-
-function seedBond() {
-  dbStore.bonds.push({
-    token_id: 'bond-e2e-001',
-    bond_id: 'E2E-2026-001',
-    issuer_party_id: 'party-emisor',
-    current_owner: 'comprador-1',
+/** Crea un bono en dbStore y devuelve los datos que devolvería Supabase (snake_case). */
+function seedBond(overrides: Record<string, FakeValue> = {}): FakeRow {
+  const defaults = {
+    token_id: 'bond-1',
+    bond_id: 'SOL-2026-001',
+    issuer_party_id: 'party-1',
+    current_owner: 'user-2',
     status: 'activo',
-    face_value: 5000000,
-    currency: 'CRC',
-    created_at: BASE_DATE,
-    updated_at: BASE_DATE,
-    parties: { id: 'party-emisor', name: 'Partido Aurora', code: 'PA' },
-    profiles: { id: 'comprador-1', full_name: 'Juan Pérez', email: 'juan@test.cr', role: 'comprador' },
-  });
+    document_hash: 'abc123',
+    face_value: 1000000,
+    created_at: '2026-01-15T10:00:00Z',
+    updated_at: '2026-01-15T10:00:00Z',
+    parties: { id: 'party-1', name: 'Partido Aurora' },
+    profiles: { id: 'user-2', full_name: 'Juan Pérez' },
+  };
+  const bond = { ...defaults, ...overrides };
+  dbStore.bonds.push(bond);
+  return bond;
 }
 
-function seedTransfer() {
-  dbStore.transfers.push({
-    id: 'transfer-e2e-001',
-    bond_token_id: 'bond-e2e-001',
-    from_owner: 'party-emisor',
-    to_owner: 'comprador-1',
-    status: 'liberada',
-    amount: 5000000,
-    created_at: '2026-06-10T12:00:00Z',
-    updated_at: '2026-06-10T13:00:00Z',
-    from_profile: { id: 'party-emisor', full_name: 'Partido Aurora', email: 'aurora@test.cr', role: 'emisor' },
-    to_profile: { id: 'comprador-1', full_name: 'Juan Pérez', email: 'juan@test.cr', role: 'comprador' },
-  });
+function seedTransfer(overrides: Record<string, FakeValue> = {}): FakeRow {
+  const defaults = {
+    id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    bond_token_id: 'bond-1',
+    from_owner: 'party-1',
+    to_owner: 'user-2',
+    status: 'solicitada',
+    created_at: '2026-02-01T10:00:00Z',
+    from_profile: { id: 'party-1', full_name: 'Partido Aurora' },
+    to_profile: { id: 'user-2', full_name: 'Juan Pérez' },
+  };
+  const t = { ...defaults, ...overrides };
+  dbStore.transfers.push(t);
+  return t;
 }
 
-function seedEvent() {
-  dbStore.audit_events.push({
-    id: 'event-e2e-001',
-    bond_token_id: 'bond-e2e-001',
-    type: 'bond_emitido',
-    actor_id: 'tse-1',
-    payload: {},
-    created_at: BASE_DATE,
-  });
+function seedAuditEvents(bondTokenId = 'bond-1') {
+  dbStore.audit_events.push(
+    {
+      id: 'e1',
+      bond_token_id: bondTokenId,
+      type: 'bond_emitido',
+      actor_id: 'tse-1',
+      payload: {},
+      created_at: '2026-01-15T11:00:00Z',
+    },
+    {
+      id: 'e2',
+      bond_token_id: bondTokenId,
+      type: 'transfer_solicitada',
+      actor_id: 'user-2',
+      payload: {},
+      created_at: '2026-02-01T12:00:00Z',
+    },
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Suite
+// Suite: Service-level integration tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Audit Traceability E2E', () => {
-  let app: INestApplication;
+describe('AuditService.getBondTraceability', () => {
+  let audit: AuditService;
 
-  function buildApp(role: string) {
-    return Test.createTestingModule({
-      controllers: [AuditController],
+  beforeEach(async () => {
+    resetDb();
+    const supabase = mockSupabase();
+    const mod = await Test.createTestingModule({
       providers: [
         AuditService,
-        { provide: SupabaseService, useFactory: mockSupabase },
+        { provide: SupabaseService, useValue: supabase },
       ],
+    }).compile();
+    audit = mod.get(AuditService);
+  });
+
+  it('returns full traceability for a bond with 3 transfers (happy path)', async () => {
+    // GIVEN a bond with transfers
+    seedBond({ token_id: 'bond-1', issuer_party_id: 'party-1' });
+    seedAuditEvents('bond-1');
+    // 3 transfers: party-1 → user-2, user-2 → user-3, user-3 → user-4
+    seedTransfer({ from_owner: 'party-1', to_owner: 'user-2', status: 'liberada', created_at: '2026-02-01T10:00:00Z', id: 't1' });
+    seedTransfer({ from_owner: 'user-2', to_owner: 'user-3', status: 'solicitada', created_at: '2026-03-01T10:00:00Z', id: 't2' });
+    seedTransfer({ from_owner: 'user-3', to_owner: 'user-4', status: 'solicitada', created_at: '2026-04-01T10:00:00Z', id: 't3' });
+
+    // WHEN the traceability endpoint is called
+    const result = await audit.getBondTraceability('bond-1');
+
+    // THEN bond is returned
+    expect(result.bond.tokenId).toBe('bond-1');
+    expect(result.events).toBeDefined();
+    expect(result.events.length).toBeGreaterThanOrEqual(1);
+
+    // AND transfers are sorted ascending by createdAt
+    expect(result.transfers).toHaveLength(3);
+    expect(result.transfers[0].createdAt).toBe('2026-02-01T10:00:00Z');
+    expect(result.transfers[1].createdAt).toBe('2026-03-01T10:00:00Z');
+    expect(result.transfers[2].createdAt).toBe('2026-04-01T10:00:00Z');
+
+    // AND owners has 4 entries: issuer + 3 transfer recipients
+    expect(result.owners).toHaveLength(4);
+
+    // AND first owner is the issuer
+    expect(result.owners[0].ownerId).toBe('party-1');
+    expect(result.owners[0].name).toBe('Partido Aurora');
+    expect(result.owners[0].since).toBe('2026-01-15T10:00:00Z');
+    expect(result.owners[0].until).toBe('2026-02-01T10:00:00Z');
+
+    // AND second owner is first transfer recipient
+    expect(result.owners[1].ownerId).toBe('user-2');
+    expect(result.owners[1].name).toBe('Juan Pérez');
+
+    // AND last owner is current
+    expect(result.owners[3].ownerId).toBe('user-4');
+    expect(result.owners[3].current).toBe(true);
+    expect(result.owners[3].until).toBeNull();
+
+    // AND previous owners are NOT current
+    expect(result.owners[0].current).toBe(false);
+    expect(result.owners[1].current).toBe(false);
+    expect(result.owners[2].current).toBe(false);
+  });
+
+  it('returns single owner for a bond with no transfers', async () => {
+    // GIVEN a bond with zero transfer records
+    seedBond({ token_id: 'bond-2', issuer_party_id: 'party-1', created_at: '2026-01-15T10:00:00Z' });
+    seedAuditEvents('bond-2');
+
+    // WHEN the endpoint is called
+    const result = await audit.getBondTraceability('bond-2');
+
+    // THEN owners has exactly 1 entry
+    expect(result.owners).toHaveLength(1);
+
+    // AND that entry is the issuer
+    expect(result.owners[0].ownerId).toBe('party-1');
+    expect(result.owners[0].name).toBe('Partido Aurora');
+    expect(result.owners[0].since).toBe('2026-01-15T10:00:00Z');
+    expect(result.owners[0].until).toBeNull();
+    expect(result.owners[0].paid).toBe(false);
+    expect(result.owners[0].current).toBe(true);
+  });
+
+  it('marks paid=true for liberada transfers and paid=false for solicitada', async () => {
+    // GIVEN a bond with two transfers: first completed (liberada), second pending (solicitada)
+    seedBond({ token_id: 'bond-3', issuer_party_id: 'party-1' });
+    seedAuditEvents('bond-3');
+    seedTransfer({ bond_token_id: 'bond-3', from_owner: 'party-1', to_owner: 'user-2', status: 'liberada', created_at: '2026-02-01T10:00:00Z', id: 't1' });
+    seedTransfer({ bond_token_id: 'bond-3', from_owner: 'user-2', to_owner: 'user-3', status: 'solicitada', created_at: '2026-03-01T10:00:00Z', id: 't2' });
+
+    const result = await audit.getBondTraceability('bond-3');
+
+    // THEN issuer has paid: false (no transfer TO issuer)
+    expect(result.owners[0].ownerId).toBe('party-1');
+    expect(result.owners[0].paid).toBe(false);
+
+    // AND first transfer to_owner has paid: true (liberada)
+    expect(result.owners[1].ownerId).toBe('user-2');
+    expect(result.owners[1].paid).toBe(true);
+
+    // AND second transfer to_owner has paid: false (solicitada)
+    expect(result.owners[2].ownerId).toBe('user-3');
+    expect(result.owners[2].paid).toBe(false);
+  });
+
+  it('marks the last chronological owner as current: true', async () => {
+    // GIVEN a bond whose last transfer made user-456 the to_owner
+    seedBond({ token_id: 'bond-4', issuer_party_id: 'party-1', current_owner: 'user-456' });
+    seedAuditEvents('bond-4');
+    seedTransfer({ bond_token_id: 'bond-4', from_owner: 'party-1', to_owner: 'user-456', status: 'liberada', created_at: '2026-02-01T10:00:00Z', id: 't1' });
+
+    const result = await audit.getBondTraceability('bond-4');
+
+    // THEN the last owners entry has current: true and the correct ownerId
+    const last = result.owners[result.owners.length - 1];
+    expect(last.ownerId).toBe('user-456');
+    expect(last.current).toBe(true);
+  });
+
+  it('returns camelCase keys and strips profile embeds from transfers', async () => {
+    // GIVEN a bond with a transfer that has profile embeds
+    seedBond({ token_id: 'bond-5', issuer_party_id: 'party-1', created_at: '2026-01-15T10:00:00Z' });
+    seedAuditEvents('bond-5');
+    seedTransfer({ id: 't1', bond_token_id: 'bond-5', from_owner: 'party-1', to_owner: 'user-2', created_at: '2026-02-01T10:00:00Z' });
+
+    const result = await audit.getBondTraceability('bond-5');
+
+    // THEN bond uses camelCase
+    expect(result.bond.tokenId).toBeDefined();
+    expect((result.bond as unknown as Record<string, unknown>).token_id).toBeUndefined();
+
+    // THEN events use camelCase
+    expect(result.events[0].bondTokenId).toBe('bond-5');
+    expect((result.events[0] as unknown as Record<string, unknown>).bond_token_id).toBeUndefined();
+
+    // THEN transfers use camelCase
+    expect(result.transfers[0].bondTokenId).toBe('bond-5');
+    expect(result.transfers[0].fromOwner).toBe('party-1');
+    expect(result.transfers[0].toOwner).toBe('user-2');
+    expect((result.transfers[0] as unknown as Record<string, unknown>).bond_token_id).toBeUndefined();
+    expect((result.transfers[0] as unknown as Record<string, unknown>).from_owner).toBeUndefined();
+    expect((result.transfers[0] as unknown as Record<string, unknown>).to_owner).toBeUndefined();
+
+    // AND transfer has NO profile embeds
+    expect((result.transfers[0] as unknown as Record<string, unknown>).from_profile).toBeUndefined();
+    expect((result.transfers[0] as unknown as Record<string, unknown>).to_profile).toBeUndefined();
+
+    // AND owners use camelCase
+    expect(result.owners[0].ownerId).toBeDefined();
+    expect(result.owners[0].since).toBeDefined();
+    expect(result.owners[0].until).toBeDefined();
+    expect(result.owners[0].paid).toBeDefined();
+    expect(result.owners[0].current).toBeDefined();
+  });
+
+  it('throws NotFoundException for unknown bond', async () => {
+    // GIVEN no bond with tokenId 'nonexistent-id' exists
+    resetDb();
+
+    // WHEN/THEN getBondTraceability throws NotFoundException
+    await expect(
+      audit.getBondTraceability('nonexistent-id'),
+    ).rejects.toThrow(NotFoundException);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite: HTTP endpoint tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /audit/bonds/:tokenId/traceability (HTTP)', () => {
+  let app: INestApplication;
+
+  beforeEach(async () => {
+    resetDb();
+    const supabase = mockSupabase();
+
+    const mod = await Test.createTestingModule({
+      imports: [AuditModule, SupabaseModule],
     })
-      .overrideGuard(AuthGuard)
-      .useValue(new MockAuthGuard(role))
+      .overrideProvider(SupabaseService)
+      .useValue(supabase)
       .compile();
-  }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 401 — Unauthenticated
-  // ─────────────────────────────────────────────────────────────────────────
-
-  describe('401 Unauthorized', () => {
-    beforeEach(async () => {
-      resetDb();
-      seedBond();
-      seedEvent();
-      seedTransfer();
-
-      // Build app WITHOUT overriding AuthGuard — it will fail on missing token
-      const mod = await Test.createTestingModule({
-        controllers: [AuditController],
-        providers: [
-          AuditService,
-          { provide: SupabaseService, useFactory: mockSupabase },
-        ],
-      }).compile();
-
-      app = mod.createNestApplication();
-      app.setGlobalPrefix('api');
-      await app.init();
-    });
-
-    afterEach(async () => {
-      await app?.close();
-    });
-
-    it('returns 401 when no auth token is provided', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/audit/bonds/bond-e2e-001/traceability')
-        .expect(401);
-
-      expect(res.body).toHaveProperty('error');
-      expect(res.body.error).toBeTruthy();
-    });
+    app = mod.createNestApplication();
+    app.setGlobalPrefix('api');
+    await app.init();
   });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 404 — Unknown bond
-  // ─────────────────────────────────────────────────────────────────────────
-
-  describe('404 Not Found', () => {
-    beforeEach(async () => {
-      resetDb();
-      const mod = await buildApp('tse');
-      app = mod.createNestApplication();
-      app.setGlobalPrefix('api');
-      await app.init();
-    });
-
-    afterEach(async () => {
-      await app?.close();
-    });
-
-    it('returns 404 for unknown tokenId', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/audit/bonds/nonexistent/traceability')
-        .expect(404);
-
-      expect(res.body.error).toBe('Bond not found');
-      expect(res.body.statusCode).toBe(404);
-    });
+  afterEach(async () => {
+    if (app) await app.close();
   });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Cross-role access — all authenticated roles get 200
-  // ─────────────────────────────────────────────────────────────────────────
+  it('returns 401 when no auth token is provided', async () => {
+    // GIVEN no auth header
+    const response = await request(app.getHttpServer())
+      .get('/api/audit/bonds/bond-1/traceability');
 
-  describe('Cross-role access', () => {
-    const ROLES = ['tse', 'emisor', 'comprador', 'recomprador', 'validador', 'admin'];
-
-    beforeEach(() => {
-      resetDb();
-      seedBond();
-      seedEvent();
-      seedTransfer();
-    });
-
-    afterEach(async () => {
-      await app?.close();
-    });
-
-    ROLES.forEach((role) => {
-      it(`returns 200 for role: ${role}`, async () => {
-        const mod = await buildApp(role);
-        app = mod.createNestApplication();
-        app.setGlobalPrefix('api');
-        await app.init();
-
-        const res = await request(app.getHttpServer())
-          .get('/api/audit/bonds/bond-e2e-001/traceability')
-          .expect(200);
-
-        expect(res.body).toHaveProperty('bond');
-        expect(res.body).toHaveProperty('events');
-        expect(res.body).toHaveProperty('transfers');
-        expect(res.body).toHaveProperty('owners');
-        expect(res.body.bond.tokenId).toBe('bond-e2e-001');
-      });
-    });
+    // THEN status is 401
+    expect(response.status).toBe(401);
   });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Full traceability flow
-  // ─────────────────────────────────────────────────────────────────────────
+  it('returns 200 for authenticated requests with valid bond', async () => {
+    // GIVEN a valid bond exists
+    setAuthenticatedProfile('comprador');
+    seedBond({ token_id: 'bond-1', issuer_party_id: 'party-1' });
+    seedAuditEvents('bond-1');
+    seedTransfer({ id: 't1', bond_token_id: 'bond-1', from_owner: 'party-1', to_owner: 'user-2', created_at: '2026-02-01T10:00:00Z' });
 
-  describe('Full traceability response', () => {
-    beforeEach(async () => {
-      resetDb();
-      seedBond();
-      seedEvent();
-      seedTransfer();
+    // WHEN authenticated request is made
+    const response = await request(app.getHttpServer())
+      .get('/api/audit/bonds/bond-1/traceability')
+      .set('Authorization', 'Bearer valid-token');
 
-      const mod = await buildApp('tse');
-      app = mod.createNestApplication();
-      app.setGlobalPrefix('api');
-      await app.init();
-    });
+    // THEN status is 200
+    expect(response.status).toBe(200);
 
-    afterEach(async () => {
-      await app?.close();
-    });
-
-    it('returns complete TraceabilityResponse with owners', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/audit/bonds/bond-e2e-001/traceability')
-        .expect(200);
-
-      // Response shape
-      expect(res.body.bond).toBeDefined();
-      expect(res.body.events).toBeDefined();
-      expect(res.body.transfers).toBeDefined();
-      expect(res.body.owners).toBeDefined();
-      expect(res.body.bond.tokenId).toBe('bond-e2e-001');
-      expect(res.body.bond.currentOwner).toBe('comprador-1');
-      expect(res.body.bond.parties).toBeUndefined();
-      expect(res.body.bond.profiles).toBeUndefined();
-      expect(res.body.events[0].createdAt).toBe(BASE_DATE);
-      expect(res.body.transfers[0].bondTokenId).toBe('bond-e2e-001');
-      expect(res.body.transfers[0].fromOwner).toBe('party-emisor');
-      expect(res.body.transfers[0].toOwner).toBe('comprador-1');
-
-      // Owners derived correctly
-      expect(res.body.owners).toHaveLength(2);
-      expect(res.body.owners[0].ownerId).toBe('party-emisor');
-      expect(res.body.owners[0].current).toBe(false);
-      expect(res.body.owners[1].ownerId).toBe('comprador-1');
-      expect(res.body.owners[1].current).toBe(true);
-      expect(res.body.owners[1].paid).toBe(true);
-    });
-
-    it('transfers do NOT include from_profile or to_profile', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/audit/bonds/bond-e2e-001/traceability')
-        .expect(200);
-
-      expect(res.body.transfers).toHaveLength(1);
-      expect(res.body.transfers[0].from_profile).toBeUndefined();
-      expect(res.body.transfers[0].to_profile).toBeUndefined();
-      expect(res.body.transfers[0].fromOwner).toBe('party-emisor');
-      expect(res.body.transfers[0].toOwner).toBe('comprador-1');
-    });
+    // AND response has camelCase keys
+    expect(response.body.bond).toBeDefined();
+    expect(response.body.events).toBeDefined();
+    expect(response.body.transfers).toBeDefined();
+    expect(response.body.owners).toBeDefined();
+    expect(response.body.bond.tokenId).toBe('bond-1');
   });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Backward compatibility — /timeline still works
-  // ─────────────────────────────────────────────────────────────────────────
+  it('returns 404 for unknown bond with auth', async () => {
+    // GIVEN no bond with this tokenId
+    resetDb();
+    setAuthenticatedProfile('comprador');
 
-  describe('Backward compatibility', () => {
-    beforeEach(async () => {
-      resetDb();
-      seedBond();
-      seedEvent();
-      seedTransfer();
+    // WHEN authenticated request to unknown bond
+    const response = await request(app.getHttpServer())
+      .get('/api/audit/bonds/nonexistent-id/traceability')
+      .set('Authorization', 'Bearer valid-token');
 
-      const mod = await buildApp('tse');
-      app = mod.createNestApplication();
-      app.setGlobalPrefix('api');
-      await app.init();
-    });
+    // THEN status is 404
+    expect(response.status).toBe(404);
+    const errMsg = (response.body.error ?? response.body.message ?? '').toLowerCase();
+    expect(errMsg).toContain('not found');
+  });
 
-    afterEach(async () => {
-      await app?.close();
-    });
+  it('preserves timeline access for tse/admin-only roles', async () => {
+    setAuthenticatedProfile('admin');
+    seedBond({ token_id: 'bond-6', issuer_party_id: 'party-1' });
+    seedAuditEvents('bond-6');
+    seedTransfer({ id: 't1', bond_token_id: 'bond-6', from_owner: 'party-1', to_owner: 'user-2', created_at: '2026-02-01T10:00:00Z' });
 
-    it('existing /timeline endpoint still returns 200 with correct shape', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/audit/bonds/bond-e2e-001/timeline')
-        .expect(200);
+    const response = await request(app.getHttpServer())
+      .get('/api/audit/bonds/bond-6/timeline')
+      .set('Authorization', 'Bearer valid-token');
 
-      expect(res.body.bond).toBeDefined();
-      expect(res.body.bond.token_id).toBe('bond-e2e-001');
-      expect(res.body.events).toBeDefined();
-      expect(res.body.transfers).toBeDefined();
-      expect(res.body.transfers[0].from_owner).toBe('party-emisor');
-      // Timeline does NOT have owners
-      expect(res.body.owners).toBeUndefined();
-    });
+    expect(response.status).toBe(200);
+    expect(response.body.bond.token_id).toBe('bond-6');
+    expect(response.body.transfers).toHaveLength(1);
+    expect(response.body.transfers[0].from_profile.full_name).toBe('Partido Aurora');
+  });
+
+  it('keeps timeline forbidden for authenticated non-tse roles', async () => {
+    setAuthenticatedProfile('comprador');
+    seedBond({ token_id: 'bond-7', issuer_party_id: 'party-1' });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/audit/bonds/bond-7/timeline')
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(response.status).toBe(403);
+    expect(String(response.body.message)).toContain('TSE/Admin only');
   });
 });

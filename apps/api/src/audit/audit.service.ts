@@ -1,14 +1,65 @@
-import { Injectable, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { paginatedResponse, parsePagination } from '../common/pagination';
 import {
+  AuditEvent,
   AuditEventType,
   BondSearchQuery,
-  type AuditEvent,
-  type BondToken,
-  type Transfer,
-  type TraceabilityResponse,
+  BondToken,
+  Transfer,
 } from '@velar/types';
+
+type TimelineBondRow = Record<string, unknown> & {
+  issuer_party_id?: string | null;
+  created_at: string;
+};
+
+type TimelineEventRow = Record<string, unknown>;
+
+type TimelineTransferRow = Record<string, unknown> & {
+  from_owner?: string | null;
+  to_owner: string;
+  status: string;
+  created_at: string;
+  from_profile?: unknown;
+  to_profile?: unknown;
+};
+
+type TimelinePayload = {
+  bond: TimelineBondRow;
+  events: TimelineEventRow[];
+  transfers: TimelineTransferRow[];
+};
+
+type ProfileLookupRow = {
+  id: string;
+  full_name: string | null;
+};
+
+type TraceabilityOwnerEntry = {
+  ownerId: string;
+  name: string;
+  since: string;
+  until: string | null;
+  paid: boolean;
+  current: boolean;
+};
+
+type TraceabilityPayload = {
+  bond: BondToken;
+  events: AuditEvent[];
+  transfers: Transfer[];
+  owners: TraceabilityOwnerEntry[];
+};
+
+function toCamel(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(obj)) {
+    const camelKey = key.replace(/_[a-z]/g, (segment) => segment[1].toUpperCase());
+    result[camelKey] = obj[key];
+  }
+  return result;
+}
 
 @Injectable()
 export class AuditService {
@@ -32,7 +83,7 @@ export class AuditService {
     });
   }
 
-  async getBondTimeline(tokenId: string) {
+  async getBondTimeline(tokenId: string): Promise<TimelinePayload> {
     const { data: bond, error: bondErr } = await this.supabase.admin
       .from('bonds')
       .select('*, parties(*), profiles!bonds_current_owner_fkey(*)')
@@ -52,118 +103,104 @@ export class AuditService {
       .eq('bond_token_id', tokenId)
       .order('created_at', { ascending: true });
 
-    return { bond, events: events ?? [], transfers: transfers ?? [] };
-  }
-
-  private mapBondTraceabilityBond(bond: any): BondToken {
     return {
-      tokenId: bond.token_id,
-      bondId: bond.bond_id,
-      issuerPartyId: bond.issuer_party_id,
-      currentOwner: bond.current_owner,
-      status: bond.status,
-      documentHash: bond.document_hash,
-      metadataUri: bond.metadata_uri ?? null,
-      faceValue: bond.face_value ?? null,
-      certificateNumber: bond.certificate_number ?? null,
-      currency: bond.currency ?? null,
-      interestRate: bond.interest_rate ?? null,
-      series: bond.series ?? null,
-      issueDate: bond.issue_date ?? null,
-      maturityDate: bond.maturity_date ?? null,
-      stellarStatus: bond.stellar_status ?? null,
-      stellarTransactionHash: bond.stellar_transaction_hash ?? null,
-      stellarLedger: bond.stellar_ledger ?? null,
-      stellarAssetCode: bond.stellar_asset_code ?? null,
-      stellarIssuerPublicKey: bond.stellar_issuer_public_key ?? null,
-      stellarOwnerPublicKey: bond.stellar_owner_public_key ?? null,
-      stellarRegisteredAt: bond.stellar_registered_at ?? null,
-      stellarError: bond.stellar_error ?? null,
-      createdAt: bond.created_at,
-      updatedAt: bond.updated_at,
+      bond: bond as TimelineBondRow,
+      events: (events ?? []) as TimelineEventRow[],
+      transfers: (transfers ?? []) as TimelineTransferRow[],
     };
   }
 
-  private mapAuditEvent(event: any): AuditEvent {
-    return {
-      id: event.id,
-      bondTokenId: event.bond_token_id ?? null,
-      transferId: event.transfer_id ?? null,
-      type: event.type,
-      actorId: event.actor_id ?? null,
-      payload: event.payload ?? {},
-      txHash: event.tx_hash ?? null,
-      createdAt: event.created_at,
-    };
-  }
-
-  private mapTransfer(transfer: any): Transfer {
-    return {
-      id: transfer.id,
-      bondTokenId: transfer.bond_token_id,
-      fromOwner: transfer.from_owner,
-      toOwner: transfer.to_owner,
-      status: transfer.status,
-      escrowContractId: transfer.escrow_contract_id ?? null,
-      paymentEvidenceHash: transfer.payment_evidence_hash ?? null,
-      validatedBy: transfer.validated_by ?? null,
-      amount: transfer.amount ?? null,
-      counterOfferAmount: transfer.counter_offer_amount ?? null,
-      sellerMessage: transfer.seller_message ?? null,
-      buyerMessage: transfer.buyer_message ?? null,
-      createdAt: transfer.created_at,
-      updatedAt: transfer.updated_at,
-    };
-  }
-
-  async getBondTraceability(tokenId: string): Promise<TraceabilityResponse> {
+  async getBondTraceability(tokenId: string): Promise<TraceabilityPayload> {
+    let timeline: TimelinePayload;
     try {
-      const { bond, events, transfers } = await this.getBondTimeline(tokenId);
-
-      const cleanTransfers = transfers.map((t: any) => this.mapTransfer(t));
-      const mappedBond = this.mapBondTraceabilityBond(bond);
-      const mappedEvents = events.map((event: any) => this.mapAuditEvent(event));
-
-      const owners = cleanTransfers.length === 0
-        ? [{
-          ownerId: bond.issuer_party_id,
-          name: bond.parties?.name ?? '—',
-          since: bond.created_at,
-          until: null,
-          paid: false,
-          current: true,
-        }]
-        : [
-          {
-            ownerId: bond.issuer_party_id,
-            name: bond.parties?.name ?? '—',
-            since: bond.created_at,
-            until: cleanTransfers[0].createdAt,
-            paid: false,
-            current: false,
-          },
-          ...cleanTransfers.map((t, idx) => ({
-            ownerId: t.toOwner,
-            name: transfers[idx]?.to_profile?.full_name ?? '—',
-            since: t.createdAt,
-            until: cleanTransfers[idx + 1]?.createdAt ?? null,
-            paid: t.status === 'liberada',
-            current: idx === cleanTransfers.length - 1,
-          })),
-        ];
-
-      return {
-        bond: mappedBond,
-        events: mappedEvents,
-        transfers: cleanTransfers,
-        owners,
-      };
-    } catch (error: any) {
-      if (error instanceof BadRequestException) {
-        throw new HttpException({ error: 'Bond not found', statusCode: 404 }, HttpStatus.NOT_FOUND);
+      timeline = await this.getBondTimeline(tokenId);
+    } catch (e) {
+      if (e instanceof BadRequestException) {
+        throw new NotFoundException('Bond not found');
       }
-      throw error;
+      throw e;
     }
+
+    // Collect unique profile IDs: issuer + all transfer participants
+    const profileIds = new Set<string>();
+    if (timeline.bond.issuer_party_id) profileIds.add(timeline.bond.issuer_party_id);
+    for (const t of timeline.transfers) {
+      if (t.from_owner) profileIds.add(t.from_owner);
+      if (t.to_owner) profileIds.add(t.to_owner);
+    }
+
+    // Batch resolve profile names
+    const nameMap = new Map<string, string>();
+    if (profileIds.size > 0) {
+      const { data: profiles } = await this.supabase.admin
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', [...profileIds]);
+      if (profiles) {
+        for (const p of profiles as ProfileLookupRow[]) {
+          nameMap.set(p.id, p.full_name ?? p.id);
+        }
+      }
+    }
+
+    // Derive owners chain from transfers
+    const transfers = timeline.transfers ?? [];
+    const owners: TraceabilityOwnerEntry[] = [];
+
+    // Seed owner: issuer
+    const issuerId = timeline.bond.issuer_party_id;
+    if (issuerId) {
+      owners.push({
+        ownerId: issuerId,
+        name: nameMap.get(issuerId) ?? issuerId,
+        since: timeline.bond.created_at,
+        until: transfers.length > 0 ? transfers[0].created_at : null,
+        paid: false,
+        current: false,
+      });
+    }
+
+    // Process each transfer in chronological order
+    for (let i = 0; i < transfers.length; i++) {
+      const t = transfers[i];
+      const nextUntil = i < transfers.length - 1 ? transfers[i + 1].created_at : null;
+
+      owners.push({
+        ownerId: t.to_owner,
+        name: nameMap.get(t.to_owner) ?? t.to_owner,
+        since: t.created_at,
+        until: nextUntil,
+        paid: false, // will compute below
+        current: false,
+      });
+    }
+
+    // Mark paid: scan all transfers for liberada status per owner
+    for (const owner of owners) {
+      owner.paid = transfers.some(
+        (transfer) => transfer.to_owner === owner.ownerId && transfer.status === 'liberada',
+      );
+    }
+
+    // Mark current: last entry
+    if (owners.length > 0) {
+      owners[owners.length - 1].current = true;
+    }
+
+    // Strip profile embeds from transfers
+    const cleanTransfers = transfers.map((transfer) => {
+      const withoutProfiles = { ...transfer };
+      delete withoutProfiles.from_profile;
+      delete withoutProfiles.to_profile;
+      return withoutProfiles;
+    });
+
+    return {
+      bond: toCamel(timeline.bond) as unknown as BondToken,
+      events: timeline.events.map((event) => toCamel(event) as unknown as AuditEvent),
+      transfers: cleanTransfers.map((transfer) => toCamel(transfer) as unknown as Transfer),
+      owners,
+    };
   }
 
   async searchBonds(query: BondSearchQuery) {
