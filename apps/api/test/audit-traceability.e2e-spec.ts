@@ -430,3 +430,130 @@ describe('GET /audit/bonds/:tokenId/traceability (HTTP)', () => {
     expect(String(response.body.message)).toContain('TSE/Admin only');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite: BondsService.getSummary
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('BondsService.getSummary', () => {
+  let bonds: BondsService;
+
+  beforeEach(async () => {
+    resetDb();
+    const supabase = mockSupabase();
+    const mockAudit = { emit: jest.fn() };
+    const mockStellar = { enabled: false } as unknown as StellarBondService;
+    const mockWallet = { createWallet: jest.fn(), createWalletRecord: jest.fn() } as unknown as WalletService;
+    const mockSoroban = { enabled: false } as unknown as SorobanBondService;
+    const mockNotifications = { emit: jest.fn() } as unknown as NotificationsService;
+    const mod = await Test.createTestingModule({
+      providers: [
+        BondsService,
+        { provide: SupabaseService, useValue: supabase },
+        { provide: AuditService, useValue: mockAudit },
+        { provide: StellarBondService, useValue: mockStellar },
+        { provide: WalletService, useValue: mockWallet },
+        { provide: SorobanBondService, useValue: mockSoroban },
+        { provide: NotificationsService, useValue: mockNotifications },
+      ],
+    }).compile();
+    bonds = mod.get(BondsService);
+  });
+
+  it('returns summary for all bonds with only id/name/value/status', async () => {
+    dbStore.bonds.push(
+      { token_id: 'b1', bond_id: 'SOL-001', face_value: 1000000, status: 'activo' },
+      { token_id: 'b2', bond_id: 'SOL-002', face_value: 500000, status: 'emitido' },
+      { token_id: 'b3', bond_id: 'SOL-003', face_value: 250000, status: 'en_venta' },
+    );
+
+    const result = await bonds.getSummary();
+
+    expect(result).toHaveLength(3);
+    for (const entry of result) {
+      expect(entry).toHaveProperty('id');
+      expect(entry).toHaveProperty('name');
+      expect(entry).toHaveProperty('value');
+      expect(entry).toHaveProperty('status');
+      expect(Object.keys(entry)).toHaveLength(4);
+    }
+
+    expect(result[0]).toEqual({ id: 'b1', name: 'SOL-001', value: 1000000, status: 'activo' });
+    expect(result[1]).toEqual({ id: 'b2', name: 'SOL-002', value: 500000, status: 'emitido' });
+    expect(result[2]).toEqual({ id: 'b3', name: 'SOL-003', value: 250000, status: 'en_venta' });
+  });
+
+  it('returns empty array when no bonds exist', async () => {
+    resetDb();
+    const result = await bonds.getSummary();
+    expect(result).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite: GET /bonds/summary (HTTP)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /bonds/summary (HTTP)', () => {
+  let app: INestApplication;
+
+  beforeEach(async () => {
+    resetDb();
+    const supabase = mockSupabase();
+    const mockAudit = { emit: jest.fn() } as unknown as AuditService;
+    const mockStellar = { enabled: false } as unknown as StellarBondService;
+    const mockWallet = { createWallet: jest.fn(), createWalletRecord: jest.fn() } as unknown as WalletService;
+    const mockSoroban = { enabled: false } as unknown as SorobanBondService;
+    const mockNotifications = { emit: jest.fn() } as unknown as NotificationsService;
+
+    const mod = await Test.createTestingModule({
+      imports: [BondsModule, SupabaseModule],
+    })
+      .overrideProvider(SupabaseService)
+      .useValue(supabase)
+      .overrideProvider(AuditService)
+      .useValue(mockAudit)
+      .overrideProvider(StellarBondService)
+      .useValue(mockStellar)
+      .overrideProvider(WalletService)
+      .useValue(mockWallet)
+      .overrideProvider(SorobanBondService)
+      .useValue(mockSoroban)
+      .overrideProvider(NotificationsService)
+      .useValue(mockNotifications)
+      .compile();
+
+    app = mod.createNestApplication();
+    app.setGlobalPrefix('api');
+    await app.init();
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
+  });
+
+  it('returns 401 when no auth token is provided', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/bonds/summary');
+
+    expect(response.status).toBe(401);
+  });
+
+  it('returns 200 with bond summaries for authenticated user', async () => {
+    setAuthenticatedProfile('comprador');
+    dbStore.bonds.push(
+      { token_id: 'b1', bond_id: 'SOL-001', face_value: 1000000, status: 'activo' },
+      { token_id: 'b2', bond_id: 'SOL-002', face_value: 500000, status: 'emitido' },
+    );
+
+    const response = await request(app.getHttpServer())
+      .get('/api/bonds/summary')
+      .set('Authorization', 'Bearer valid-token');
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body).toHaveLength(2);
+    expect(response.body[0]).toEqual({ id: 'b1', name: 'SOL-001', value: 1000000, status: 'activo' });
+    expect(response.body[1]).toEqual({ id: 'b2', name: 'SOL-002', value: 500000, status: 'emitido' });
+  });
+});

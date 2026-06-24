@@ -2,12 +2,19 @@
 import { useEffect, useState } from 'react';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, ExternalLink, User, Clock, CheckCircle } from 'lucide-react';
-import Link from 'next/link';
+import { ArrowRight, ExternalLink, User, CheckCircle } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
-import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
+
+type BondSummary = { id: string; name: string; value: number | null; status: string };
+type OwnerEntry = {
+  ownerId: string; name: string; since: string; until: string | null;
+  paid: boolean; current: boolean;
+};
+type TraceabilityResponse = {
+  bond: any; events: any[]; transfers: any[]; owners: OwnerEntry[];
+};
 
 const fmtDate = (s?: string) => s ? new Date(s).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmtMoney = (n: number | null, cur = 'CRC') =>
@@ -23,58 +30,50 @@ const STATUS_COLOR: Record<string, string> = {
   solicitada: 'bg-blue-50 text-primary border-blue-200',
 };
 
+const OWNER_STATUS_COLOR: Record<string, string> = {
+  true: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  false: 'bg-amber-100 text-amber-700 border-amber-200',
+};
+
 function TrazabilidadContent({ token, me }: { token: string; me: any }) {
   const params = useSearchParams();
   const initialBono = params.get('bono') ?? '';
 
-  const [bonds, setBonds] = useState<any[]>([]);
-  const [transfers, setTransfers] = useState<any[]>([]);
+  const [bonds, setBonds] = useState<BondSummary[]>([]);
+  const [traceability, setTraceability] = useState<TraceabilityResponse | null>(null);
   const [sel, setSel] = useState<string>('');
   const [filterParty, setFilterParty] = useState('');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    Promise.all([
-      apiFetch(token, 'GET', '/bonds?page=1&limit=100').catch(() => null),
-      apiFetch(token, 'GET', '/transfers?page=1&limit=100').catch(() => null),
-    ]).then(([bs, trs]) => {
-      const b = unwrapPaginated<any>(bs ?? []);
-      const t = unwrapPaginated<any>(trs ?? []);
-      setBonds(b); setTransfers(t);
-      const init = initialBono ? b.find((x: any) => x.bond_id === initialBono)?.token_id : b[0]?.token_id;
-      setSel(init ?? b[0]?.token_id ?? '');
+    apiFetch(token, 'GET', '/bonds/summary').catch(() => null).then((data: any) => {
+      const b: BondSummary[] = Array.isArray(data) ? data : [];
+      setBonds(b);
+      const init = initialBono ? b.find((x) => x.name === initialBono)?.id : b[0]?.id;
+      setSel(init ?? b[0]?.id ?? '');
     });
   }, [token]); // eslint-disable-line
 
-  const parties = Array.from(new Set(bonds.map((b) => b.parties?.name).filter(Boolean)));
+  useEffect(() => {
+    if (!sel) return;
+    apiFetch(token, 'GET', `/audit/bonds/${sel}/traceability`)
+      .then((data: any) => setTraceability(data as TraceabilityResponse))
+      .catch(() => setTraceability(null));
+  }, [sel, token]);
+
+  const parties = Array.from(new Set(bonds.map((b) => b.name.split('-')[0]).filter(Boolean)));
 
   const filteredBonds = bonds.filter((b) => {
-    if (filterParty && b.parties?.name !== filterParty) return false;
-    if (search && !b.bond_id.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterParty && !b.name.includes(filterParty)) return false;
+    if (search && !b.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const bond = bonds.find((b) => b.token_id === sel);
+  const bond = traceability?.bond;
+  const owners = traceability?.owners ?? [];
 
-  // Historial de este bono: transfers + seed traceability
-  const realMovs = transfers
-    .filter((t) => t.bond_token_id === sel)
-    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? '')) // cronológico ASC
-    .map((t) => ({
-      owner: t.from_profile?.full_name ?? '?',
-      to: t.to_profile?.full_name,
-      since: t.created_at,
-      status: t.status,
-      amount: t.amount,
-      tx: t.escrow_contract_id,
-      escrowContractId: t.escrow_contract_id,
-    }));
-
-  const movs = realMovs;
-
-  // La verdad del dueño actual viene de la BD (bond.profiles), no de los movs
-  const lastReleased = [...realMovs].reverse().find((m) => m.status === 'liberada');
-  const currentOwner = bond?.profiles?.full_name ?? lastReleased?.to ?? '—';
+  // Derive current owner display from owners chain
+  const currentOwnerName = owners.find((o) => o.current)?.name ?? (bond as any)?.currentOwner ?? '—';
 
   return (
     <TSEShell me={me}>
@@ -84,7 +83,7 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
 
       <div className="mx-auto w-full max-w-[1300px] p-8 pb-20">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          {/* Lista de bonos */}
+          {/* Lista de bonos (sidebar) */}
           <div className="lg:col-span-4">
             <div className="mb-3 grid grid-cols-2 gap-2">
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar bono…" className="field-input text-xs" />
@@ -96,12 +95,11 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
             <div className="glass-card flex flex-col divide-y divide-surface-variant/20 rounded-2xl overflow-hidden">
               {filteredBonds.length === 0 && <p className="p-4 text-sm text-on-surface-variant">Sin resultados.</p>}
               {filteredBonds.map((b) => (
-                <button key={b.token_id} onClick={() => setSel(b.token_id)}
-                  className={`flex items-center justify-between px-4 py-3 text-left transition ${sel === b.token_id ? 'bg-primary/10' : 'hover:bg-surface-container-low'}`}>
+                <button key={b.id} onClick={() => setSel(b.id)}
+                  className={`flex items-center justify-between px-4 py-3 text-left transition ${sel === b.id ? 'bg-primary/10' : 'hover:bg-surface-container-low'}`}>
                   <div>
-                    <p className="text-sm font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{b.bond_id}</p>
-                    <p className="text-xs text-on-surface-variant">{b.parties?.name ?? '—'}</p>
-                    <p className="text-xs font-medium">{fmtMoney(b.face_value, b.currency)}</p>
+                    <p className="text-sm font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{b.name}</p>
+                    <p className="text-xs text-on-surface-variant">{fmtMoney(b.value)}</p>
                   </div>
                   <span className="rounded-full bg-surface-container px-2 py-0.5 text-[10px] text-on-surface-variant">{b.status}</span>
                 </button>
@@ -111,73 +109,60 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
 
           {/* Timeline */}
           <div className="lg:col-span-8">
-            {bond ? (
+            {traceability ? (
               <div className="glass-card rounded-2xl p-6">
                 {/* Info del bono */}
                 <div className="mb-5 grid grid-cols-2 gap-4 rounded-xl border border-outline-variant/20 bg-surface-container-low/40 p-4 md:grid-cols-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">ID</p>
-                    <p className="mt-0.5 font-mono text-sm font-bold text-primary">{bond.bond_id}</p>
+                    <p className="mt-0.5 font-mono text-sm font-bold text-primary">{(bond as any)?.bondId ?? '—'}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Partido emisor</p>
-                    <p className="mt-0.5 text-sm font-semibold">{bond.parties?.name ?? '—'}</p>
+                    <p className="mt-0.5 text-sm font-semibold">{owners[0]?.name ?? '—'}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Monto</p>
-                    <p className="mt-0.5 text-sm font-bold">{fmtMoney(bond.face_value, bond.currency)}</p>
+                    <p className="mt-0.5 text-sm font-bold">{fmtMoney((bond as any)?.faceValue ?? null)}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Dueño actual</p>
-                    <p className="mt-0.5 flex items-center gap-1 text-sm font-semibold"><User size={12} /> {currentOwner}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-sm font-semibold"><User size={12} /> {currentOwnerName}</p>
                   </div>
                 </div>
 
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="font-semibold">Historial de propietarios</h3>
-                  <a href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} target="_blank" rel="noopener noreferrer"
+                  <a href={bondExplorerUrl((bond as any)?.sorobanContractId, (bond as any)?.bondId)} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-blue-100">
                     <ExternalLink size={12} /> Ver en Stellar Expert
                   </a>
                 </div>
 
-                {movs.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-on-surface-variant">No hay movimientos registrados para este bono.</p>
+                {owners.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-on-surface-variant">No hay propietarios registrados para este bono.</p>
                 ) : (
                   <div className="relative space-y-4 before:absolute before:bottom-2 before:left-[19px] before:top-2 before:w-0.5 before:bg-outline-variant/40">
-                    {(movs as any[]).map((m, i) => {
-                      const colorCls = STATUS_COLOR[m.status] ?? 'bg-gray-100 text-gray-500 border-gray-200';
-                      const isLast = i === movs.length - 1;
-                      // Solo marcar "dueño actual" si este mov terminó la cadena con liberada y el `to` coincide
-                      const showsCurrent = isLast && m.status === 'liberada' && m.to === currentOwner;
+                    {owners.map((o, i) => {
+                      const isLast = i === owners.length - 1;
+                      const colorCls = OWNER_STATUS_COLOR[String(o.current)] ?? 'bg-gray-100 text-gray-500 border-gray-200';
                       return (
                         <div key={i} className="relative flex gap-4">
                           <span className={`z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm ${colorCls}`}>
-                            {showsCurrent ? <CheckCircle size={16} /> : <ArrowRight size={16} />}
+                            {isLast ? <CheckCircle size={16} /> : <ArrowRight size={16} />}
                           </span>
-                          <div className={`flex-1 rounded-xl border p-3.5 ${showsCurrent ? 'border-emerald-200 bg-emerald-50/30' : 'border-outline-variant/20 bg-white'}`}>
+                          <div className={`flex-1 rounded-xl border p-3.5 ${isLast ? 'border-emerald-200 bg-emerald-50/30' : 'border-outline-variant/20 bg-white'}`}>
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <div>
                                 <p className="text-sm font-semibold">
-                                  {m.owner}
-                                  {m.to && <><span className="mx-1.5 text-on-surface-variant">→</span><span className={showsCurrent ? 'text-emerald-700' : ''}>{m.to}</span></>}
-                                  {showsCurrent && <span className="ml-2 text-xs font-normal text-emerald-600">(dueño actual)</span>}
+                                  {o.name}
+                                  {o.current && <span className="ml-2 text-xs font-normal text-emerald-600">(dueño actual)</span>}
                                 </p>
-                                {m.amount && <p className="text-xs font-medium text-on-surface-variant">{fmtMoney(m.amount)}</p>}
-                                {(m as any).escrowContractId && (
-                                  <a
-                                    href={`https://stellar.expert/explorer/testnet/contract/${(m as any).escrowContractId}`}
-                                    target="_blank" rel="noopener noreferrer"
-                                    className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 transition hover:bg-emerald-100"
-                                  >
-                                    Canasta on-chain
-                                  </a>
-                                )}
+                                {o.paid && <span className="mt-1 inline-block rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Pagado</span>}
                               </div>
                               <div className="text-right">
-                                <p className="text-xs text-on-surface-variant">{fmtDate(m.since)}</p>
-                                {m.until && <p className="text-[11px] text-on-surface-variant">hasta {fmtDate(m.until)}</p>}
-                                <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium ${colorCls}`}>{m.status}</span>
+                                <p className="text-xs text-on-surface-variant">{fmtDate(o.since)}</p>
+                                {o.until && <p className="text-[11px] text-on-surface-variant">hasta {fmtDate(o.until)}</p>}
                               </div>
                             </div>
                           </div>

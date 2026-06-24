@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Injectable,
   BadRequestException,
@@ -13,7 +14,7 @@ import { StellarBondService } from '../escrow/stellar-bond.service';
 import { SorobanBondService } from '../escrow/soroban-bond.service';
 import { WalletService } from '../escrow/wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { RegisterBondInput, BondRequestInput, BondStatus, Role, AuditEventType, NotificationType } from '@velar/types';
+import { RegisterBondInput, BondRequestInput, BondStatus, BondSummary, Role, AuditEventType, NotificationType } from '@velar/types';
 
 /** Roles de AUTORIDAD: ven todo y emiten bonos. Solo el TSE (y admin) emite. */
 export const AUTHORITY: Role[] = ['tse', 'admin'];
@@ -305,6 +306,20 @@ export class BondsService {
     return paginatedResponse(data ?? [], count ?? 0, p, l);
   }
 
+  /** Resumen ligero de todos los bonos para sidebar. Sin joins ni filtros. */
+  async getSummary(): Promise<BondSummary[]> {
+    const { data, error } = await this.supabase.admin
+      .from('bonds')
+      .select('token_id, bond_id, face_value, status');
+    if (error) throw new BadRequestException(error.message);
+    return (data ?? []).map((row: Record<string, unknown>) => ({
+      id: row.token_id as string,
+      name: row.bond_id as string,
+      value: (row.face_value as number | null) ?? null,
+      status: (row.status as string) ?? 'unknown',
+    }));
+  }
+
   /** Solicitudes de bono enviadas por el partido. */
   async findRequests(actorId: string, actorRole: Role, partyId?: string) {
     let q = this.supabase.admin
@@ -551,7 +566,9 @@ export class BondsService {
    * Lee los datos del contrato Soroban directamente de la cadena y los devuelve
    * en formato legible (no crudo como en Stellar Expert).
    */
-  async readSorobanDetails(tokenId: string, _actorId: string, _actorRole: Role) {
+  async readSorobanDetails(tokenId: string, actorId: string, actorRole: Role) {
+    void actorId;
+    void actorRole;
     const { data: bond } = await this.supabase.admin
       .from('bonds')
       .select(`
