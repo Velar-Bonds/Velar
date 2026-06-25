@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { WalletService } from '../escrow/wallet.service';
 
@@ -21,6 +21,11 @@ export interface RegisterInput {
   cedulaJuridica?: string;
 }
 
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
 /**
  * Registro de cuentas con las 3 perspectivas:
  *  - usuario  -> rol 'comprador' (comprador = recomprador = usuario)
@@ -38,6 +43,29 @@ export class AuthService {
     private supabase: SupabaseService,
     private wallets: WalletService,
   ) {}
+
+  async login(input: LoginInput) {
+    if (!input.email || !input.password) {
+      throw new BadRequestException('email y password son obligatorios');
+    }
+
+    const { data, error } = await this.supabase.admin.auth.signInWithPassword({
+      email: input.email,
+      password: input.password,
+    });
+
+    if (error || !data.session) {
+      throw new UnauthorizedException(error?.message ?? 'Credenciales inválidas');
+    }
+
+    return {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_in: data.session.expires_in,
+      token_type: data.session.token_type,
+      user: data.user,
+    };
+  }
 
   async register(input: RegisterInput) {
     if (!input.email || !input.password) {

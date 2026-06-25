@@ -3,6 +3,7 @@ import {
   UseInterceptors, UploadedFile, Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { BondsService } from './bonds.service';
 import { AuthGuard } from '../auth/auth.guard';
@@ -15,6 +16,7 @@ export class BondsController {
   constructor(private bonds: BondsService) {}
 
   @Post()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   register(@Body() body: RegisterBondInput, @CurrentUser() user: any) {
     return this.bonds.register(body, user.id, user.profile?.role as Role);
   }

@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { AuthService, RegisterInput } from './auth.service';
+import { Throttle } from '@nestjs/throttler';
+import { AuthService, LoginInput, RegisterInput } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -9,5 +10,11 @@ export class AuthController {
   @Post('register')
   register(@Body() body: RegisterInput) {
     return this.auth.register(body);
+  }
+
+  @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  login(@Body() body: LoginInput) {
+    return this.auth.login(body);
   }
 }

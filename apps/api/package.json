@@ -29,6 +29,7 @@
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/throttler": "^6.5.0",
     "@stellar/stellar-sdk": "^15.1.0",
     "@supabase/supabase-js": "^2.49.8",
     "@velar/types": "*",
