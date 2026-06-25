@@ -15,6 +15,8 @@ import { AuditService } from '../src/audit/audit.service';
 import { StellarBondService } from '../src/escrow/stellar-bond.service';
 import { WalletService } from '../src/escrow/wallet.service';
 import { TrustlessWorkService } from '../src/escrow/trustless-work.service';
+import { SorobanBondService } from '../src/escrow/soroban-bond.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers para mockear el query builder fluído de Supabase
@@ -132,8 +134,16 @@ function mockTrustlessWork(): TrustlessWorkService {
   } as any;
 }
 
+function mockSoroban(): SorobanBondService {
+  return { enabled: false } as SorobanBondService;
+}
+
 function mockAudit(): AuditService {
   return { emit: jest.fn(async () => undefined) } as any;
+}
+
+function mockNotifications(): NotificationsService {
+  return { emit: jest.fn(async () => undefined) } as unknown as NotificationsService;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,6 +164,8 @@ describe('Flujo principal VELAR', () => {
     audit = mockAudit();
     stellar = mockStellar();
     trustless = mockTrustlessWork();
+    const soroban = mockSoroban();
+    const notifications = mockNotifications();
     const wallets = mockWallets();
 
     const mod = await Test.createTestingModule({
@@ -165,6 +177,8 @@ describe('Flujo principal VELAR', () => {
         { provide: StellarBondService, useValue: stellar },
         { provide: WalletService, useValue: wallets },
         { provide: TrustlessWorkService, useValue: trustless },
+        { provide: SorobanBondService, useValue: soroban },
+        { provide: NotificationsService, useValue: notifications },
       ],
     }).compile();
 
@@ -273,10 +287,21 @@ describe('Flujo principal VELAR', () => {
 
       // Alguien que no es dueño no puede publicar
       await expect(bonds.publish('bond-1', 'comprador-1')).rejects.toThrow(ForbiddenException);
+      expect(audit.emit).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: expect.stringMatching(/BOND_PUBLISHED/) }),
+      );
 
       // El dueño sí puede
       const r = await bonds.publish('bond-1', 'emisor-1');
       expect(r.status).toBe('en_venta');
+      expect(audit.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'bond_published',
+          bondTokenId: 'bond-1',
+          actorId: 'emisor-1',
+          payload: { previousStatus: 'activo' },
+        }),
+      );
     });
 
     it('no permite publicar un bono que no está en estado activo/aprobado', async () => {
@@ -287,6 +312,83 @@ describe('Flujo principal VELAR', () => {
         status: 'en_escrow',
       });
       await expect(bonds.publish('bond-2', 'emisor-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('emite bond_published con estado anterior correcto', async () => {
+      dbStore.bonds.push({
+        token_id: 'bond-3',
+        bond_id: 'SOL-2026-003',
+        current_owner: 'emisor-1',
+        status: 'activo',
+      });
+      await bonds.publish('bond-3', 'emisor-1');
+      expect(audit.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'bond_published',
+          bondTokenId: 'bond-3',
+          payload: { previousStatus: 'activo' },
+        }),
+      );
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Contraoferta: event type fix
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe('Contraoferta', () => {
+    beforeEach(() => {
+      // Reset audit calls between tests
+      (audit.emit as jest.Mock).mockClear();
+    });
+
+    it('emite counter_offer_sent, no transfer_aceptada', async () => {
+      dbStore.bonds.push({
+        token_id: 'bond-co-1',
+        bond_id: 'SOL-2026-CO-001',
+        current_owner: 'emisor-1',
+        status: 'en_venta',
+      });
+      dbStore.transfers.push({
+        id: 'transfer-co-1',
+        bond_token_id: 'bond-co-1',
+        from_owner: 'emisor-1',
+        to_owner: 'comprador-1',
+        status: 'solicitada',
+        amount: 100000,
+        counter_offer_amount: null,
+      });
+
+      await transfers.counterOffer('transfer-co-1', 150000, 'mi contra propuesta', 'emisor-1');
+
+      expect(audit.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'counter_offer_sent',
+          bondTokenId: 'bond-co-1',
+          transferId: 'transfer-co-1',
+          actorId: 'emisor-1',
+          payload: { counterOfferAmount: 150000, message: 'mi contra propuesta' },
+        }),
+      );
+      // Verificar que NO emite transfer_aceptada
+      expect(audit.emit).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'transfer_aceptada' }),
+      );
+    });
+
+    it('rechaza contraoferta de quien no es el vendedor', async () => {
+      dbStore.transfers.push({
+        id: 'transfer-co-2',
+        bond_token_id: 'bond-co-1',
+        from_owner: 'emisor-1',
+        to_owner: 'comprador-1',
+        status: 'solicitada',
+        amount: 100000,
+      });
+
+      await expect(
+        transfers.counterOffer('transfer-co-2', 200000, undefined, 'comprador-1'),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

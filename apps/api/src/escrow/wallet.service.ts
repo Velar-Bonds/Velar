@@ -4,6 +4,8 @@ import * as path from 'node:path';
 import { Keypair, TransactionBuilder } from '@stellar/stellar-sdk';
 import { NETWORK_PASSPHRASE } from './stellar.config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { AuditService } from '../audit/audit.service';
+import { AuditEventType } from '@velar/types';
 
 export type CustodyWalletCreation = {
   publicKey: string;
@@ -21,7 +23,7 @@ export class WalletService {
   private store: Record<string, { publicKey: string; secret: string }> = {};
   private supabase: SupabaseClient | null = null;
 
-  constructor() {
+  constructor(private audit: AuditService) {
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       this.supabase = createClient(
         process.env.SUPABASE_URL,
@@ -121,6 +123,10 @@ export class WalletService {
     this.nameToPublic.set(key, publicKey);
     await this.persistWallet(key, publicKey, kp.secret());
     this.logger.log(`Wallet de custodia creada para ${label}: ${publicKey}`);
+    await this.audit.emit({
+      type: AuditEventType.WALLET_PROVISIONED,
+      payload: { label, publicKey, status, network: 'testnet' },
+    });
     return { publicKey, status, network: 'testnet', error };
   }
 

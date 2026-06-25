@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { PartiesService } from './parties.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 
 @Controller('parties')
 @UseGuards(AuthGuard)
@@ -14,5 +15,5 @@ export class PartiesController {
   findOne(@Param('id') id: string) { return this.parties.findOne(id); }
 
   @Post()
-  create(@Body() body: { code: string; name: string }) { return this.parties.create(body); }
+  create(@Body() body: { code: string; name: string }, @CurrentUser() user: { id: string }) { return this.parties.create(body, user.id); }
 }

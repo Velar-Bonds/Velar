@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { WalletService } from '../escrow/wallet.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditEventType } from '@velar/types';
 
 @Injectable()
 export class PartiesService {
   constructor(
     private supabase: SupabaseService,
     private wallets: WalletService,
+    private audit: AuditService,
   ) {}
 
   async findAll() {
@@ -21,7 +24,7 @@ export class PartiesService {
     return data;
   }
 
-  async create(body: { code: string; name: string }) {
+  async create(body: { code: string; name: string }, actorId?: string) {
     const wallet = await this.wallets.createWalletRecord(`party:${body.code}`).catch((error: Error) => ({
       publicKey: null,
       status: 'failed' as const,
@@ -42,9 +45,19 @@ export class PartiesService {
       const { data: fallbackData, error: fallbackError } = await this.supabase.admin
         .from('parties').insert(body).select().single();
       if (fallbackError) throw new Error(fallbackError.message);
+      await this.audit.emit({
+        type: AuditEventType.PARTY_CREATED,
+        actorId,
+        payload: { code: body.code, name: body.name, stellarWallet: null },
+      });
       return fallbackData;
     }
     if (error) throw new Error(error.message);
+    await this.audit.emit({
+      type: AuditEventType.PARTY_CREATED,
+      actorId,
+      payload: { code: body.code, name: body.name, stellarWallet: wallet.publicKey },
+    });
     return data;
   }
 }

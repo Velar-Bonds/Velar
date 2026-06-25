@@ -194,7 +194,7 @@ export class TransfersService {
       .single();
     if (error) throw new BadRequestException(error.message);
     await this.audit.emit({
-      type: AuditEventType.TRANSFER_ACEPTADA,
+      type: AuditEventType.COUNTER_OFFER_SENT,
       bondTokenId: transfer.bond_token_id,
       transferId,
       actorId,
@@ -432,7 +432,6 @@ export class TransfersService {
     if (!transfer.return_requested_at) throw new BadRequestException('No hay solicitud de retorno pendiente');
     if (transfer.return_approved_at) throw new BadRequestException('Ya fue aprobada');
 
-    const bond = await this.getBond(transfer.bond_token_id);
     const ownerWallet = await this.walletOf(transfer.from_owner);
 
     let returnTx: string | undefined;

@@ -204,21 +204,45 @@ Toda acción relevante genera un **evento de auditoría** que se guarda en la ta
 
 ```sql
 CREATE TABLE audit_events (
-  id          uuid DEFAULT gen_random_uuid(),
-  bond_id     uuid REFERENCES bonds(id),
-  actor_id    uuid REFERENCES users(id),
-  action      text,         -- 'issued', 'transfer_requested', 'released', ...
-  metadata    jsonb,        -- datos adicionales del evento
-  tx_hash     text,         -- hash de la transacción Stellar (si aplica)
-  created_at  timestamptz DEFAULT now()
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bond_token_id uuid REFERENCES bonds(token_id),
+  transfer_id   uuid REFERENCES transfers(id),
+  type          audit_event_type NOT NULL,
+  actor_id      uuid REFERENCES profiles(id),
+  payload       jsonb NOT NULL DEFAULT '{}',
+  tx_hash       text,
+  created_at    timestamptz NOT NULL DEFAULT now()
 );
 ```
 
-Además, cada transacción on-chain tiene su **hash de Stellar** : un identificador criptográfico único que permite verificar la operación en el explorador público, independientemente de VELAR.
+### Tipos de evento (`audit_event_type`)
+
+| Evento | Disparado por | Descripción |
+|--------|--------------|-------------|
+| `bond_emitido` | `BondsService.register()` / `approveRequest()` | TSE emite un bono on-chain |
+| `bond_asignado` | `BondsService.register()` / `approveRequest()` | Bono asignado al dueño inicial |
+| `bond_published` | `BondsService.publish()` | Dueño publica el bono en el marketplace |
+| `bond_congelado` | `BondsService.freeze()` | TSE congela un bono |
+| `bond_descongelado` | `BondsService.unfreeze()` | TSE descongela un bono |
+| `bond_cancelado` | *(futuro)* | Bono cancelado |
+| `transfer_solicitada` | `TransfersService.requestTransfer()` | Comprador solicita comprar un bono |
+| `transfer_aceptada` | `TransfersService.acceptTransfer()` | Vendedor acepta la solicitud |
+| `counter_offer_sent` | `TransfersService.counterOffer()` | Vendedor envía contraoferta |
+| `transfer_rechazada` | `TransfersService.rejectTransfer()` | Vendedor rechaza la oferta |
+| `transfer_cancelada` | `TransfersService.cancelTransfer()` / `requestReturn()` / `approveReturn()` | Transferencia cancelada |
+| `escrow_bloqueado` | `TransfersService.acceptTransfer()` / `acceptCounterOffer()` | Bono bloqueado en escrow on-chain |
+| `pago_registrado` | `TransfersService.registerPayment()` | Comprador registra evidencia de pago |
+| `pago_validado` | `TransfersService.validatePayment()` | Validador confirma el pago |
+| `token_liberado` | `TransfersService.releaseToken()` | Bono liberado al nuevo dueño |
+| `documento_subido` | `BondsService.uploadDocument()` | TSE sube el certificado PDF del bono |
+| `party_created` | `PartiesService.create()` | Nuevo partido registrado en el sistema |
+| `wallet_provisioned` | `WalletService.createWalletRecord()` | Wallet Stellar creada para un actor |
+
+Cada transacción on-chain tiene además su **hash de Stellar**: un identificador criptográfico único que permite verificar la operación en el explorador público, independientemente de VELAR.
 
 **Doble capa de auditoría:**
-1. `audit_events` en Postgres  a  rápido de consultar, accesible para el TSE desde la UI.
-2. Transacciones en Stellar  a  inmutable, verificable públicamente sin depender de VELAR.
+1. `audit_events` en Postgres → rápido de consultar, accesible para el TSE desde la UI.
+2. Transacciones en Stellar → inmutable, verificable públicamente sin depender de VELAR.
 
 ---
 
