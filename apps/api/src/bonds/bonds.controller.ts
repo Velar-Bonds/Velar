@@ -8,6 +8,7 @@ import { Response } from 'express';
 import { BondsService } from './bonds.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { Roles } from '../auth/roles.decorator';
 import { RegisterBondInput, BondRequestInput, Role } from '@velar/types';
 
 @Controller('bonds')
@@ -17,6 +18,7 @@ export class BondsController {
 
   @Post()
   @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Roles('tse', 'admin')
   register(@Body() body: RegisterBondInput, @CurrentUser() user: any) {
     return this.bonds.register(body, user.id, user.profile?.role as Role);
   }
@@ -43,11 +45,13 @@ export class BondsController {
   }
 
   @Patch('requests/:id/approve')
+  @Roles('tse', 'admin')
   approveRequest(@Param('id') id: string, @CurrentUser() user: any) {
     return this.bonds.approveRequest(id, user.id, user.profile?.role as Role);
   }
 
   @Patch('requests/:id/reject')
+  @Roles('tse', 'admin')
   rejectRequest(@Param('id') id: string, @Body() body: { reason?: string }, @CurrentUser() user: any) {
     return this.bonds.rejectRequest(id, body.reason ?? '', user.id, user.profile?.role as Role);
   }
@@ -68,6 +72,7 @@ export class BondsController {
   }
 
   @Patch(':tokenId/issue-onchain')
+  @Roles('tse', 'admin')
   issueOnchain(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.issueOnchain(tokenId, user.id, user.profile?.role as Role);
   }
@@ -77,24 +82,25 @@ export class BondsController {
     return this.bonds.publish(tokenId, user.id);
   }
 
-  /** Lee el contrato Soroban del bono directamente de la cadena y lo devuelve legible. */
   @Get(':tokenId/soroban-details')
   sorobanDetails(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.readSorobanDetails(tokenId, user.id, user.profile?.role as Role);
   }
 
   @Patch(':tokenId/freeze')
+  @Roles('tse', 'admin')
   freeze(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.freeze(tokenId, user.id, user.profile?.role as Role);
   }
 
   @Patch(':tokenId/unfreeze')
+  @Roles('tse', 'admin')
   unfreeze(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.unfreeze(tokenId, user.id, user.profile?.role as Role);
   }
 
-  /** Sube el certificado PDF del bono y almacena su SHA-256 on-chain. Solo TSE. */
   @Post(':tokenId/document')
+  @Roles('tse', 'admin')
   @UseInterceptors(FileInterceptor('file'))
   uploadDocument(
     @Param('tokenId') tokenId: string,
@@ -104,7 +110,6 @@ export class BondsController {
     return this.bonds.uploadDocument(tokenId, file, user.id, user.profile?.role as Role);
   }
 
-  /** Descarga el certificado PDF. Solo el dueño actual del bono o TSE/admin. */
   @Get(':tokenId/document')
   async downloadDocument(
     @Param('tokenId') tokenId: string,

@@ -218,10 +218,6 @@ export class BondsService {
   }
 
   async register(input: RegisterBondInput, actorId: string, actorRole: Role) {
-    // Solo el TSE (autoridad) emite bonos, a nombre de un partido.
-    if (!AUTHORITY.includes(actorRole)) {
-      throw new ForbiddenException('Solo el TSE puede emitir bonos');
-    }
     // El bono se emite A NOMBRE de un partido: dueño inicial = la cuenta del partido.
     const party = await this.partyOwner(input.issuerPartyId);
     if (!party) {
@@ -349,10 +345,6 @@ export class BondsService {
   /** TSE aprueba una solicitud  a  crea el bono con los datos del partido. */
   async approveRequest(requestId: string, actorId: string, actorRole: Role) {
     this.logger.log(`approveRequest: actorId=${actorId} actorRole=${JSON.stringify(actorRole)}`);
-    // Normaliza por si el role viene con mayúsculas o espacios desde la BD
-    const roleNorm = (actorRole as string)?.trim().toLowerCase() as Role;
-    if (!AUTHORITY.includes(roleNorm)) throw new ForbiddenException(`Solo el TSE puede aprobar solicitudes (rol actual: ${actorRole})`);
-
     const { data: req, error: reqErr } = await this.supabase.admin
       .from('bond_requests').select('*, parties(*)').eq('id', requestId).single();
     if (reqErr || !req) throw new NotFoundException('Solicitud no encontrada');
@@ -437,8 +429,6 @@ export class BondsService {
 
   /** TSE rechaza una solicitud. */
   async rejectRequest(requestId: string, reason: string, actorId: string, actorRole: Role) {
-    const roleNorm = (actorRole as string)?.trim().toLowerCase() as Role;
-    if (!AUTHORITY.includes(roleNorm)) throw new ForbiddenException(`Solo el TSE puede rechazar solicitudes (rol actual: ${actorRole})`);
     const { data: req, error: findError } = await this.supabase.admin
       .from('bond_requests')
       .select('id, bond_token_id, requested_by')
@@ -494,9 +484,6 @@ export class BondsService {
 
   /** Re-emite el token on-chain para un bono que existe en BD pero no en Stellar. */
   async issueOnchain(tokenId: string, actorId: string, actorRole: Role) {
-    if (!AUTHORITY.includes((actorRole as string)?.trim().toLowerCase() as Role)) {
-      throw new ForbiddenException('Solo el TSE puede emitir on-chain');
-    }
     const { data: bond } = await this.supabase.admin
       .from('bonds').select('*, profiles!bonds_current_owner_fkey(id, stellar_wallet)').eq('token_id', tokenId).single();
     if (!bond) throw new NotFoundException('Bono no encontrado');
@@ -659,7 +646,6 @@ export class BondsService {
   }
 
   async freeze(tokenId: string, actorId: string, actorRole: Role) {
-    if (!['tse', 'admin'].includes(actorRole)) throw new ForbiddenException('TSE/Admin only');
     const { data, error } = await this.supabase.admin
       .from('bonds').update({ status: BondStatus.CONGELADO }).eq('token_id', tokenId).select().single();
     if (error) throw new BadRequestException(error.message);
@@ -668,7 +654,6 @@ export class BondsService {
   }
 
   async unfreeze(tokenId: string, actorId: string, actorRole: Role) {
-    if (!['tse', 'admin'].includes(actorRole)) throw new ForbiddenException('TSE/Admin only');
     const { data, error } = await this.supabase.admin
       .from('bonds').update({ status: BondStatus.ACTIVO }).eq('token_id', tokenId).select().single();
     if (error) throw new BadRequestException(error.message);
