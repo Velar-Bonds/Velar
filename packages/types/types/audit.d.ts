@@ -17,6 +17,10 @@ export declare const AuditEventType: {
     readonly BOND_DESCONGELADO: "bond_descongelado";
     readonly BOND_CANCELADO: "bond_cancelado";
     readonly DOCUMENTO_SUBIDO: "documento_subido";
+    readonly PARTY_CREATED: "party_created";
+    readonly WALLET_PROVISIONED: "wallet_provisioned";
+    readonly BOND_PUBLISHED: "bond_published";
+    readonly COUNTER_OFFER_SENT: "counter_offer_sent";
 };
 export type AuditEventType = (typeof AuditEventType)[keyof typeof AuditEventType];
 export interface AuditEvent {

@@ -645,9 +645,16 @@ export class BondsService {
     if (!['activo', 'aprobado', 'emitido'].includes(bond.status)) {
       throw new BadRequestException(`No se puede publicar un bono con estado "${bond.status}"`);
     }
+    const previousStatus = bond.status;
     const { data, error } = await this.supabase.admin
       .from('bonds').update({ status: BondStatus.EN_VENTA }).eq('token_id', tokenId).select().single();
     if (error) throw new BadRequestException(error.message);
+    await this.audit.emit({
+      type: AuditEventType.BOND_PUBLISHED,
+      bondTokenId: tokenId,
+      actorId,
+      payload: { previousStatus },
+    });
     return data;
   }
 
