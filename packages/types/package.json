@@ -5,6 +5,7 @@
   "main": "./types/index.js",
   "types": "./types/index.d.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   }
 }
