@@ -12,6 +12,7 @@ import { useRoleGuard } from '../lib/role-guard';
 import { VelarBrand } from './VelarBrand';
 import { NotificationBell } from './NotificationBell';
 import { ConnectWalletButton } from './ConnectWalletButton';
+import { StellarNetworkBadge } from './StellarNetworkBadge';
 import { CountrySelector } from './CountrySelector';
 import { useCountry, DEMO_MODE } from '../lib/country';
 
@@ -60,8 +61,9 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
               <NotificationBell role={me.role} panelAlign="left" />
             </div>
           </div>
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col gap-2">
             <ConnectWalletButton variant="full" />
+            <StellarNetworkBadge className="self-start" />
           </div>
           <nav className="flex flex-col gap-1">
             {NAV.map(({ href, label, Icon, exact }) => {

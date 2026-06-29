@@ -11,6 +11,7 @@ import { useRoleGuard } from '../lib/role-guard';
 import { VelarBrand } from './VelarBrand';
 import { NotificationBell } from './NotificationBell';
 import { ConnectWalletButton } from './ConnectWalletButton';
+import { StellarNetworkBadge } from './StellarNetworkBadge';
 
 const NAV = [
   { href: '/partido', label: 'Dashboard', Icon: LayoutDashboard, exact: true },
@@ -50,8 +51,9 @@ export function PartidoShell({ me, children }: { me: Me; children: ReactNode }) 
           <NotificationBell role={me.role} panelAlign="left" />
         </div>
 
-        <div className="mb-3 px-3">
+        <div className="mb-3 flex flex-col gap-2 px-3">
           <ConnectWalletButton variant="full" />
+          <StellarNetworkBadge className="self-start" />
         </div>
 
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2">

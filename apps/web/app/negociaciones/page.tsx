@@ -52,7 +52,7 @@ function Content({ token, me }: { token: string; me: Me }) {
       const msg = action === 'request-return' ? 'Solicitud enviada al TSE' : 'Acción realizada';
       notify.tx(res?.txHash ?? res?.returnTx, msg);
       load(page);
-    } catch (e: any) { notify.err(e.message); }
+    } catch (e: any) { notify.txError(e.message); }
     finally { setBusy(null); }
   }
 

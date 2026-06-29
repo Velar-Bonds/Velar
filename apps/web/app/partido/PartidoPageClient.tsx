@@ -50,7 +50,7 @@ export default function PartidoPageClient() {
     if (!token) return;
     setBusy(id); 
     try { const res = await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`); notify.tx(res?.txHash ?? res?.returnTx, 'Acción realizada'); load(token); }
-    catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
+    catch (e: any) { notify.txError(e.message); } finally { setBusy(null); }
   }
 
   if (loading || !token || !me) {

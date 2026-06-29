@@ -38,7 +38,22 @@ export const notify = {
     hash
       ? toast('ok', text, { href: txUrl(hash), label: 'Ver en Stellar' })
       : toast('ok', text),
+  /**
+   * Error de una operación on-chain. Si el fallo es por una trustline aún en
+   * propagación, muestra un estado amable ("Estableciendo trustline…") en vez
+   * de un error seco; el resto se reporta como error normal.
+   */
+  txError: (message: string) => {
+    if (TRUSTLINE_RE.test(message ?? '')) {
+      toast('info', 'Estableciendo trustline en la red… Esperá unos segundos y volvé a intentar.');
+    } else {
+      toast('err', message);
+    }
+  },
 };
+
+/** Patrones de error de Stellar relacionados a trustlines en propagación. */
+const TRUSTLINE_RE = /trust\s?line|op_no_trust|no_trust|change_?trust/i;
 
 const STYLES: Record<ToastType, { bar: string; icon: string; bg: string; border: string }> = {
   ok:   { bar: 'bg-emerald-500', icon: 'text-emerald-600', bg: 'bg-white', border: 'border-emerald-100' },

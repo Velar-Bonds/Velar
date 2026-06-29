@@ -57,8 +57,8 @@ export default function RevisionPage() {
 
   async function approve(id: string) {
     setBusy(id); 
-    try { await apiFetch(token, 'PATCH', `/bonds/requests/${id}/approve`); notify.ok('Bono aprobado y emitido al partido.'); load(token); }
-    catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
+    try { const res = await apiFetch(token, 'PATCH', `/bonds/requests/${id}/approve`); notify.tx(res?.txHash, 'Bono aprobado y emitido al partido.'); load(token); }
+    catch (e: any) { notify.txError(e.message); } finally { setBusy(null); }
   }
 
   async function reject(id: string) {

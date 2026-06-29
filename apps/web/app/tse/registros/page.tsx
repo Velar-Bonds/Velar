@@ -76,7 +76,7 @@ export default function RegistrosPage() {
       const res = await apiFetch(token, 'PATCH', `/bonds/${tokenId}/issue-onchain`);
       notify.tx(res?.txHash, 'Token emitido on-chain.');
       load(token, page);
-    } catch (e: any) { notify.err(e.message); } finally { setBusyOnchain(null); }
+    } catch (e: any) { notify.txError(e.message); } finally { setBusyOnchain(null); }
   }
 
   if (loading || !token || !me) {

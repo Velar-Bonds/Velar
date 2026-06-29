@@ -10,6 +10,7 @@ import { NotificationBell } from './NotificationBell';
 import { useRoleGuard } from '../lib/role-guard';
 import { CountrySelector } from './CountrySelector';
 import { ConnectWalletButton } from './ConnectWalletButton';
+import { StellarNetworkBadge } from './StellarNetworkBadge';
 import { useCountry, DEMO_MODE } from '../lib/country';
 
 const TABS = [
@@ -46,6 +47,7 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
           </div>
 
           <div className="flex items-center gap-2">
+            <StellarNetworkBadge className="hidden lg:inline-flex" />
             {DEMO_MODE && <CountrySelector />}
             <ConnectWalletButton />
             <NotificationBell role={me?.role} />

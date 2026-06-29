@@ -43,7 +43,7 @@ export default function RetirosPage() {
       const msg = action === 'approve-return' ? 'Bono devuelto al dueño on-chain' : 'Solicitud rechazada';
       notify.tx(res?.txHash ?? res?.returnTx, msg);
       load(page);
-    } catch (e: any) { notify.err(e.message); }
+    } catch (e: any) { notify.txError(e.message); }
     finally { setBusy(null); }
   }
 
