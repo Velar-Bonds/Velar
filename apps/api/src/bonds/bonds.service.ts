@@ -642,7 +642,7 @@ export class BondsService {
   }
 
   /** El partido publica su bono en el marketplace (status activo  a  en_venta). */
-  async publish(tokenId: string, actorId: string) {
+  async publish(tokenId: string, actorId: string, paymentMethods?: string[]) {
     // Solo el DUEÑO ACTUAL puede publicar el bono al marketplace.
     // Ni el partido emisor (si ya lo vendió) ni el TSE pueden publicarlo: solo trazabilidad.
     const { data: bond, error: findErr } = await this.supabase.admin
@@ -656,14 +656,25 @@ export class BondsService {
       throw new BadRequestException(`No se puede publicar un bono con estado "${bond.status}"`);
     }
     const previousStatus = bond.status;
-    const { data, error } = await this.supabase.admin
-      .from('bonds').update({ status: BondStatus.EN_VENTA }).eq('token_id', tokenId).select().single();
+
+    // El dueño elige métodos de pago; default razonable si no manda nada.
+    const methods = (paymentMethods && paymentMethods.length ? paymentMethods : ['sinpe', 'transferencia'])
+      .filter((m) => ['sinpe', 'transferencia', 'wallet'].includes(m));
+
+    const update: Record<string, unknown> = { status: BondStatus.EN_VENTA, payment_methods: methods };
+    let { data, error } = await this.supabase.admin
+      .from('bonds').update(update).eq('token_id', tokenId).select().single();
+    // Si aún no se aplicó la migración de payment_methods, publicamos igual.
+    if (error && /payment_methods|column|schema cache/i.test(error.message)) {
+      ({ data, error } = await this.supabase.admin
+        .from('bonds').update({ status: BondStatus.EN_VENTA }).eq('token_id', tokenId).select().single());
+    }
     if (error) throw new BadRequestException(error.message);
     await this.audit.emit({
       type: AuditEventType.BOND_PUBLISHED,
       bondTokenId: tokenId,
       actorId,
-      payload: { previousStatus },
+      payload: { previousStatus, paymentMethods: methods },
     });
     return data;
   }

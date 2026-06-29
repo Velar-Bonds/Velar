@@ -1,7 +1,25 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import type { BondRequestInput, RegisterBondInput } from '@velar/types';
+
+/** Métodos de pago que el dueño puede aceptar al publicar un bono. */
+export const PAYMENT_METHODS = ['sinpe', 'transferencia', 'wallet'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export class PublishBondDto {
+  @ApiPropertyOptional({
+    description: 'Métodos de pago aceptados por el dueño',
+    enum: PAYMENT_METHODS,
+    isArray: true,
+    example: ['sinpe', 'wallet'],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsIn(PAYMENT_METHODS, { each: true })
+  paymentMethods?: PaymentMethod[];
+}
 
 export class CreateBondDto implements RegisterBondInput {
   @ApiProperty({ example: 'BOND-007' })

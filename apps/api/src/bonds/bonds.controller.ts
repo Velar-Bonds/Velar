@@ -15,6 +15,7 @@ import {
   CreateBondDto,
   CreateBondRequestDto,
   HashDocumentDto,
+  PublishBondDto,
   RejectBondRequestDto,
 } from './dto/bonds.dto';
 
@@ -91,8 +92,8 @@ export class BondsController {
   }
 
   @Patch(':tokenId/publish')
-  publish(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
-    return this.bonds.publish(tokenId, user.id);
+  publish(@Param('tokenId') tokenId: string, @Body() body: PublishBondDto, @CurrentUser() user: any) {
+    return this.bonds.publish(tokenId, user.id, body?.paymentMethods);
   }
 
   @Get(':tokenId/soroban-details')

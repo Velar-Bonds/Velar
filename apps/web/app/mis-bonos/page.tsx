@@ -5,6 +5,7 @@ import { Wallet, TrendingUp, Boxes, ShoppingCart } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { StellarExpertButton, StatusBadge, EmptyState, fmtMoney } from '../../components/ui';
 import { PaginationControls } from '../../components/PaginationControls';
+import { PublishBondDialog, type PaymentMethod } from '../../components/PublishBondDialog';
 import { apiFetch } from '../../lib/api';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../lib/pagination';
 import { bondExplorerUrl } from '../../lib/stellar';
@@ -21,7 +22,7 @@ function Content({ token }: { token: string }) {
   const [limit] = useState(20);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
-  
+  const [publishTarget, setPublishTarget] = useState<string | null>(null);
 
   const load = (p = page) => apiFetch(token, 'GET', `/bonds?${paginatedQuery(p, limit)}`)
     .then((res) => {
@@ -31,10 +32,14 @@ function Content({ token }: { token: string }) {
     .catch(() => {});
   useEffect(() => { load(page); /* eslint-disable-next-line */ }, [page]);
 
-  async function publicar(tokenId: string) {
-    setBusy(tokenId); 
-    try { await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`); notify.ok('Bono publicado en el marketplace.'); load(page); }
-    catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
+  async function publicar(tokenId: string, paymentMethods: PaymentMethod[]) {
+    setBusy(tokenId);
+    try {
+      await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`, { paymentMethods });
+      notify.ok('Bono publicado en el marketplace.');
+      setPublishTarget(null);
+      load(page);
+    } catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
   }
 
   const portfolioTotal = bonds.reduce((s, b) => s + (Number(b.face_value) || 0), 0);
@@ -80,7 +85,7 @@ function Content({ token }: { token: string }) {
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {canPublish && (
-                          <button onClick={() => publicar(b.token_id)} disabled={busy === b.token_id}
+                          <button onClick={() => setPublishTarget(b.token_id)} disabled={busy === b.token_id}
                             className={`btn-action ${busy === b.token_id ? 'btn-loading' : ''}`}>
                             {busy === b.token_id ? <><span className="btn-spinner" /> Publicando…</> : <><ShoppingCart size={12} /> Publicar</>}
                           </button>
@@ -96,6 +101,13 @@ function Content({ token }: { token: string }) {
           <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
         </div>
       )}
+
+      <PublishBondDialog
+        open={publishTarget !== null}
+        busy={busy === publishTarget}
+        onClose={() => setPublishTarget(null)}
+        onConfirm={(methods) => publishTarget && publicar(publishTarget, methods)}
+      />
     </>
   );
 }

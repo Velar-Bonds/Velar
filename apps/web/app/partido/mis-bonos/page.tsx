@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Wallet, Boxes, ExternalLink, ShoppingCart, TrendingUp } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { PaginationControls } from '../../../components/PaginationControls';
+import { PublishBondDialog, type PaymentMethod } from '../../../components/PublishBondDialog';
 import { useSession, apiFetch } from '../../../lib/api';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
@@ -49,7 +50,7 @@ export default function PartidoMisBonosPage() {
   const [limit] = useState(20);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
-  
+  const [publishTarget, setPublishTarget] = useState<string | null>(null);
 
   const load = (tok: string, p = page) =>
     apiFetch(tok, 'GET', `/bonds?${paginatedQuery(p, limit)}`)
@@ -69,12 +70,13 @@ export default function PartidoMisBonosPage() {
     );
   }
 
-  async function publicar(tokenId: string) {
+  async function publicar(tokenId: string, paymentMethods: PaymentMethod[]) {
     if (!token) return;
-    setBusy(tokenId); 
+    setBusy(tokenId);
     try {
-      await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`);
+      await apiFetch(token, 'PATCH', `/bonds/${tokenId}/publish`, { paymentMethods });
       notify.ok('Bono publicado en el marketplace.');
+      setPublishTarget(null);
       load(token, page);
     } catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
   }
@@ -143,7 +145,7 @@ export default function PartidoMisBonosPage() {
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {canPublish && (
-                          <button onClick={() => publicar(b.token_id)} disabled={busy === b.token_id}
+                          <button onClick={() => setPublishTarget(b.token_id)} disabled={busy === b.token_id}
                             className={`btn-action ${busy === b.token_id ? 'btn-loading' : ''}`}>
                             {busy === b.token_id ? <><span className="btn-spinner" /> Publicando…</> : <><ShoppingCart size={12} /> Publicar</>}
                           </button>
@@ -162,6 +164,13 @@ export default function PartidoMisBonosPage() {
           <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
         </div>
       </div>
+
+      <PublishBondDialog
+        open={publishTarget !== null}
+        busy={busy === publishTarget}
+        onClose={() => setPublishTarget(null)}
+        onConfirm={(methods) => publishTarget && publicar(publishTarget, methods)}
+      />
     </PartidoShell>
   );
 }

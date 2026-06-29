@@ -131,6 +131,34 @@ Como evolución, VELAR permite que un usuario use **su propia wallet** ([Freight
 
 Se activa con `NEXT_PUBLIC_SELF_CUSTODY=1`. Con el flag apagado, las negociaciones usan el camino custodial (`acceptTransfer`/`releaseToken`) sin cambios. El botón "Firmar con mi wallet" aparece solo para el vendedor (dueño actual) cuando el flag está activo.
 
+### Métodos de pago elegidos por el dueño + compra instantánea (DvP atómico)
+
+Al publicar un bono, el **dueño elige qué métodos de pago acepta** (columna `bonds.payment_methods`, migración `20260629140000_bond_payment_methods`):
+
+- `sinpe` / `transferencia` → pago **P2P off-chain**: el comprador negocia/compra y el pago se valida con evidencia (flujo de escrow/negociación existente).
+- `wallet` → **liquidación atómica on-chain (Delivery vs. Payment)** con USDC: el bono se libera al comprador en la **misma transacción** en que el vendedor recibe el pago.
+
+El marketplace muestra los métodos aceptados como badges y habilita el botón "Pagar con wallet (USDC)" solo si el bono acepta `wallet`. La compra instantánea no usa escrow ni negociación:
+
+```
+1. Front  →  POST /api/transfers/instant-buy/:bondTokenId/build-xdr
+      Backend asegura la trustline USDC del vendedor y arma UNA tx atómica:
+        op A (si falta): changeTrust del bono       (source = comprador)
+        op B: payment USDC  comprador → vendedor     (source = comprador)
+        op C: payment bono  vendedor → comprador     (source = vendedor)
+      El backend CO-FIRMA la op C con la llave custodial del vendedor y
+      devuelve el XDR (source/fee = comprador, aún sin la firma del comprador).
+
+2. Front  →  freighter-api.signTransaction(xdr)  → el comprador firma.
+
+3. Front  →  POST /api/transfers/instant-buy/:bondTokenId/submit-xdr { signedXdr }
+      Backend somete a Horizon. Como la tx es atómica, el token solo se mueve
+      si el USDC se pagó en la misma tx. Al confirmar, se registra la venta y
+      el nuevo dueño en la BD.
+```
+
+Atomicidad: el vendedor no necesita estar online (su op va pre-firmada) y nadie puede quedarse con el pago sin entregar el bono, ni viceversa. La tasa CRC→USDC es configurable con `STELLAR_USDC_CRC_RATE` (default 530).
+
 ---
 
 ## 5. Trustlines

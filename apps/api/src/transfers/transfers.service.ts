@@ -107,6 +107,110 @@ export class TransfersService {
     return { success: true, txHash: hash, explorerUrl: this.stellar.txExplorerUrl(hash) };
   }
 
+  /** Conversión simple CRC→USDC para testnet (tasa configurable). */
+  private usdcAmountFromCrc(amountCrc: number): string {
+    const rate = Number(process.env.STELLAR_USDC_CRC_RATE) || 530;
+    const usd = amountCrc > 0 ? amountCrc / rate : 0;
+    return usd.toFixed(7);
+  }
+
+  private async assertSameCountryBuyer(bond: any, actorId: string) {
+    const { data: buyer } = await this.supabase.admin
+      .from('profiles').select('country').eq('id', actorId).maybeSingle();
+    const buyerCountry = buyer?.country ?? DEFAULT_COUNTRY;
+    const bondCountry = bond.country ?? DEFAULT_COUNTRY;
+    if (buyerCountry !== bondCountry) {
+      const bondNation = getCountryProfile(bondCountry).name;
+      const buyerNation = getCountryProfile(buyerCountry).name;
+      throw new ForbiddenException(
+        `Compra cross-border bloqueada: este instrumento es de ${bondNation} y tu cuenta es de ${buyerNation}.`,
+      );
+    }
+  }
+
+  /**
+   * COMPRA INSTANTÁNEA (pago con wallet, DvP atómico): arma el XDR sin firmar de
+   * la liquidación atómica USDC↔bono. El comprador lo firma con Freighter y lo
+   * reenvía a submitInstantBuy. No usa el escrow ni la negociación: es el camino
+   * "pagar con wallet de una" cuando el dueño aceptó el método 'wallet'.
+   */
+  async buildInstantBuyXdr(bondTokenId: string, actorId: string) {
+    const bond = await this.getBond(bondTokenId);
+    if (bond.status !== BondStatus.EN_VENTA) {
+      throw new BadRequestException('El bono no está publicado en el marketplace');
+    }
+    if (bond.current_owner === actorId) {
+      throw new BadRequestException('No podés comprar tu propio bono');
+    }
+    const methods: string[] = Array.isArray(bond.payment_methods) ? bond.payment_methods : [];
+    if (methods.length > 0 && !methods.includes('wallet')) {
+      throw new BadRequestException('Este bono no acepta pago con wallet (cripto). Usá el flujo P2P.');
+    }
+    await this.assertSameCountryBuyer(bond, actorId);
+
+    const buyerAddress = await this.selfCustodyKeyOf(actorId);
+    if (!buyerAddress) {
+      throw new BadRequestException(
+        'Conectá y vinculá tu wallet self-custody (PATCH /users/me/wallet) para pagar con wallet.',
+      );
+    }
+    const sellerAddress = await this.walletOf(bond.current_owner);
+    if (!sellerAddress) throw new BadRequestException('El vendedor no tiene una wallet de destino.');
+
+    const priceCrc = Number(bond.amount ?? bond.face_value) || 0;
+    if (priceCrc <= 0) throw new BadRequestException('El bono no tiene un precio de venta definido.');
+    const usdcAmount = this.usdcAmountFromCrc(priceCrc);
+
+    const xdr = await this.stellar.buildInstantBuyXdr({
+      buyerAddress, sellerAddress, bondId: bond.bond_id, usdcAmount,
+    });
+    return {
+      xdr,
+      networkPassphrase: this.stellar.networkPassphrase,
+      usdcAmount,
+      priceCrc,
+      buyerAddress,
+      sellerAddress,
+    };
+  }
+
+  /**
+   * COMPRA INSTANTÁNEA: somete el XDR firmado por el comprador a Horizon. Como la
+   * tx es atómica (pago USDC + movimiento del bono), al confirmar ya ocurrió el
+   * traspaso on-chain; registramos la venta y el nuevo dueño en la BD.
+   */
+  async submitInstantBuy(bondTokenId: string, signedXdr: string, actorId: string) {
+    if (!signedXdr) throw new BadRequestException('Falta el XDR firmado');
+    const bond = await this.getBond(bondTokenId);
+    if (bond.current_owner === actorId) throw new BadRequestException('No podés comprar tu propio bono');
+    const seller = bond.current_owner;
+    const priceCrc = Number(bond.amount ?? bond.face_value) || null;
+
+    const { hash } = await this.stellar.submitSignedXdr(signedXdr);
+
+    const { data: transfer } = await this.supabase.admin
+      .from('transfers')
+      .insert({
+        bond_token_id: bondTokenId,
+        from_owner: seller,
+        to_owner: actorId,
+        status: TransferStatus.LIBERADA,
+        amount: priceCrc,
+      })
+      .select().single();
+    await this.supabase.admin
+      .from('bonds').update({ current_owner: actorId, status: BondStatus.ACTIVO }).eq('token_id', bondTokenId);
+    await this.audit.emit({
+      type: AuditEventType.TOKEN_LIBERADO,
+      bondTokenId,
+      transferId: transfer?.id,
+      actorId,
+      payload: { instantBuy: true, paymentMethod: 'wallet', priceCrc },
+      txHash: hash,
+    });
+    return { success: true, txHash: hash, explorerUrl: this.stellar.txExplorerUrl(hash), newOwner: actorId };
+  }
+
   // El COMPRADOR solicita comprar un bono a su dueño actual (modelo "vitrina").
   async requestTransfer(input: RequestTransferInput, actorId: string) {
     const bond = await this.getBond(input.bondTokenId);

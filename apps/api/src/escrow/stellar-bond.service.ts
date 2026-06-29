@@ -346,4 +346,50 @@ export class StellarBondService {
     const res = await this.server.submitTransaction(tx);
     return { hash: res.hash };
   }
+
+  /**
+   * DvP atómico (compra instantánea con wallet): construye una sola tx que
+   *  - (si hace falta) abre la trustline del bono en la wallet del comprador,
+   *  - paga USDC del comprador al vendedor,
+   *  - mueve el token del bono del vendedor al comprador.
+   *
+   * source = comprador (paga el fee y firma con Freighter). La op del bono la
+   * co-firma el backend con la llave custodial del vendedor: así el token solo
+   * se mueve si el pago en USDC ocurre en la MISMA transacción (atómico). El
+   * vendedor no necesita estar online.
+   */
+  async buildInstantBuyXdr(params: {
+    buyerAddress: string;
+    sellerAddress: string;
+    bondId: string;
+    usdcAmount: string;
+  }): Promise<string> {
+    const { buyerAddress, sellerAddress, bondId, usdcAmount } = params;
+    const usdc = this.usdcAsset();
+    const bondAsset = this.assetFor(bondId);
+
+    // El vendedor debe poder recibir USDC (trustline custodial, idempotente).
+    await this.ensureUsdcTrustline(sellerAddress);
+
+    const buyerAcc = await this.server.loadAccount(buyerAddress);
+    const buyerHasBondTrust = buyerAcc.balances.some(
+      (b: StellarBalance) => b.asset_code === bondAsset.getCode() && b.asset_issuer === bondAsset.getIssuer(),
+    );
+
+    const builder = new TransactionBuilder(buyerAcc, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE });
+    if (!buyerHasBondTrust) {
+      builder.addOperation(Operation.changeTrust({ asset: bondAsset, limit: '1' })); // source = comprador
+    }
+    builder.addOperation(Operation.payment({
+      source: buyerAddress, destination: sellerAddress, asset: usdc, amount: usdcAmount,
+    }));
+    builder.addOperation(Operation.payment({
+      source: sellerAddress, destination: buyerAddress, asset: bondAsset, amount: '1',
+    }));
+    const tx = builder.addMemo(Memo.text(`dvp:${bondId}`.slice(0, 28))).setTimeout(300).build();
+
+    // Co-firma la op del bono con la llave custodial del vendedor.
+    tx.sign(this.wallets.keypairFor(sellerAddress));
+    return tx.toXDR();
+  }
 }

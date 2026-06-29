@@ -93,6 +93,22 @@ export class TransfersController {
     return this.transfers.submitTransferXdr(id, body.signedXdr, user.id);
   }
 
+  /** COMPRA INSTANTÁNEA (pago con wallet/USDC): XDR atómico sin firmar. */
+  @Post('instant-buy/:bondTokenId/build-xdr')
+  buildInstantBuy(@Param('bondTokenId') bondTokenId: string, @CurrentUser() user: any) {
+    return this.transfers.buildInstantBuyXdr(bondTokenId, user.id);
+  }
+
+  /** COMPRA INSTANTÁNEA: somete el XDR firmado por el comprador a Horizon. */
+  @Post('instant-buy/:bondTokenId/submit-xdr')
+  submitInstantBuy(
+    @Param('bondTokenId') bondTokenId: string,
+    @Body() body: SubmitXdrDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.transfers.submitInstantBuy(bondTokenId, body.signedXdr, user.id);
+  }
+
   /** Dueño solicita al TSE retirar el bono del escrow (cancelación con disputa). */
   @Patch(':id/request-return')
   requestReturn(@Param('id') id: string, @Body() body: RequestReturnDto, @CurrentUser() user: any) {

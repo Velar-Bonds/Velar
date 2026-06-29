@@ -2,13 +2,14 @@
 import { notify } from '../../components/Toast';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Handshake, ShieldCheck, SlidersHorizontal, Store } from 'lucide-react';
+import { Handshake, ShieldCheck, SlidersHorizontal, Store, Smartphone, Landmark, Wallet } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { EmptyState, StatusBadge, StellarExpertButton } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
 import { unwrapPaginated } from '../../lib/pagination';
 import { bondExplorerUrl } from '../../lib/stellar';
 import { useCountry } from '../../lib/country';
+import { useWallet } from '../../lib/wallet';
 
 type Bond = {
   token_id: string;
@@ -18,8 +19,15 @@ type Bond = {
   face_value: number | null;
   stellar_status?: string | null;
   stellar_issuer_public_key?: string | null;
+  payment_methods?: string[] | null;
   parties?: { code?: string; name?: string };
   profiles?: { full_name?: string };
+};
+
+const METHOD_BADGE: Record<string, { label: string; Icon: any }> = {
+  sinpe: { label: 'SINPE', Icon: Smartphone },
+  transferencia: { label: 'Transferencia', Icon: Landmark },
+  wallet: { label: 'Wallet · USDC', Icon: Wallet },
 };
 
 type Transfer = {
@@ -36,12 +44,14 @@ export default function MarketplacePageClient() {
 
 function Content({ token }: { token: string }) {
   const { country, profile, money } = useCountry();
+  const wallet = useWallet();
   const [bonds, setBonds] = useState<Bond[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [offerAmounts, setOfferAmounts] = useState<Record<string, string>>({});
   const [offerMessages, setOfferMessages] = useState<Record<string, string>>({});
 
   const [busy, setBusy] = useState<string | null>(null);
+  const [walletBusy, setWalletBusy] = useState<string | null>(null);
 
   const load = useCallback(() => {
     // Mercado segmentado por jurisdicción: solo bonos del país activo.
@@ -62,6 +72,31 @@ function Content({ token }: { token: string }) {
       notify.err(e.message);
     } finally {
       setBusy(null);
+    }
+  }
+
+  /**
+   * COMPRA INSTANTÁNEA (pago con wallet/USDC): construye el XDR atómico en el
+   * backend, lo firma con Freighter y lo somete. El bono se libera al comprador
+   * en la misma transacción en que el vendedor recibe el USDC.
+   */
+  async function pagarConWallet(bondTokenId: string) {
+    if (!wallet.isConnected) {
+      try { await wallet.connect(); }
+      catch { notify.err('Conectá tu wallet Freighter (testnet) para pagar con wallet.'); return; }
+    }
+    if (wallet.wrongNetwork) { notify.err('Cambiá tu Freighter a la red TESTNET.'); return; }
+    setWalletBusy(bondTokenId);
+    try {
+      const built: any = await apiFetch(token, 'POST', `/transfers/instant-buy/${bondTokenId}/build-xdr`);
+      const signed = await wallet.signXdr(built.xdr);
+      const res: any = await apiFetch(token, 'POST', `/transfers/instant-buy/${bondTokenId}/submit-xdr`, { signedXdr: signed });
+      notify.tx(res?.txHash, `Compra liquidada: pagaste ${built.usdcAmount} USDC y recibiste el bono.`);
+      load();
+    } catch (e: any) {
+      notify.txError(e.message);
+    } finally {
+      setWalletBusy(null);
     }
   }
 
@@ -102,6 +137,10 @@ function Content({ token }: { token: string }) {
             const offerValue = offerAmounts[bond.token_id] ?? '';
             const offerAmount = Number(offerValue);
             const issuer = bond.stellar_issuer_public_key;
+            const methods = bond.payment_methods ?? [];
+            const acceptsWallet = methods.includes('wallet');
+            // Bonos legacy (sin métodos definidos) mantienen el flujo P2P.
+            const acceptsP2P = methods.length === 0 || methods.some((m) => m === 'sinpe' || m === 'transferencia');
 
             return (
               <div key={bond.token_id} className="velar-hover-card glass-card group relative overflow-hidden rounded-2xl p-6">
@@ -132,6 +171,22 @@ function Content({ token }: { token: string }) {
                   Stellar: <span className="font-semibold text-on-surface">{bond.stellar_status ?? 'pending'}</span>
                 </div>
 
+                {methods.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-on-surface-variant">Acepta:</span>
+                    {methods.map((m) => {
+                      const meta = METHOD_BADGE[m];
+                      if (!meta) return null;
+                      const Icon = meta.Icon;
+                      return (
+                        <span key={m} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${m === 'wallet' ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-outline-variant/40 bg-surface-container-low text-on-surface-variant'}`}>
+                          <Icon size={11} /> {meta.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {currentTransfer && (
                   <div className="mt-3 rounded-xl border border-primary-container/20 bg-primary-container/5 px-3 py-2 text-xs text-on-surface-variant">
                     Tu oferta: <span className="font-semibold text-on-surface">{currentTransfer.status}</span>
@@ -141,43 +196,62 @@ function Content({ token }: { token: string }) {
                 )}
 
                 <div className="mt-5 space-y-3 border-t border-outline-variant/20 pt-4">
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      value={offerValue}
-                      onChange={(event) => setOfferAmounts((prev) => ({ ...prev, [bond.token_id]: event.target.value }))}
-                      placeholder="Monto de oferta"
-                      aria-label={`Monto de oferta para ${bond.bond_id}`}
-                      className="velar-input rounded-xl border px-3 py-2 text-sm outline-none"
-                      disabled={!!currentTransfer}
-                    />
+                  {acceptsP2P && (
+                    <>
+                      <div className="grid grid-cols-[1fr_auto] gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          value={offerValue}
+                          onChange={(event) => setOfferAmounts((prev) => ({ ...prev, [bond.token_id]: event.target.value }))}
+                          placeholder="Monto de oferta"
+                          aria-label={`Monto de oferta para ${bond.bond_id}`}
+                          className="velar-input rounded-xl border px-3 py-2 text-sm outline-none"
+                          disabled={!!currentTransfer}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => requestPurchase(bond.token_id, offerAmount, offerMessages[bond.token_id])}
+                          disabled={busy === bond.token_id || !!currentTransfer || !Number.isFinite(offerAmount) || offerAmount <= 0}
+                          className={`btn-ghost ${busy === bond.token_id ? 'btn-loading' : ''}`}
+                        >
+                          {busy === bond.token_id ? <span className="btn-spinner" /> : <><Handshake size={14} /> Negociar</>}
+                        </button>
+                      </div>
+                      <input
+                        value={offerMessages[bond.token_id] ?? ''}
+                        onChange={(event) => setOfferMessages((prev) => ({ ...prev, [bond.token_id]: event.target.value }))}
+                        placeholder="Mensaje opcional"
+                        aria-label={`Mensaje opcional para ${bond.bond_id}`}
+                        className="velar-input w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                        disabled={!!currentTransfer}
+                      />
+                    </>
+                  )}
+
+                  {acceptsWallet && (
                     <button
                       type="button"
-                      onClick={() => requestPurchase(bond.token_id, offerAmount, offerMessages[bond.token_id])}
-                      disabled={busy === bond.token_id || !!currentTransfer || !Number.isFinite(offerAmount) || offerAmount <= 0}
-                      className={`btn-ghost ${busy === bond.token_id ? 'btn-loading' : ''}`}
+                      onClick={() => pagarConWallet(bond.token_id)}
+                      disabled={walletBusy === bond.token_id || !!currentTransfer}
+                      className={`btn-action btn-lg btn-block bg-violet-600 hover:bg-violet-700 ${walletBusy === bond.token_id ? 'btn-loading' : ''}`}
+                      title="Pago atómico on-chain: el bono se libera al recibirse el USDC"
                     >
-                      {busy === bond.token_id ? <span className="btn-spinner" /> : <><Handshake size={14} /> Negociar</>}
+                      {walletBusy === bond.token_id ? <span className="btn-spinner" /> : <><Wallet size={14} /> Pagar con wallet (USDC)</>}
                     </button>
-                  </div>
-                  <input
-                    value={offerMessages[bond.token_id] ?? ''}
-                    onChange={(event) => setOfferMessages((prev) => ({ ...prev, [bond.token_id]: event.target.value }))}
-                    placeholder="Mensaje opcional"
-                    aria-label={`Mensaje opcional para ${bond.bond_id}`}
-                    className="velar-input w-full rounded-xl border px-3 py-2 text-sm outline-none"
-                    disabled={!!currentTransfer}
-                  />
+                  )}
+
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => requestPurchase(bond.token_id, bond.face_value ?? null)}
-                      disabled={busy === bond.token_id || !!currentTransfer}
-                      className={`btn-action btn-lg btn-block ${busy === bond.token_id ? 'btn-loading' : ''}`}
-                    >
-                      {busy === bond.token_id ? <span className="btn-spinner" /> : 'Comprar al precio'}
-                    </button>
+                    {acceptsP2P && (
+                      <button
+                        type="button"
+                        onClick={() => requestPurchase(bond.token_id, bond.face_value ?? null)}
+                        disabled={busy === bond.token_id || !!currentTransfer}
+                        className={`btn-action btn-lg btn-block ${busy === bond.token_id ? 'btn-loading' : ''}`}
+                      >
+                        {busy === bond.token_id ? <span className="btn-spinner" /> : 'Comprar al precio'}
+                      </button>
+                    )}
                     <StellarExpertButton href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} label="Stellar" small />
                   </div>
                 </div>
