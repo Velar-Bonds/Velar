@@ -7,7 +7,7 @@ import { TSEShell } from '../../../components/TSEShell';
 import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
-import { bondExplorerUrl } from '../../../lib/stellar';
+import { bondExplorerUrl, contractUrl } from '../../../lib/stellar';
 
 type Bond = {
   token_id: string; bond_id: string; status: string; face_value: number | null; currency?: string;
@@ -74,7 +74,7 @@ export default function RegistrosPage() {
     setBusyOnchain(tokenId); 
     try {
       const res = await apiFetch(token, 'PATCH', `/bonds/${tokenId}/issue-onchain`);
-      notify.ok(`Token emitido on-chain. TX: ${res.txHash ?? 'ok'}`);
+      notify.tx(res?.txHash, 'Token emitido on-chain.');
       load(token, page);
     } catch (e: any) { notify.err(e.message); } finally { setBusyOnchain(null); }
   }
@@ -250,7 +250,7 @@ export default function RegistrosPage() {
                                   Contrato desplegado. Metadata Soroban pendiente de inicializar.
                                 </p>
                               )}
-                              <a href={`https://stellar.expert/explorer/testnet/contract/${b.soroban_contract_id}`} target="_blank" rel="noopener noreferrer"
+                              <a href={contractUrl(b.soroban_contract_id)} target="_blank" rel="noopener noreferrer"
                                 className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-violet-700 hover:text-violet-950">
                                 Ver contrato en Stellar Expert <ExternalLink size={10} />
                               </a>

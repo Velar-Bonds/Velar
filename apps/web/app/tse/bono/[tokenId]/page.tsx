@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { TSEShell } from '../../../../components/TSEShell';
 import { useSession, apiFetch, apiFetchBlob, API_URL } from '../../../../lib/api';
+import { contractUrl } from '../../../../lib/stellar';
 
 const fmtCRC = (n: number | null, cur = 'CRC') =>
   n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -190,7 +191,7 @@ export default function BonoDetallePage() {
                     </p>
                   </div>
                 </div>
-                <a href={`https://stellar.expert/explorer/testnet/contract/${data.contract_id}`}
+                <a href={contractUrl(data.contract_id)}
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-white px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/5">
                   Ver on-chain 

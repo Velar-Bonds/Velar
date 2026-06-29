@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, Eye, X, ExternalLink, User, Waypoints, Coins 
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
 import { unwrapPaginated } from '../../../lib/pagination';
-import { bondExplorerUrl } from '../../../lib/stellar';
+import { bondExplorerUrl, txUrl } from '../../../lib/stellar';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmtCRC = (n?: number | null) => n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -241,7 +241,7 @@ export default function TSEReportesPage() {
                           )}
                           {b.stellar_transaction_hash && (
                             <a
-                              href={`https://stellar.expert/explorer/testnet/tx/${b.stellar_transaction_hash}`}
+                              href={txUrl(b.stellar_transaction_hash)}
                               target="_blank" rel="noopener noreferrer"
                               className="flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-primary transition hover:bg-blue-100"
                             >

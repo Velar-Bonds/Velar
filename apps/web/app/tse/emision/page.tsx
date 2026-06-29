@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle, FileUp, Info, Send } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
+import { notify } from '../../../components/Toast';
 import { useSession, apiFetch, API_URL } from '../../../lib/api';
 import { useCountry } from '../../../lib/country';
 
@@ -79,6 +80,8 @@ export default function EmisionPage() {
       } else {
         setMsg({ type: 'ok', text: `Bono ${bondId} emitido correctamente y asignado al partido.` });
       }
+
+      notify.tx(bond?.txHash, `Bono ${bondId} emitido on-chain.`);
 
       setForm({ party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: profile.currency.code, interest_rate: '', series: '', issue_date: '', maturity_date: '' });
       setDocFile(null);

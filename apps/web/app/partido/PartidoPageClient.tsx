@@ -49,7 +49,7 @@ export default function PartidoPageClient() {
   async function act(id: string, action: string) {
     if (!token) return;
     setBusy(id); 
-    try { await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`); notify.ok('Acción realizada'); load(token); }
+    try { const res = await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`); notify.tx(res?.txHash ?? res?.returnTx, 'Acción realizada'); load(token); }
     catch (e: any) { notify.err(e.message); } finally { setBusy(null); }
   }
 

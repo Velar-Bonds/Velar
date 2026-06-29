@@ -39,8 +39,9 @@ export default function RetirosPage() {
   async function decide(id: string, action: 'approve-return' | 'reject-return') {
     setBusy(id); 
     try {
-      await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, { notes: notes[id] });
-      notify.ok(action === 'approve-return' ? 'Bono devuelto al dueño on-chain' : 'Solicitud rechazada');
+      const res = await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, { notes: notes[id] });
+      const msg = action === 'approve-return' ? 'Bono devuelto al dueño on-chain' : 'Solicitud rechazada';
+      notify.tx(res?.txHash ?? res?.returnTx, msg);
       load(page);
     } catch (e: any) { notify.err(e.message); }
     finally { setBusy(null); }

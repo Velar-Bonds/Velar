@@ -4,6 +4,7 @@ import { Shield, ExternalLink, ArrowRight, CheckCircle, Clock } from 'lucide-rea
 import { TSEShell } from '../../../components/TSEShell';
 import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { contractUrl } from '../../../lib/stellar';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 
 const fmtCRC = (n: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -173,7 +174,7 @@ export default function EscrowsPage() {
                           <p className="break-all font-mono text-[11px] text-on-surface">{t.escrow_contract_id}</p>
                         </div>
                         <a
-                          href={`https://stellar.expert/explorer/testnet/contract/${t.escrow_contract_id}`}
+                          href={contractUrl(t.escrow_contract_id)}
                           target="_blank" rel="noopener noreferrer"
                           className="btn-action btn-success"
                         >

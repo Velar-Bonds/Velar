@@ -6,6 +6,7 @@ import { AppShell } from '../../components/AppShell';
 import { PaginationControls } from '../../components/PaginationControls';
 import { StatusBadge, EmptyState, fmtMoney, fmtDate } from '../../components/ui';
 import { apiFetch, type Me } from '../../lib/api';
+import { contractUrl } from '../../lib/stellar';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../lib/pagination';
 
 type Transfer = {
@@ -47,8 +48,9 @@ function Content({ token, me }: { token: string; me: Me }) {
     }
     setBusy(id); 
     try {
-      await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, body);
-      notify.ok(action === 'request-return' ? 'Solicitud enviada al TSE' : 'Acción realizada');
+      const res = await apiFetch(token, 'PATCH', `/transfers/${id}/${action}`, body);
+      const msg = action === 'request-return' ? 'Solicitud enviada al TSE' : 'Acción realizada';
+      notify.tx(res?.txHash ?? res?.returnTx, msg);
       load(page);
     } catch (e: any) { notify.err(e.message); }
     finally { setBusy(null); }
@@ -80,7 +82,7 @@ function Content({ token, me }: { token: string; me: Me }) {
             <div className="flex items-center gap-1.5 text-sm text-on-surface-variant">{t.from_profile?.full_name ?? '?'}  {t.to_profile?.full_name ?? '?'}</div>
             {t.escrow_contract_id && (
               <a
-                href={`https://stellar.expert/explorer/testnet/contract/${t.escrow_contract_id}`}
+                href={contractUrl(t.escrow_contract_id)}
                 target="_blank" rel="noopener noreferrer"
                 className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-100"
                 title={t.escrow_contract_id}

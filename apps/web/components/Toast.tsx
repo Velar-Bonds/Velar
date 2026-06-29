@@ -1,28 +1,43 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { CheckCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, X, ExternalLink } from 'lucide-react';
+import { txUrl } from '../lib/stellar';
 
 export type ToastType = 'ok' | 'err' | 'info';
+
+export interface ToastAction {
+  href: string;
+  label: string;
+}
 
 export interface ToastData {
   id: number;
   type: ToastType;
   text: string;
+  action?: ToastAction;
 }
 
 type Listener = (t: ToastData) => void;
 const listeners: Listener[] = [];
 let nextId = 1;
 
-export function toast(type: ToastType, text: string) {
-  const data: ToastData = { id: nextId++, type, text };
+export function toast(type: ToastType, text: string, action?: ToastAction) {
+  const data: ToastData = { id: nextId++, type, text, action };
   listeners.forEach((l) => l(data));
 }
 
 export const notify = {
-  ok: (text: string) => toast('ok', text),
-  err: (text: string) => toast('err', text),
-  info: (text: string) => toast('info', text),
+  ok: (text: string, action?: ToastAction) => toast('ok', text, action),
+  err: (text: string, action?: ToastAction) => toast('err', text, action),
+  info: (text: string, action?: ToastAction) => toast('info', text, action),
+  /**
+   * Toast de éxito de una transacción on-chain: muestra el mensaje y un link
+   * "Ver en Stellar" al explorador (testnet). Si no hay hash, es un ok normal.
+   */
+  tx: (hash: string | null | undefined, text: string) =>
+    hash
+      ? toast('ok', text, { href: txUrl(hash), label: 'Ver en Stellar' })
+      : toast('ok', text),
 };
 
 const STYLES: Record<ToastType, { bar: string; icon: string; bg: string; border: string }> = {
@@ -38,7 +53,8 @@ function ToastItem({ t, onDone }: { t: ToastData; onDone: () => void }) {
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
-    const timer = setTimeout(() => { setVisible(false); setTimeout(onDone, 300); }, 4000);
+    const duration = t.action ? 9000 : 4000;
+    const timer = setTimeout(() => { setVisible(false); setTimeout(onDone, 300); }, duration);
     return () => clearTimeout(timer);
   }, []);
 
@@ -51,7 +67,19 @@ function ToastItem({ t, onDone }: { t: ToastData; onDone: () => void }) {
       <div className={`mt-3.5 ml-4 shrink-0 ${s.icon}`}>
         <Icon size={18} strokeWidth={2} />
       </div>
-      <p className="flex-1 py-3.5 pr-2 text-sm font-medium text-on-surface leading-snug">{t.text}</p>
+      <div className="flex-1 py-3.5 pr-2">
+        <p className="text-sm font-medium text-on-surface leading-snug">{t.text}</p>
+        {t.action && (
+          <a
+            href={t.action.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-primary-container hover:underline"
+          >
+            <ExternalLink size={12} /> {t.action.label}
+          </a>
+        )}
+      </div>
       <button
         onClick={() => { setVisible(false); setTimeout(onDone, 300); }}
         className="mt-3 mr-3 shrink-0 text-on-surface-variant transition hover:text-on-surface"
