@@ -39,6 +39,74 @@ export class TransfersService {
     return data?.stellar_wallet ?? null;
   }
 
+  /** Llave self-custody (Freighter) vinculada al perfil; null si no hay o falta migración. */
+  private async selfCustodyKeyOf(profileId: string): Promise<string | null> {
+    const { data, error } = await this.supabase.admin
+      .from('profiles').select('stellar_public_key').eq('id', profileId).maybeSingle();
+    if (error) return null;
+    return (data as { stellar_public_key?: string } | null)?.stellar_public_key ?? null;
+  }
+
+  /**
+   * SELF-CUSTODY (no custodial): devuelve el XDR SIN FIRMAR de la transferencia
+   * del token, con la wallet propia del vendedor como source. El vendedor lo
+   * firma en el front con Freighter y luego llama a submitTransferXdr.
+   * Es un camino opcional; el flujo custodial (acceptTransfer/releaseToken) no
+   * se toca.
+   */
+  async buildTransferXdr(transferId: string, actorId: string) {
+    const { data: transfer } = await this.supabase.admin
+      .from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.from_owner !== actorId) {
+      throw new ForbiddenException('Solo el vendedor (dueño actual) puede firmar la transferencia');
+    }
+    const bond = await this.getBond(transfer.bond_token_id);
+    const source = await this.selfCustodyKeyOf(actorId);
+    if (!source) {
+      throw new BadRequestException(
+        'Vinculá tu wallet self-custody (PATCH /users/me/wallet) antes de firmar la transferencia.',
+      );
+    }
+    const destination = (await this.selfCustodyKeyOf(transfer.to_owner)) ?? (await this.walletOf(transfer.to_owner));
+    if (!destination) throw new BadRequestException('El comprador no tiene una wallet de destino.');
+
+    const xdr = await this.stellar.buildBondPaymentXdr(source, destination, bond.bond_id);
+    return {
+      xdr,
+      networkPassphrase: this.stellar.networkPassphrase,
+      sourcePublicKey: source,
+      destination,
+      assetCode: this.stellar.assetCodeFor(bond.bond_id),
+    };
+  }
+
+  /**
+   * SELF-CUSTODY: somete a Horizon el XDR ya firmado por el front (Freighter)
+   * y devuelve el hash. No muta la máquina de estados custodial; deja registro
+   * de auditoría con el hash on-chain.
+   */
+  async submitTransferXdr(transferId: string, signedXdr: string, actorId: string) {
+    const { data: transfer } = await this.supabase.admin
+      .from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.from_owner !== actorId) {
+      throw new ForbiddenException('Solo el vendedor puede enviar la transferencia firmada');
+    }
+    if (!signedXdr) throw new BadRequestException('Falta el XDR firmado');
+
+    const { hash } = await this.stellar.submitSignedXdr(signedXdr);
+    await this.audit.emit({
+      type: AuditEventType.TOKEN_LIBERADO,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { selfCustody: true },
+      txHash: hash,
+    });
+    return { success: true, txHash: hash, explorerUrl: this.stellar.txExplorerUrl(hash) };
+  }
+
   // El COMPRADOR solicita comprar un bono a su dueño actual (modelo "vitrina").
   async requestTransfer(input: RequestTransferInput, actorId: string) {
     const bond = await this.getBond(input.bondTokenId);

@@ -69,3 +69,10 @@ export class ReturnDecisionDto {
   @IsString()
   notes?: string;
 }
+
+export class SubmitXdrDto {
+  @ApiProperty({ description: 'XDR de la transferencia ya firmado por la wallet del vendedor (Freighter)' })
+  @IsString()
+  @IsNotEmpty()
+  signedXdr!: string;
+}

@@ -317,4 +317,33 @@ export class StellarBondService {
   txExplorerUrl(txHash: string): string {
     return explorerTxUrl(txHash);
   }
+
+  /** Passphrase de la red activa (para que el front firme con la red correcta). */
+  get networkPassphrase(): string {
+    return NETWORK_PASSPHRASE;
+  }
+
+  /**
+   * SELF-CUSTODY: construye (sin firmar) la transacción que transfiere el token
+   * del bono desde `source` (wallet propia del vendedor) hacia `destination`.
+   * El front la firma con Freighter y la reenvía a submitSignedXdr. El backend
+   * NO firma nada en este camino: es 100% no custodial.
+   */
+  async buildBondPaymentXdr(source: string, destination: string, bondId: string): Promise<string> {
+    const asset = this.assetFor(bondId);
+    const account = await this.server.loadAccount(source);
+    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
+      .addOperation(Operation.payment({ destination, asset, amount: '1' }))
+      .addMemo(Memo.text(`self:${bondId}`.slice(0, 28)))
+      .setTimeout(300)
+      .build();
+    return tx.toXDR();
+  }
+
+  /** SELF-CUSTODY: somete a Horizon un XDR ya firmado por el front (Freighter). */
+  async submitSignedXdr(signedXdr: string): Promise<{ hash: string }> {
+    const tx = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+    const res = await this.server.submitTransaction(tx);
+    return { hash: res.hash };
+  }
 }

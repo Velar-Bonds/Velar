@@ -107,6 +107,30 @@ Las llaves privadas viven en variables de entorno del servidor (`.env`). En prod
 **Ventaja:** el usuario interactúa con una UI normal (login, botones). No ve llaves, no paga fees directamente.
 **Compromiso:** el backend tiene custodia; si el servidor se compromete, las wallets se comprometen. Mitigable con HSM + multisig.
 
+### Self-custody opcional (Freighter) — camino no custodial
+
+Como evolución, VELAR permite que un usuario use **su propia wallet** ([Freighter](https://www.freighter.app/)) sin entregar llaves al backend. Es un camino **opcional y detrás de un flag**; el flujo custodial sigue siendo el default de la demo.
+
+**Conexión y vinculación (frontend):**
+- `apps/web/lib/wallet.tsx` expone un `WalletProvider` (React context) con `connect()/disconnect()`, el `publicKey` conectado (persistido en `localStorage`) y verificación de que la red de Freighter sea TESTNET.
+- El usuario puede vincular esa wallet a su perfil con `PATCH /api/users/me/wallet` (columna `profiles.stellar_public_key`, migración `20260629120000_self_custody_wallet`). Esto no reemplaza `stellar_wallet` (la wallet de custodia asistida).
+
+**Firma de una transferencia (no custodial):**
+
+```
+1. Front  →  POST /api/transfers/:id/build-xdr
+      Backend arma la tx de pago del token (source = wallet propia del vendedor,
+      destination = wallet del comprador) y devuelve el XDR SIN FIRMAR.
+
+2. Front  →  freighter-api.signTransaction(xdr, { networkPassphrase: TESTNET })
+      El vendedor firma en el navegador. El backend nunca ve la llave privada.
+
+3. Front  →  POST /api/transfers/:id/submit-xdr  { signedXdr }
+      Backend somete el XDR firmado a Horizon y devuelve el tx_hash.
+```
+
+Se activa con `NEXT_PUBLIC_SELF_CUSTODY=1`. Con el flag apagado, las negociaciones usan el camino custodial (`acceptTransfer`/`releaseToken`) sin cambios. El botón "Firmar con mi wallet" aparece solo para el vendedor (dueño actual) cuando el flag está activo.
+
 ---
 
 ## 5. Trustlines

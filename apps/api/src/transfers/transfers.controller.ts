@@ -10,6 +10,7 @@ import {
   RegisterPaymentDto,
   RequestReturnDto,
   ReturnDecisionDto,
+  SubmitXdrDto,
 } from './dto/transfers.dto';
 
 @ApiTags('transfers')
@@ -78,6 +79,18 @@ export class TransfersController {
   @Patch(':id/cancel')
   cancel(@Param('id') id: string, @CurrentUser() user: any) {
     return this.transfers.cancelTransfer(id, user.id);
+  }
+
+  /** SELF-CUSTODY: devuelve el XDR sin firmar de la transferencia (no custodial). */
+  @Post(':id/build-xdr')
+  buildXdr(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.transfers.buildTransferXdr(id, user.id);
+  }
+
+  /** SELF-CUSTODY: somete el XDR firmado por el vendedor (Freighter) a Horizon. */
+  @Post(':id/submit-xdr')
+  submitXdr(@Param('id') id: string, @Body() body: SubmitXdrDto, @CurrentUser() user: any) {
+    return this.transfers.submitTransferXdr(id, body.signedXdr, user.id);
   }
 
   /** Dueño solicita al TSE retirar el bono del escrow (cancelación con disputa). */

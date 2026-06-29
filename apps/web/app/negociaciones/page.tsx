@@ -7,7 +7,11 @@ import { PaginationControls } from '../../components/PaginationControls';
 import { StatusBadge, EmptyState, fmtMoney, fmtDate } from '../../components/ui';
 import { apiFetch, type Me } from '../../lib/api';
 import { contractUrl } from '../../lib/stellar';
+import { useWallet } from '../../lib/wallet';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../lib/pagination';
+
+/** Camino no-custodial (firma con la wallet propia), detrás de flag. Off por defecto. */
+const SELF_CUSTODY = process.env.NEXT_PUBLIC_SELF_CUSTODY === '1';
 
 type Transfer = {
   id: string; status: string; amount: number | null; from_owner: string; to_owner: string;
@@ -27,7 +31,7 @@ function Content({ token, me }: { token: string; me: Me }) {
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [total, setTotal] = useState(0);
-  
+  const wallet = useWallet();
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = (p = page) => apiFetch(token, 'GET', `/transfers?${paginatedQuery(p, limit)}`)
@@ -55,6 +59,26 @@ function Content({ token, me }: { token: string; me: Me }) {
     } catch (e: any) { notify.txError(e.message); }
     finally { setBusy(null); }
   }
+
+  // Self-custody: el vendedor firma la transferencia con su propia wallet (Freighter).
+  // build-xdr (backend) → signTransaction (Freighter) → submit-xdr (backend).
+  async function signSelfCustody(id: string) {
+    if (!wallet.isConnected) { notify.err('Conectá tu wallet Freighter primero (botón "Conectar wallet").'); return; }
+    if (wallet.wrongNetwork) { notify.err('Cambiá Freighter a la red TESTNET para firmar.'); return; }
+    setBusy(id);
+    try {
+      const built = await apiFetch(token, 'POST', `/transfers/${id}/build-xdr`);
+      const signedXdr = await wallet.signXdr(built.xdr);
+      const res = await apiFetch(token, 'POST', `/transfers/${id}/submit-xdr`, { signedXdr });
+      notify.tx(res?.txHash, 'Transferencia firmada y enviada con tu wallet.');
+      load(page);
+    } catch (e: any) { notify.txError(e?.message ?? 'No se pudo firmar la transferencia'); }
+    finally { setBusy(null); }
+  }
+
+  const canSelfCustody = (t: Transfer) =>
+    SELF_CUSTODY && t.from_owner === me.id &&
+    ['aceptada', 'en_escrow', 'pago_registrado'].includes(t.status);
 
   const actionFor = (t: Transfer): [string, string] | null => {
     const soyVendedor = t.from_owner === me.id, soyComprador = t.to_owner === me.id;
@@ -97,6 +121,7 @@ function Content({ token, me }: { token: string; me: Me }) {
           {t.amount ? <span className="mono-data text-sm font-semibold">{fmtMoney(t.amount)}</span> : null}
           <StatusBadge status={t.status} />
           {a && <button onClick={() => act(t.id, a[1])} disabled={busy === t.id} className={`btn-action ${busy === t.id ? 'btn-loading' : ''}`}>{busy === t.id ? <span className="btn-spinner" /> : a[0]}</button>}
+          {canSelfCustody(t) && <button onClick={() => signSelfCustody(t.id)} disabled={busy === t.id} className="btn-ghost" title="Firmar la transferencia con tu propia wallet (no custodial)">Firmar con mi wallet</button>}
           {cancelable && <button onClick={() => act(t.id, 'cancel')} disabled={busy === t.id} className="btn-ghost btn-ghost-danger">Cancelar</button>}
         </div>
       </div>
