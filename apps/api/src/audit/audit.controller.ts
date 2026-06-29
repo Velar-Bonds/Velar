@@ -1,11 +1,14 @@
 import {
   Controller, Get, Param, Query, UseGuards, ForbiddenException,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuditService } from './audit.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { BondSearchQuery, Role } from '@velar/types';
 
+@ApiTags('audit')
+@ApiBearerAuth()
 @Controller('audit')
 @UseGuards(AuthGuard)
 export class AuditController {

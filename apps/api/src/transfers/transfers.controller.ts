@@ -1,9 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TransfersService } from './transfers.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { RequestTransferInput, Role } from '@velar/types';
 
+@ApiTags('transfers')
+@ApiBearerAuth()
 @Controller('transfers')
 @UseGuards(AuthGuard)
 export class TransfersController {

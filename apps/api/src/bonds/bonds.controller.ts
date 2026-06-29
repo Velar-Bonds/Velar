@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { BondsService } from './bonds.service';
 import { AuthGuard } from '../auth/auth.guard';
@@ -11,6 +12,8 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RegisterBondInput, BondRequestInput, Role } from '@velar/types';
 
+@ApiTags('bonds')
+@ApiBearerAuth()
 @Controller('bonds')
 @UseGuards(AuthGuard)
 export class BondsController {
