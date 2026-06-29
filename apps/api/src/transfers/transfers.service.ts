@@ -11,6 +11,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import {
   AuditEventType, BondStatus, NON_TRANSFERABLE_STATUSES,
   NotificationType, RequestTransferInput, Role, TransferStatus,
+  DEFAULT_COUNTRY, getCountryProfile,
 } from '@velar/types';
 
 @Injectable()
@@ -43,6 +44,23 @@ export class TransfersService {
     const bond = await this.getBond(input.bondTokenId);
     if (!bond.current_owner) throw new BadRequestException('El bono no tiene dueño asignado');
     if (bond.current_owner === actorId) throw new BadRequestException('No podés solicitar comprar tu propio bono');
+
+    // ── Compliance: segmentación nacional obligatoria ──────────────────
+    // El financiamiento político extranjero es ilegal en CR/CO/BR/AR. Un
+    // comprador solo puede adquirir bonos de su MISMA jurisdicción. La regla
+    // queda codificada en la infraestructura, no delegada a la buena fe.
+    const { data: buyer } = await this.supabase.admin
+      .from('profiles').select('*').eq('id', actorId).maybeSingle();
+    const buyerCountry = buyer?.country ?? DEFAULT_COUNTRY;
+    const bondCountry = bond.country ?? DEFAULT_COUNTRY;
+    if (buyerCountry !== bondCountry) {
+      const bondNation = getCountryProfile(bondCountry).name;
+      const buyerNation = getCountryProfile(buyerCountry).name;
+      throw new ForbiddenException(
+        `Compra cross-border bloqueada: este instrumento es de ${bondNation} y tu cuenta es de ${buyerNation}. ` +
+          `El financiamiento político extranjero está prohibido por ley — VELAR lo impide por diseño.`,
+      );
+    }
     if (NON_TRANSFERABLE_STATUSES.includes(bond.status)) {
       throw new BadRequestException(`El bono está "${bond.status}" y no se puede solicitar ahora`);
     }

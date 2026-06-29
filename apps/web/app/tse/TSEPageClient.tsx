@@ -5,6 +5,7 @@ import { ClipboardCheck, BadgeCheck, Send, Activity, ArrowRight, CheckCircle, Cl
 import { TSEShell } from '../../components/TSEShell';
 import { useSession, apiFetch } from '../../lib/api';
 import { paginationMeta, unwrapPaginated } from '../../lib/pagination';
+import { useCountry } from '../../lib/country';
 
 const fmtDate = (s?: string) =>
   s ? new Date(s).toLocaleString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -24,6 +25,7 @@ const CHIP: Record<string, string> = {
 
 export default function TSEPageClient() {
   const { token, me, loading, error } = useSession();
+  const { profile } = useCountry();
   const [bonds, setBonds] = useState<any[]>([]);
   const [bondsTotal, setBondsTotal] = useState(0);
   const [requests, setRequests] = useState<any[]>([]);
@@ -61,7 +63,9 @@ export default function TSEPageClient() {
   return (
     <TSEShell me={me}>
       <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
-        <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>Panel TSE</h1>
+        <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>
+          Panel {profile.authority.code} <span className="text-on-surface-variant">{profile.flag}</span>
+        </h1>
         <div className="flex items-center gap-3">
           <div className="relative">
             <input placeholder="Buscar registros, solicitudes, hashes…"
@@ -72,7 +76,7 @@ export default function TSEPageClient() {
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
               {(me.full_name ?? 'TA').slice(0, 2).toUpperCase()}
             </div>
-            <span className="text-sm font-medium">{me.full_name ?? 'TSE Admin'}</span>
+            <span className="text-sm font-medium">{me.full_name ?? `${profile.authority.code} Admin`}</span>
           </div>
         </div>
       </header>

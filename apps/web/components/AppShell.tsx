@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -8,6 +8,8 @@ import {
 import { useSession, type Me } from '../lib/api';
 import { NotificationBell } from './NotificationBell';
 import { useRoleGuard } from '../lib/role-guard';
+import { CountrySelector } from './CountrySelector';
+import { useCountry, DEMO_MODE } from '../lib/country';
 
 const TABS = [
   { href: '/marketplace', label: 'Marketplace', Icon: Store },
@@ -24,6 +26,8 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
   const pathname = usePathname();
   const [menu, setMenu] = useState(false);
   const ok = useRoleGuard(me, ['comprador', 'recomprador', 'validador']);
+  const { seedFromProfile } = useCountry();
+  useEffect(() => { seedFromProfile(me?.country); }, [me?.country, seedFromProfile]);
 
   return (
     <div className="min-h-screen bg-[#fafcff] text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -41,6 +45,7 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
           </div>
 
           <div className="flex items-center gap-2">
+            {DEMO_MODE && <CountrySelector />}
             <NotificationBell role={me?.role} />
             <div className="relative">
               <button onClick={() => setMenu((m) => !m)} className="flex items-center gap-2 rounded-full border border-transparent p-1 pr-2 transition hover:border-outline-variant/30 hover:bg-surface-container-low">
