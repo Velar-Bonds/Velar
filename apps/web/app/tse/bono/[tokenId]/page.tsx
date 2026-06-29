@@ -1,14 +1,15 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ShieldCheck, Calendar, DollarSign, Percent, FileText,
   User, Hash, Boxes, CheckCircle2, AlertTriangle, ShieldAlert, ShieldX, FileDown,
+  Radio, RefreshCw, ExternalLink,
 } from 'lucide-react';
 import { TSEShell } from '../../../../components/TSEShell';
 import { useSession, apiFetch, apiFetchBlob, API_URL } from '../../../../lib/api';
-import { contractUrl } from '../../../../lib/stellar';
+import { contractUrl, accountUrl } from '../../../../lib/stellar';
 
 const fmtCRC = (n: number | null, cur = 'CRC') =>
   n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -48,6 +49,98 @@ async function computeSha256Hex(blob: Blob): Promise<string> {
   return Array.from(new Uint8Array(hashBuffer))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+/**
+ * Estado leído EN VIVO de la cadena (no de Postgres): consulta
+ * GET /bonds/:tokenId/onchain, que lee el holder actual del activo en Stellar
+ * (y, con Soroban activo, el owner/status del contrato). Es complementario al
+ * snapshot de la base de datos que muestra el resto de la página.
+ */
+function LiveOnchainState({ token, tokenId }: { token: string; tokenId: string }) {
+  const [info, setInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setErr('');
+    apiFetch(token, 'GET', `/bonds/${tokenId}/onchain`)
+      .then(setInfo)
+      .catch((e: any) => setErr(e.message ?? 'No se pudo leer la cadena'))
+      .finally(() => setLoading(false));
+  }, [token, tokenId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const holder: string | null = info?.onchainHolder ?? info?.owner ?? null;
+
+  return (
+    <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50/50 p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500" />
+          </span>
+          <p className="flex items-center gap-1.5 font-semibold text-violet-900">
+            <Radio size={16} /> Estado on-chain en vivo
+          </p>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-white px-2.5 py-1 text-xs font-medium text-violet-700 transition hover:bg-violet-50 disabled:opacity-60"
+        >
+          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Actualizar
+        </button>
+      </div>
+
+      {loading && !info ? (
+        <p className="text-sm text-violet-800/70">Leyendo de Stellar testnet…</p>
+      ) : err ? (
+        <p className="text-sm text-red-600">{err}</p>
+      ) : info?.enabled === false ? (
+        <p className="text-sm text-violet-800/70">La lectura on-chain no está habilitada en este entorno.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700/70">Dueño actual (cadena)</p>
+            {holder ? (
+              <a href={accountUrl(holder)} target="_blank" rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 font-mono text-sm font-medium text-violet-900 hover:underline">
+                {shortKey(holder, 8)} <ExternalLink size={12} />
+              </a>
+            ) : (
+              <p className="mt-1 text-sm text-violet-900/70">Sin dato on-chain</p>
+            )}
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700/70">Estado on-chain</p>
+            <p className="mt-1 text-sm font-medium text-violet-900">{info?.stellarStatus ?? info?.status ?? 'Sin dato'}</p>
+          </div>
+          {info?.assetCode && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700/70">Activo</p>
+              <p className="mt-1 font-mono text-sm text-violet-900">{info.assetCode}</p>
+            </div>
+          )}
+          {info?.transactionHash && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700/70">Última tx</p>
+              <a href={info.transactionExplorer ?? '#'} target="_blank" rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 font-mono text-sm font-medium text-violet-900 hover:underline">
+                {shortKey(info.transactionHash, 6)} <ExternalLink size={12} />
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+      <p className="mt-4 text-[11px] text-violet-700/70">
+        Estos valores se leen directamente de la red Stellar en cada actualización, no de la base de datos de VELAR.
+      </p>
+    </div>
+  );
 }
 
 export default function BonoDetallePage() {
@@ -161,6 +254,8 @@ export default function BonoDetallePage() {
                 <ShieldCheck size={14} /> {STATUS_LABELS[data.status] ?? data.status ?? 'Sin estado'}
               </span>
             </div>
+
+            {token && tokenId && <LiveOnchainState token={token} tokenId={tokenId} />}
 
             {data.source !== 'soroban' && (
               <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
