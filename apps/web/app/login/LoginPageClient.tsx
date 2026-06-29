@@ -32,6 +32,8 @@ function loginReducer(state: LoginState, patch: Partial<LoginState>) {
   return { ...state, ...patch };
 }
 
+const socialAuthEnabled = process.env.NEXT_PUBLIC_SOCIAL_AUTH === '1';
+
 export default function LoginPage() {
   const [state, setState] = useReducer(loginReducer, initialLoginState);
   const { email, password, showPass, remember, error, loading } = state;
@@ -93,11 +95,15 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="velar-fade-in">
-          <p className="mb-2.5 text-sm font-medium text-[#10235d]">Continuar con</p>
-          <SocialButtons />
-        </div>
-        <AuthDivider text="O continua con correo" />
+        {socialAuthEnabled && (
+          <>
+            <div className="velar-fade-in">
+              <p className="mb-2.5 text-sm font-medium text-[#10235d]">Continuar con</p>
+              <SocialButtons />
+            </div>
+            <AuthDivider text="O continua con correo" />
+          </>
+        )}
 
         <form onSubmit={handleSubmit} className="velar-stagger space-y-3.5 sm:space-y-4">
           <AuthField label="Correo electronico" icon={MailIcon}>
