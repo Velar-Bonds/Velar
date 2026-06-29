@@ -3,13 +3,22 @@ import { useEffect, useRef, useState } from 'react';
 import { CheckCircle, FileUp, Info, Send } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch, API_URL } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
+
+const LATAM_CURRENCIES = ['CRC', 'COP', 'BRL', 'ARS', 'USD'];
 
 export default function EmisionPage() {
   const { token, me, loading, error } = useSession();
+  const { country, profile } = useCountry();
   const [form, setForm] = useState({
     party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: 'CRC',
     interest_rate: '', series: '', issue_date: '', maturity_date: '',
   });
+
+  // La moneda por defecto sigue al país activo del selector.
+  useEffect(() => {
+    setForm((f) => ({ ...f, currency: profile.currency.code, party_id: '' }));
+  }, [country, profile.currency.code]);
   const [docFile, setDocFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -71,7 +80,7 @@ export default function EmisionPage() {
         setMsg({ type: 'ok', text: `Bono ${bondId} emitido correctamente y asignado al partido.` });
       }
 
-      setForm({ party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: 'CRC', interest_rate: '', series: '', issue_date: '', maturity_date: '' });
+      setForm({ party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: profile.currency.code, interest_rate: '', series: '', issue_date: '', maturity_date: '' });
       setDocFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err: any) {
@@ -104,8 +113,10 @@ export default function EmisionPage() {
           <div>
             <label className="field-label">Partido emisor <span className="text-red-500">*</span></label>
             <select value={form.party_id} onChange={set('party_id')} required className="field-input bg-white">
-              <option value="">Seleccioná un partido</option>
-              {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <option value="">Seleccioná un partido de {profile.flag} {profile.name}</option>
+              {parties
+                .filter((p) => (p.country ?? 'CR') === country)
+                .map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
 
@@ -128,7 +139,7 @@ export default function EmisionPage() {
             <div>
               <label className="field-label">Moneda</label>
               <select value={form.currency} onChange={set('currency')} className="field-input bg-white">
-                {['CRC', 'USD', 'EUR'].map((c) => <option key={c} value={c}>{c}</option>)}
+                {LATAM_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
