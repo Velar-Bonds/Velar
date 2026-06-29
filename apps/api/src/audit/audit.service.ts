@@ -166,6 +166,27 @@ export class AuditService {
     }
   }
 
+  /**
+   * Trazabilidad PÚBLICA de un bono — para que cualquier ciudadano verifique el
+   * historial on-chain sin cuenta. Acepta token_id (UUID) o el bond_id legible
+   * (p. ej. "SOL-2026-114"). Sanitiza los mensajes privados de negociación.
+   */
+  async getPublicBondTraceability(idOrToken: string): Promise<TraceabilityResponse> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrToken);
+    let tokenId = idOrToken;
+    if (!isUuid) {
+      const { data } = await this.supabase.admin
+        .from('bonds').select('token_id').eq('bond_id', idOrToken).maybeSingle();
+      if (!data) {
+        throw new HttpException({ error: 'Bond not found', statusCode: 404 }, HttpStatus.NOT_FOUND);
+      }
+      tokenId = data.token_id;
+    }
+    const full = await this.getBondTraceability(tokenId);
+    const transfers = full.transfers.map((t) => ({ ...t, sellerMessage: null, buyerMessage: null }));
+    return { ...full, transfers };
+  }
+
   async searchBonds(query: BondSearchQuery) {
     let q = this.supabase.admin
       .from('bonds')
