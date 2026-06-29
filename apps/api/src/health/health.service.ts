@@ -34,7 +34,7 @@ export class HealthService {
   private async checkSupabase(): Promise<'up' | 'down'> {
     try {
       const { error } = await Promise.race([
-        this.supabase.admin.from('bonds').select('id').limit(1),
+        this.supabase.admin.from('bonds').select('*', { count: 'exact', head: true }),
         this.timeout(),
       ]) as { error: unknown };
       return error ? 'down' : 'up';
