@@ -16,6 +16,8 @@ export interface BondToken {
     tokenId: string;
     bondId: string;
     issuerPartyId: string;
+    /** País (jurisdicción) del bono. Derivado del partido emisor. */
+    country?: string | null;
     currentOwner: string | null;
     status: BondStatus;
     documentHash: string;
