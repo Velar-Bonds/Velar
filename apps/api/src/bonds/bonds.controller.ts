@@ -27,9 +27,10 @@ export class BondsController {
   findAll(
     @Query('page') page: string | undefined,
     @Query('limit') limit: string | undefined,
+    @Query('country') country: string | undefined,
     @CurrentUser() user: any,
   ) {
-    return this.bonds.findAll(user.id, user.profile?.role as Role, user.profile?.party_id, page, limit);
+    return this.bonds.findAll(user.id, user.profile?.role as Role, user.profile?.party_id, page, limit, country);
   }
 
   @Get('requests')
@@ -57,8 +58,11 @@ export class BondsController {
   }
 
   @Get('available')
-  findAvailable(@CurrentUser() user: any) {
-    return this.bonds.findAvailable(user.id);
+  findAvailable(@Query('country') country: string | undefined, @CurrentUser() user: any) {
+    // Por defecto, el comprador ve el mercado de SU país. El selector del demo
+    // puede pasar ?country= para explorar otros mercados (transparencia pública).
+    const scope = country ?? user.profile?.country ?? undefined;
+    return this.bonds.findAvailable(user.id, scope);
   }
 
   @Get(':tokenId')

@@ -13,7 +13,7 @@ import { StellarBondService } from '../escrow/stellar-bond.service';
 import { SorobanBondService } from '../escrow/soroban-bond.service';
 import { WalletService } from '../escrow/wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { RegisterBondInput, BondRequestInput, BondStatus, Role, AuditEventType, NotificationType } from '@velar/types';
+import { RegisterBondInput, BondRequestInput, BondStatus, Role, AuditEventType, NotificationType, currencyForCountry, DEFAULT_COUNTRY } from '@velar/types';
 
 /** Roles de AUTORIDAD: ven todo y emiten bonos. Solo el TSE (y admin) emite. */
 export const AUTHORITY: Role[] = ['tse', 'admin'];
@@ -107,7 +107,7 @@ export class BondsService {
         .from('profiles').select('id, email, stellar_wallet')
         .eq('role', 'emisor').eq('party_id', partyId).limit(1).maybeSingle(),
       this.supabase.admin
-        .from('parties').select('id, code, stellar_wallet')
+        .from('parties').select('id, code, country, stellar_wallet')
         .eq('id', partyId).maybeSingle(),
     ]);
     if (!owner) return null;
@@ -139,7 +139,12 @@ export class BondsService {
       }).eq('id', owner.id);
     }
 
-    return { ...owner, stellar_wallet: partyWallet ?? owner.stellar_wallet ?? null };
+    return {
+      ...owner,
+      stellar_wallet: partyWallet ?? owner.stellar_wallet ?? null,
+      // País del PARTIDO emisor (no del profile) → define la jurisdicción del bono.
+      country: party?.country ?? DEFAULT_COUNTRY,
+    };
   }
 
   /** Asegura que un profile tenga wallet de custodia; la crea si falta. */
@@ -230,6 +235,7 @@ export class BondsService {
       .insert({
         bond_id: input.bondId,
         issuer_party_id: input.issuerPartyId,
+        country: party.country,
         document_hash: input.documentHash,
         metadata_uri: input.metadataUri ?? null,
         face_value: input.faceValue ?? null,
@@ -280,7 +286,7 @@ export class BondsService {
     return updated ?? data;
   }
 
-  async findAll(actorId: string, actorRole: Role, partyId?: string, page?: string, limit?: string) {
+  async findAll(actorId: string, actorRole: Role, partyId?: string, page?: string, limit?: string, country?: string) {
     const { page: p, limit: l, from, to } = parsePagination(page, limit);
     let q = this.supabase.admin
       .from('bonds')
@@ -288,7 +294,8 @@ export class BondsService {
       .order('created_at', { ascending: false });
 
     if (AUTHORITY.includes(actorRole)) {
-      // TSE/admin ven todo
+      // TSE/admin ven todo; en demo pueden filtrar por país (selector).
+      if (country) q = q.eq('country', country);
     } else if (actorRole === 'emisor' && partyId) {
       // El partido ve solo los bonos emitidos a su partido
       q = q.eq('issuer_party_id', partyId);
@@ -321,6 +328,9 @@ export class BondsService {
 
   /** El partido solicita un bono al TSE. */
   async requestBond(input: BondRequestInput, actorId: string, partyId: string) {
+    // Moneda por defecto según el país del partido (CRC/COP/BRL/ARS).
+    const { data: party } = await this.supabase.admin
+      .from('parties').select('country').eq('id', partyId).maybeSingle();
     const { data, error } = await this.supabase.admin
       .from('bond_requests')
       .insert({
@@ -328,7 +338,7 @@ export class BondsService {
         requested_by: actorId,
         certificate_number: input.certificateNumber ?? null,
         face_value: input.faceValue,
-        currency: input.currency ?? 'CRC',
+        currency: input.currency ?? currencyForCountry(party?.country),
         interest_rate: input.interestRate ?? null,
         series: input.series ?? null,
         issue_date: input.issueDate ?? null,
@@ -362,12 +372,13 @@ export class BondsService {
       .insert({
         bond_id: bondId,
         issuer_party_id: req.party_id,
+        country: owner.country,
         current_owner: owner.id,
         status: BondStatus.PENDIENTE,
         document_hash: docHash,
         face_value: req.face_value,
         certificate_number: req.certificate_number,
-        currency: req.currency ?? 'CRC',
+        currency: req.currency ?? currencyForCountry(owner.country),
         interest_rate: req.interest_rate,
         series: req.series,
         issue_date: req.issue_date,
@@ -455,15 +466,21 @@ export class BondsService {
     return { ok: true };
   }
 
-  /** Vitrina: bonos disponibles para que un usuario solicite comprar (de otros dueños). */
-  async findAvailable(actorId: string) {
-    const { data } = await this.supabase.admin
+  /**
+   * Vitrina: bonos disponibles para que un usuario solicite comprar (de otros dueños).
+   * Segmentado por país: el comprador ve el mercado de su jurisdicción. El `country`
+   * lo resuelve el controller (país del usuario, con override opcional para el demo).
+   */
+  async findAvailable(actorId: string, country?: string) {
+    let q = this.supabase.admin
       .from('bonds')
       .select('*, parties(*), profiles!bonds_current_owner_fkey(id, full_name, email)')
       .eq('status', BondStatus.EN_VENTA)
       .not('current_owner', 'is', null)
       .neq('current_owner', actorId)
       .order('created_at', { ascending: false });
+    if (country) q = q.eq('country', country);
+    const { data } = await q;
     return data ?? [];
   }
 
