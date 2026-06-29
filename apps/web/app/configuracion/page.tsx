@@ -31,8 +31,18 @@ function Content({ token, me }: { token: string; me: Me }) {
   const router = useRouter();
   const supabase = createClient();
   const [fullName, setFullName] = useState(me.full_name ?? '');
-  
+  const [linkedKey, setLinkedKey] = useState<string | null>(me.stellar_public_key ?? null);
   const [saving, setSaving] = useState(false);
+
+  async function linkWallet(publicKey: string) {
+    try {
+      await apiFetch(token, 'PATCH', '/users/me/wallet', { publicKey });
+      setLinkedKey(publicKey);
+      notify.ok('Wallet vinculada a tu cuenta');
+    } catch (e: any) {
+      notify.err(e.message ?? 'No se pudo vincular la wallet');
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -93,7 +103,7 @@ function Content({ token, me }: { token: string; me: Me }) {
               y, en el futuro, firmar transferencias vos mismo (self-custody). Es opcional: el
               flujo con custodia asistida sigue funcionando igual.
             </p>
-            <ConnectWalletButton variant="full" linkedPublicKey={me.stellar_wallet} />
+            <ConnectWalletButton variant="full" linkedPublicKey={linkedKey} onUseInAccount={linkWallet} />
             <WalletBalances />
           </div>
         </SettingsCard>

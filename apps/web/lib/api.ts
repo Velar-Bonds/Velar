@@ -102,6 +102,8 @@ export type Me = {
   id: string; email: string; full_name?: string; role?: string;
   country?: string | null;
   party_id?: string | null; stellar_wallet?: string | null;
+  /** Wallet self-custody (Freighter) vinculada por el propio usuario. */
+  stellar_public_key?: string | null;
   stellar_wallet_status?: string | null; stellar_network?: string | null;
   stellar_created_at?: string | null; stellar_wallet_error?: string | null;
   parties?: {

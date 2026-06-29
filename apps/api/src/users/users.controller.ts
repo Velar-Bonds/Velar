@@ -1,9 +1,13 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Role } from '@velar/types';
+import { UpdateWalletDto } from './dto/users.dto';
 
+@ApiTags('users')
+@ApiBearerAuth()
 @Controller('users')
 @UseGuards(AuthGuard)
 export class UsersController {
@@ -15,6 +19,12 @@ export class UsersController {
   @Patch('me')
   updateMe(@CurrentUser() user: any, @Body() body: { full_name?: string }) {
     return this.users.updateProfile(user.id, body);
+  }
+
+  /** Vincula la wallet self-custody (Freighter) del usuario a su perfil. */
+  @Patch('me/wallet')
+  setMyWallet(@CurrentUser() user: any, @Body() body: UpdateWalletDto) {
+    return this.users.setSelfCustodyWallet(user.id, body.publicKey);
   }
 
   @Get()

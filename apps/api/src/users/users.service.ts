@@ -54,6 +54,33 @@ export class UsersService {
     return data;
   }
 
+  /**
+   * Vincula la wallet self-custody (Freighter) del usuario a su perfil.
+   * No toca `stellar_wallet` (custodia asistida): es una columna aparte.
+   * Si la migración con `stellar_public_key` aún no se aplicó, falla con un
+   * mensaje claro en vez de romper (el flujo custodial sigue intacto).
+   */
+  async setSelfCustodyWallet(userId: string, publicKey: string) {
+    if (!/^G[A-Z2-7]{55}$/.test(publicKey)) {
+      throw new BadRequestException('Llave pública de Stellar inválida');
+    }
+    const { data, error } = await this.supabase.admin
+      .from('profiles')
+      .update({ stellar_public_key: publicKey })
+      .eq('id', userId)
+      .select('id, stellar_public_key')
+      .single();
+    if (error) {
+      if (/column|schema cache/i.test(error.message)) {
+        throw new BadRequestException(
+          'Falta aplicar la migración self_custody_wallet (supabase db push) para vincular wallets propias.',
+        );
+      }
+      throw new BadRequestException(error.message);
+    }
+    return { ok: true, stellar_public_key: (data as { stellar_public_key?: string })?.stellar_public_key ?? publicKey };
+  }
+
   async listUsers(actorRole: Role) {
     if (!['tse', 'admin'].includes(actorRole)) throw new ForbiddenException('Admin only');
     const { data } = await this.supabase.admin

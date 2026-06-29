@@ -1,14 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import { Bell, ExternalLink, Plug, User, Wallet } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { ConnectWalletButton } from '../../../components/ConnectWalletButton';
 import { WalletBalances } from '../../../components/WalletBalances';
-import { useSession } from '../../../lib/api';
+import { notify } from '../../../components/Toast';
+import { apiFetch, useSession } from '../../../lib/api';
 import { shortKey, stellarExpert } from '../../../lib/stellar';
 
 export default function PartidoConfiguracionPage() {
   const { token, me, loading, error } = useSession();
+  const [linkedKey, setLinkedKey] = useState<string | null>(null);
 
   if (loading || !token || !me) {
     return (
@@ -23,6 +26,16 @@ export default function PartidoConfiguracionPage() {
   const partyNetwork = me.parties?.stellar_network ?? me.stellar_network ?? 'testnet';
   const partyCreatedAt = me.parties?.stellar_created_at ?? me.stellar_created_at;
   const partyError = me.parties?.stellar_wallet_error ?? me.stellar_wallet_error;
+
+  async function linkWallet(publicKey: string) {
+    try {
+      await apiFetch(token!, 'PATCH', '/users/me/wallet', { publicKey });
+      setLinkedKey(publicKey);
+      notify.ok('Wallet vinculada a tu cuenta');
+    } catch (e: any) {
+      notify.err(e.message ?? 'No se pudo vincular la wallet');
+    }
+  }
 
   return (
     <PartidoShell me={me}>
@@ -89,7 +102,11 @@ export default function PartidoConfiguracionPage() {
               </div>
             </div>
             <div className="space-y-4">
-              <ConnectWalletButton variant="full" linkedPublicKey={partyWallet} />
+              <ConnectWalletButton
+                variant="full"
+                linkedPublicKey={linkedKey ?? me.stellar_public_key}
+                onUseInAccount={linkWallet}
+              />
               <WalletBalances />
             </div>
           </section>
