@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -11,6 +11,8 @@ import type { Me } from '../lib/api';
 import { useRoleGuard } from '../lib/role-guard';
 import { VelarBrand } from './VelarBrand';
 import { NotificationBell } from './NotificationBell';
+import { CountrySelector } from './CountrySelector';
+import { useCountry } from '../lib/country';
 
 const NAV = [
   { href: '/tse', label: 'Dashboard', Icon: LayoutGrid, exact: true },
@@ -31,6 +33,8 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
   const ok = useRoleGuard(me, ['tse', 'admin']);
+  const { profile, seedFromProfile } = useCountry();
+  useEffect(() => { seedFromProfile(me?.country); }, [me?.country, seedFromProfile]);
   const logout = async () => { await supabase.auth.signOut(); router.replace('/login'); };
 
   if (!ok) {
@@ -50,7 +54,10 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
             <Link href="/tse" className="flex items-center" aria-label="VELAR">
               <VelarBrand size="sm" />
             </Link>
-            <NotificationBell role={me.role} panelAlign="left" />
+            <div className="flex items-center gap-1.5">
+              <CountrySelector compact />
+              <NotificationBell role={me.role} panelAlign="left" />
+            </div>
           </div>
           <nav className="flex flex-col gap-1">
             {NAV.map(({ href, label, Icon, exact }) => {
@@ -84,8 +91,10 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-on-surface">{me.full_name ?? 'TSE Admin'}</p>
-              <p className="text-[11px] text-on-surface-variant uppercase tracking-wide">TSE</p>
+              <p className="text-xs font-semibold text-on-surface">{me.full_name ?? `${profile.authority.code} Admin`}</p>
+              <p className="text-[11px] text-on-surface-variant uppercase tracking-wide" title={profile.authority.name}>
+                {profile.flag} {profile.authority.code}
+              </p>
             </div>
             <button onClick={logout} className="rounded-lg p-2 text-on-surface-variant transition hover:bg-red-50 hover:text-red-600">
               <LogOut className="h-4 w-4" strokeWidth={2} />

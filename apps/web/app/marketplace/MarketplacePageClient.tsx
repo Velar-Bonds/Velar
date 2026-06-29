@@ -4,10 +4,11 @@ import { notify } from '../../components/Toast';
 import { useCallback, useEffect, useState } from 'react';
 import { Handshake, ShieldCheck, SlidersHorizontal, Store } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
-import { EmptyState, fmtMoney, StatusBadge, StellarExpertButton } from '../../components/ui';
+import { EmptyState, StatusBadge, StellarExpertButton } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
 import { unwrapPaginated } from '../../lib/pagination';
 import { bondExplorerUrl } from '../../lib/stellar';
+import { useCountry } from '../../lib/country';
 
 type Bond = {
   token_id: string;
@@ -34,17 +35,19 @@ export default function MarketplacePageClient() {
 }
 
 function Content({ token }: { token: string }) {
+  const { country, profile, money } = useCountry();
   const [bonds, setBonds] = useState<Bond[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [offerAmounts, setOfferAmounts] = useState<Record<string, string>>({});
   const [offerMessages, setOfferMessages] = useState<Record<string, string>>({});
-  
+
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    apiFetch(token, 'GET', '/bonds/available').then(setBonds).catch((e) => notify.err(e.message));
+    // Mercado segmentado por jurisdicción: solo bonos del país activo.
+    apiFetch(token, 'GET', `/bonds/available?country=${country}`).then(setBonds).catch((e) => notify.err(e.message));
     apiFetch(token, 'GET', '/transfers?page=1&limit=100').then((res) => setTransfers(unwrapPaginated(res))).catch(() => undefined);
-  }, [token]);
+  }, [token, country]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -66,10 +69,24 @@ function Content({ token }: { token: string }) {
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-on-surface md:text-4xl" style={{ fontFamily: 'Geist' }}>Marketplace de bonos</h1>
-          <p className="mt-1 text-on-surface-variant">Explora instrumentos publicados por partidos y negocia el monto de compra.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-on-surface md:text-4xl" style={{ fontFamily: 'Geist' }}>
+            Marketplace · {profile.flag} {profile.name}
+          </h1>
+          <p className="mt-1 text-on-surface-variant">
+            {profile.instrument.labelPlural} supervisados por {profile.authority.code}. Precios en {profile.currency.code}.
+          </p>
         </div>
         <button type="button" className="flex w-max items-center gap-2 rounded-xl border border-outline-variant/40 bg-white px-3 py-2 text-sm font-medium text-on-surface transition hover:border-primary-container/50"><SlidersHorizontal size={16} /> Filtros</button>
+      </div>
+
+      {/* Contexto de la jurisdicción activa + regla de compliance */}
+      <div className="mb-6 flex items-start gap-3 rounded-xl border border-outline-variant/30 bg-surface-container-low/40 px-4 py-3 text-sm">
+        <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary-container" />
+        <p className="text-on-surface-variant">
+          <span className="font-semibold text-on-surface">{profile.authority.name}.</span>{' '}
+          {profile.context}{' '}
+          <span className="font-medium text-on-surface">Solo cuentas de {profile.name} pueden comprar — el financiamiento político extranjero está bloqueado por diseño.</span>
+        </p>
       </div>
 
 
@@ -103,7 +120,7 @@ function Content({ token }: { token: string }) {
                 <div className="mt-5 grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Precio solicitado</div>
-                    <div className="mono-data text-xl font-bold text-on-surface">{fmtMoney(bond.face_value)}</div>
+                    <div className="mono-data text-xl font-bold text-on-surface">{money(bond.face_value)}</div>
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Vendedor</div>
@@ -118,8 +135,8 @@ function Content({ token }: { token: string }) {
                 {currentTransfer && (
                   <div className="mt-3 rounded-xl border border-primary-container/20 bg-primary-container/5 px-3 py-2 text-xs text-on-surface-variant">
                     Tu oferta: <span className="font-semibold text-on-surface">{currentTransfer.status}</span>
-                    {currentTransfer.amount ? ` · ${fmtMoney(currentTransfer.amount)}` : ''}
-                    {currentTransfer.counter_offer_amount ? ` · contraoferta ${fmtMoney(currentTransfer.counter_offer_amount)}` : ''}
+                    {currentTransfer.amount ? ` · ${money(currentTransfer.amount)}` : ''}
+                    {currentTransfer.counter_offer_amount ? ` · contraoferta ${money(currentTransfer.counter_offer_amount)}` : ''}
                   </div>
                 )}
 

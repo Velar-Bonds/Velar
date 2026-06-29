@@ -100,6 +100,7 @@ export async function apiDownload(token: string, path: string, fallbackFilename:
 
 export type Me = {
   id: string; email: string; full_name?: string; role?: string;
+  country?: string | null;
   party_id?: string | null; stellar_wallet?: string | null;
   stellar_wallet_status?: string | null; stellar_network?: string | null;
   stellar_created_at?: string | null; stellar_wallet_error?: string | null;
