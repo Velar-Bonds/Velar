@@ -107,7 +107,7 @@ export class BondsService {
         .from('profiles').select('id, email, stellar_wallet')
         .eq('role', 'emisor').eq('party_id', partyId).limit(1).maybeSingle(),
       this.supabase.admin
-        .from('parties').select('id, code, country, stellar_wallet')
+        .from('parties').select('*')
         .eq('id', partyId).maybeSingle(),
     ]);
     if (!owner) return null;
@@ -330,7 +330,7 @@ export class BondsService {
   async requestBond(input: BondRequestInput, actorId: string, partyId: string) {
     // Moneda por defecto según el país del partido (CRC/COP/BRL/ARS).
     const { data: party } = await this.supabase.admin
-      .from('parties').select('country').eq('id', partyId).maybeSingle();
+      .from('parties').select('*').eq('id', partyId).maybeSingle();
     const { data, error } = await this.supabase.admin
       .from('bond_requests')
       .insert({
@@ -472,15 +472,21 @@ export class BondsService {
    * lo resuelve el controller (país del usuario, con override opcional para el demo).
    */
   async findAvailable(actorId: string, country?: string) {
-    let q = this.supabase.admin
-      .from('bonds')
-      .select('*, parties(*), profiles!bonds_current_owner_fkey(id, full_name, email)')
-      .eq('status', BondStatus.EN_VENTA)
-      .not('current_owner', 'is', null)
-      .neq('current_owner', actorId)
-      .order('created_at', { ascending: false });
-    if (country) q = q.eq('country', country);
-    const { data } = await q;
+    const base = () =>
+      this.supabase.admin
+        .from('bonds')
+        .select('*, parties(*), profiles!bonds_current_owner_fkey(id, full_name, email)')
+        .eq('status', BondStatus.EN_VENTA)
+        .not('current_owner', 'is', null)
+        .neq('current_owner', actorId)
+        .order('created_at', { ascending: false });
+    if (country) {
+      const { data, error } = await base().eq('country', country);
+      if (!error) return data ?? [];
+      // Pre-migración: la columna `country` todavía no existe → degradar sin filtro.
+      this.logger.warn(`findAvailable: filtro por país no disponible (${error.message}). Aplicá la migración multi-país.`);
+    }
+    const { data } = await base();
     return data ?? [];
   }
 

@@ -50,7 +50,7 @@ export class TransfersService {
     // comprador solo puede adquirir bonos de su MISMA jurisdicción. La regla
     // queda codificada en la infraestructura, no delegada a la buena fe.
     const { data: buyer } = await this.supabase.admin
-      .from('profiles').select('country').eq('id', actorId).maybeSingle();
+      .from('profiles').select('*').eq('id', actorId).maybeSingle();
     const buyerCountry = buyer?.country ?? DEFAULT_COUNTRY;
     const bondCountry = bond.country ?? DEFAULT_COUNTRY;
     if (buyerCountry !== bondCountry) {
