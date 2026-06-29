@@ -6,9 +6,20 @@
 Esto convierte a VELAR de una plataforma CR-only en **infraestructura de
 transparencia política para LATAM**: un núcleo Stellar único (tokenización +
 escrow + auditoría) y una **capa que se adapta a cada país** (autoridad,
-instrumento, moneda, reglas). Costa Rica y Colombia quedan como mercados "live";
-Brasil y Argentina como perfiles configurados (la UI se adapta, el flujo
-completo es roadmap).
+instrumento, moneda, reglas).
+
+**Estrategia (refinada):** **Costa Rica es el producto al 100%, a full.**
+CO/BR/AR son **roadmap** — no flujos completos — pero la infraestructura **ya se
+adapta a ellos**, y eso se demuestra en el pitch. El mensaje al jurado:
+"profundidad real en CR + una infraestructura genuinamente adaptable", no
+"4 países a medias".
+
+### Segmentación por login (importante)
+El **usuario real queda fijado a la jurisdicción de su cuenta** (el tico ve solo
+Costa Rica) y **no ve el selector de país**. El selector existe únicamente en
+**modo demo** (`NEXT_PUBLIC_DEMO_MODE=1`) para que vos, en el pitch, muestres en
+vivo cómo la misma infraestructura se reconfigura por país. En producción, nadie
+ve jurisdicciones ajenas — lo que refuerza el argumento de compliance.
 
 ---
 
@@ -47,27 +58,37 @@ npm run dev
 # Web  → http://localhost:3000
 ```
 
+> **Para mostrar el multi-país en el pitch:** poné `NEXT_PUBLIC_DEMO_MODE=1` en
+> `apps/web/.env.local` y reiniciá el dev server. Aparece el selector de país en
+> el header. Para la experiencia "producto real" (usuario fijado a CR, sin
+> selector), dejalo en `0`.
+
+### Nuevo: verificación pública (Costa Rica al 100%)
+- **`/verificar`** — página pública (sin login) donde cualquier ciudadano pega
+  el ID de un bono (p. ej. `SOL-2026-114`) y ve su historial on-chain.
+- **`/verificar/<id>`** — vista compartible: timeline de eventos con links a
+  cada transacción en stellar.expert, cadena de propiedad y hash del certificado.
+- Endpoint público: `GET /public/bonds/:idOrToken/traceability` (sin auth,
+  rate-limited, mensajes privados de negociación removidos).
+
 > **Rollback de la DB** (si te arrepentís): el bloque de `DROP` está documentado
 > al inicio de `supabase/migrations/20260629000000_multi_country.sql`.
 
 ---
 
-## 3. Cómo demostrarlo (guion del demo, ~90s)
+## 3. Cómo demostrarlo (guion del demo, ~2 min)
 
-1. **Entrá como TSE.** Arriba a la izquierda aparece el **selector de país** (🇨🇷 TSE · CRC).
-2. **Mostrá Costa Rica funcionando** (tu flujo de siempre): emisión → marketplace → escrow → traspaso, verificable en stellar.expert.
-3. **Cambiá el país a 🇨🇴 Colombia** en el selector. En vivo:
-   - La autoridad pasa de **TSE → CNE**.
-   - La moneda pasa de **₡ (CRC) → $ (COP)**.
-   - El instrumento pasa de "Bono de deuda política" → **"Cesión de reposición de votos"**.
-   - El marketplace muestra **solo bonos colombianos** (segmentación).
-   - Hay partidos colombianos reales (Pacto Histórico, Centro Democrático…).
-4. **Mostrá 🇧🇷 Brasil / 🇦🇷 Argentina** en el selector (badge "Beta"): la UI se
-   adapta (TSE-BR / FEFC / R$, Cámara Nacional Electoral / ARS). Decí:
-   *"la infraestructura ya los soporta a nivel de configuración."*
-5. **Cerrá con la regla de compliance:** intentá comprar (como comprador CR) un
-   bono de otro país → el sistema lo **bloquea**: *"el financiamiento político
-   extranjero está prohibido por ley — VELAR lo impide por diseño."*
+**Acto 1 — Costa Rica, el producto completo (el corazón del pitch):**
+1. Flujo TSE de punta a punta: emisión → marketplace → escrow on-chain → traspaso, cada paso verificable en stellar.expert.
+2. **El golpe de transparencia:** abrí **`/verificar`** (sin login), pegá el ID del bono → aparece todo su historial on-chain con links a cada transacción. Decí: *"esto lo puede auditar cualquier ciudadano, sin cuenta, ahora mismo. VELAR no puede alterarlo."*
+
+**Acto 2 — la infraestructura es adaptable (prueba, no promesa):**
+3. Activá el modo demo (`NEXT_PUBLIC_DEMO_MODE=1`) y abrí el **selector de país**. Cambiá de 🇨🇷 a 🇨🇴/🇧🇷/🇦🇷 y mostrá cómo **la misma plataforma se reconfigura sola**: autoridad (TSE→CNE), moneda (₡→$→R$), instrumento, terminología. Decí: *"no es un producto de un país; es infraestructura para LATAM. CR está al 100%; los demás son nuestro roadmap, ya soportados a nivel de configuración."*
+4. **Cerrá con compliance:** el usuario real está fijado a su país y la compra cross-border se bloquea → *"el financiamiento político extranjero es ilegal en LATAM, y VELAR lo impide por diseño."*
+
+> Nota honesta: CO/BR/AR no tienen bonos sembrados end-to-end (son roadmap). El
+> selector demuestra la **adaptación de la interfaz/infra**, no 4 mercados llenos.
+> No prometas "4 países funcionando" — prometé "CR completo + infra adaptable".
 
 **Frase de cierre:** *"No construimos una solución para Costa Rica. Construimos
 la infraestructura de transparencia política para LATAM sobre Stellar."*
