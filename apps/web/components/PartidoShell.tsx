@@ -10,6 +10,7 @@ import type { Me } from '../lib/api';
 import { useRoleGuard } from '../lib/role-guard';
 import { VelarBrand } from './VelarBrand';
 import { NotificationBell } from './NotificationBell';
+import { ConnectWalletButton } from './ConnectWalletButton';
 
 const NAV = [
   { href: '/partido', label: 'Dashboard', Icon: LayoutDashboard, exact: true },
@@ -47,6 +48,10 @@ export function PartidoShell({ me, children }: { me: Me; children: ReactNode }) 
             <VelarBrand size="sm" />
           </Link>
           <NotificationBell role={me.role} panelAlign="left" />
+        </div>
+
+        <div className="mb-3 px-3">
+          <ConnectWalletButton variant="full" />
         </div>
 
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2">

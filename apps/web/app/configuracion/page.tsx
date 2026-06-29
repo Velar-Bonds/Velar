@@ -2,9 +2,10 @@
 import { notify } from '../../components/Toast';
 
 import { ReactNode, useState } from 'react';
-import { ExternalLink, LogOut, ShieldCheck, User, Wallet } from 'lucide-react';
+import { ExternalLink, LogOut, ShieldCheck, User, Wallet, Plug } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '../../components/AppShell';
+import { ConnectWalletButton } from '../../components/ConnectWalletButton';
 import { apiFetch, type Me } from '../../lib/api';
 import { shortKey, stellarExpert } from '../../lib/stellar';
 import { createClient } from '../../lib/supabase/client';
@@ -81,6 +82,17 @@ function Content({ token, me }: { token: string; me: Me }) {
               <p className="text-sm text-on-surface-variant">La wallet se crea automaticamente del lado servidor.</p>
             )}
             {me.stellar_wallet_error && <p className="text-sm text-red-600">{me.stellar_wallet_error}</p>}
+          </div>
+        </SettingsCard>
+
+        <SettingsCard icon={<Plug size={20} />} title="Tu wallet (Freighter)">
+          <div className="space-y-4">
+            <p className="text-sm text-on-surface-variant">
+              Conectá tu propia wallet de Stellar (Freighter) para verificar tus activos on-chain
+              y, en el futuro, firmar transferencias vos mismo (self-custody). Es opcional: el
+              flujo con custodia asistida sigue funcionando igual.
+            </p>
+            <ConnectWalletButton variant="full" linkedPublicKey={me.stellar_wallet} />
           </div>
         </SettingsCard>
 

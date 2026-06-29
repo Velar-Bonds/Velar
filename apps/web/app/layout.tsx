@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ToastContainer } from '../components/Toast';
 import { CountryProvider } from '../lib/country';
+import { WalletProvider } from '../lib/wallet';
 
 export const metadata: Metadata = {
   title: 'VELAR | Trazabilidad de Bonos',
@@ -13,8 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" data-scroll-behavior="smooth">
       <body className="min-h-screen bg-background text-on-surface antialiased">
         <CountryProvider>
-          {children}
-          <ToastContainer />
+          <WalletProvider>
+            {children}
+            <ToastContainer />
+          </WalletProvider>
         </CountryProvider>
       </body>
     </html>

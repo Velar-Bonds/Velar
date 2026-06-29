@@ -2,11 +2,31 @@
 const NETWORK = 'testnet';
 const BASE = `https://stellar.expert/explorer/${NETWORK}`;
 
+/** Endpoint Horizon (testnet) para lecturas read-only desde el front. */
+export const HORIZON_URL = 'https://horizon-testnet.stellar.org';
+/** Friendbot: fondea cuentas en testnet. */
+export const FRIENDBOT_URL = 'https://friendbot.stellar.org';
+/** Dashboard de estado de la red Stellar. */
+export const STELLAR_DASHBOARD_URL = 'https://dashboard.stellar.org/';
+/** Página para instalar la wallet Freighter. */
+export const FREIGHTER_INSTALL_URL = 'https://www.freighter.app/';
+
+/**
+ * Helper unificado de enlaces a Stellar Expert (testnet). Es la fuente de verdad
+ * del front; reemplaza los enlaces a stellar.expert hardcodeados por las páginas.
+ */
+export const txUrl = (hash: string) => `${BASE}/tx/${hash}`;
+export const accountUrl = (address: string) => `${BASE}/account/${address}`;
+export const assetUrl = (code: string, issuer: string) => `${BASE}/asset/${code}-${issuer}`;
+export const contractUrl = (contractId: string) => `${BASE}/contract/${contractId}`;
+export const networkUrl = () => BASE;
+
 export const stellarExpert = {
-  asset: (code: string, issuer: string) => `${BASE}/asset/${code}-${issuer}`,
-  account: (address: string) => `${BASE}/account/${address}`,
-  tx: (hash: string) => `${BASE}/tx/${hash}`,
-  network: () => BASE,
+  asset: assetUrl,
+  account: accountUrl,
+  tx: txUrl,
+  contract: contractUrl,
+  network: networkUrl,
 };
 
 export const shortKey = (k?: string | null, n = 4) =>

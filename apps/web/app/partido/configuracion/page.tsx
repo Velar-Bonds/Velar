@@ -1,7 +1,8 @@
 'use client';
 
-import { Bell, ExternalLink, User, Wallet } from 'lucide-react';
+import { Bell, ExternalLink, Plug, User, Wallet } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
+import { ConnectWalletButton } from '../../../components/ConnectWalletButton';
 import { useSession } from '../../../lib/api';
 import { shortKey, stellarExpert } from '../../../lib/stellar';
 
@@ -76,6 +77,17 @@ export default function PartidoConfiguracionPage() {
               </div>
             </div>
             {partyError && <p className="mt-3 text-sm text-red-600">{partyError}</p>}
+          </section>
+
+          <section className="glass-card rounded-2xl p-5">
+            <div className="mb-4 flex items-center gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Plug size={20} /></span>
+              <div>
+                <p className="font-semibold">Tu wallet (Freighter)</p>
+                <p className="text-sm text-on-surface-variant">Conectá una wallet propia para verificar activos on-chain. Opcional y no reemplaza la custodia asistida.</p>
+              </div>
+            </div>
+            <ConnectWalletButton variant="full" linkedPublicKey={partyWallet} />
           </section>
 
           <div className="glass-card flex items-center gap-4 rounded-2xl p-5 opacity-70">
