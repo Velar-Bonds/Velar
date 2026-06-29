@@ -9,7 +9,7 @@ import { useSession, type Me } from '../lib/api';
 import { NotificationBell } from './NotificationBell';
 import { useRoleGuard } from '../lib/role-guard';
 import { CountrySelector } from './CountrySelector';
-import { useCountry } from '../lib/country';
+import { useCountry, DEMO_MODE } from '../lib/country';
 
 const TABS = [
   { href: '/marketplace', label: 'Marketplace', Icon: Store },
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
           </div>
 
           <div className="flex items-center gap-2">
-            <CountrySelector />
+            {DEMO_MODE && <CountrySelector />}
             <NotificationBell role={me?.role} />
             <div className="relative">
               <button onClick={() => setMenu((m) => !m)} className="flex items-center gap-2 rounded-full border border-transparent p-1 pr-2 transition hover:border-outline-variant/30 hover:bg-surface-container-low">

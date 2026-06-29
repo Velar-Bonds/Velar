@@ -24,6 +24,16 @@ import {
 const STORE_KEY = 'velar.country';
 const MANUAL_KEY = 'velar.country.manual';
 
+/**
+ * Modo demo: habilita el selector de país para mostrar la adaptabilidad de la
+ * infraestructura en el pitch. Apagado por defecto → el usuario real queda
+ * fijado a la jurisdicción de su cuenta (Costa Rica) y nunca ve el selector.
+ * Activar con NEXT_PUBLIC_DEMO_MODE=1.
+ */
+export const DEMO_MODE =
+  process.env.NEXT_PUBLIC_DEMO_MODE === '1' ||
+  process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+
 type CountryContextValue = {
   country: CountryCode;
   profile: CountryProfile;
@@ -55,8 +65,10 @@ const CountryContext = createContext<CountryContextValue | null>(null);
 export function CountryProvider({ children }: { children: ReactNode }) {
   const [country, setCountryState] = useState<CountryCode>(DEFAULT_COUNTRY);
 
-  // En el cliente, restaurar una selección manual previa.
+  // Solo en modo demo restauramos una selección manual previa. En producción
+  // el país lo manda el perfil del usuario (ver seedFromProfile).
   useEffect(() => {
+    if (!DEMO_MODE) return;
     try {
       const stored = localStorage.getItem(STORE_KEY);
       if (isCountryCode(stored)) setCountryState(stored);
@@ -77,6 +89,12 @@ export function CountryProvider({ children }: { children: ReactNode }) {
 
   const seedFromProfile = (code?: string | null) => {
     if (!isCountryCode(code)) return;
+    // Producción: el país queda SIEMPRE fijado a la jurisdicción de la cuenta.
+    if (!DEMO_MODE) {
+      setCountryState(code);
+      return;
+    }
+    // Demo: respetar la selección manual del selector si la hay.
     let manual = false;
     try {
       manual = localStorage.getItem(MANUAL_KEY) === '1';
