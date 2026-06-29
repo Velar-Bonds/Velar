@@ -10,7 +10,13 @@ import { BondsService } from './bonds.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
-import { RegisterBondInput, BondRequestInput, Role } from '@velar/types';
+import { Role } from '@velar/types';
+import {
+  CreateBondDto,
+  CreateBondRequestDto,
+  HashDocumentDto,
+  RejectBondRequestDto,
+} from './dto/bonds.dto';
 
 @ApiTags('bonds')
 @ApiBearerAuth()
@@ -22,7 +28,7 @@ export class BondsController {
   @Post()
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Roles('tse', 'admin')
-  register(@Body() body: RegisterBondInput, @CurrentUser() user: any) {
+  register(@Body() body: CreateBondDto, @CurrentUser() user: any) {
     return this.bonds.register(body, user.id, user.profile?.role as Role);
   }
 
@@ -42,7 +48,7 @@ export class BondsController {
   }
 
   @Post('requests')
-  createRequest(@Body() body: BondRequestInput, @CurrentUser() user: any) {
+  createRequest(@Body() body: CreateBondRequestDto, @CurrentUser() user: any) {
     const partyId = user.profile?.party_id;
     if (!partyId) throw new Error('No tenés un partido asociado');
     return this.bonds.requestBond(body, user.id, partyId);
@@ -56,7 +62,7 @@ export class BondsController {
 
   @Patch('requests/:id/reject')
   @Roles('tse', 'admin')
-  rejectRequest(@Param('id') id: string, @Body() body: { reason?: string }, @CurrentUser() user: any) {
+  rejectRequest(@Param('id') id: string, @Body() body: RejectBondRequestDto, @CurrentUser() user: any) {
     return this.bonds.rejectRequest(id, body.reason ?? '', user.id, user.profile?.role as Role);
   }
 
@@ -132,7 +138,7 @@ export class BondsController {
   }
 
   @Post('hash')
-  computeHash(@Body() body: { content: string }) {
+  computeHash(@Body() body: HashDocumentDto) {
     return { hash: BondsService.hashDocument(body.content) };
   }
 }

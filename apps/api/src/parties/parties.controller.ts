@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PartiesService } from './parties.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { CreatePartyDto } from './dto/parties.dto';
 
 @ApiTags('parties')
 @ApiBearerAuth()
@@ -18,5 +19,5 @@ export class PartiesController {
   findOne(@Param('id') id: string) { return this.parties.findOne(id); }
 
   @Post()
-  create(@Body() body: { code: string; name: string }, @CurrentUser() user: { id: string }) { return this.parties.create(body, user.id); }
+  create(@Body() body: CreatePartyDto, @CurrentUser() user: { id: string }) { return this.parties.create(body, user.id); }
 }

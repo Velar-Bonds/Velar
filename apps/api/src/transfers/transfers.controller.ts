@@ -3,7 +3,14 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TransfersService } from './transfers.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { RequestTransferInput, Role } from '@velar/types';
+import { Role } from '@velar/types';
+import {
+  CounterOfferDto,
+  CreateTransferDto,
+  RegisterPaymentDto,
+  RequestReturnDto,
+  ReturnDecisionDto,
+} from './dto/transfers.dto';
 
 @ApiTags('transfers')
 @ApiBearerAuth()
@@ -25,7 +32,7 @@ export class TransfersController {
   findOne(@Param('id') id: string) { return this.transfers.findOne(id); }
 
   @Post()
-  request(@Body() body: RequestTransferInput, @CurrentUser() user: any) {
+  request(@Body() body: CreateTransferDto, @CurrentUser() user: any) {
     return this.transfers.requestTransfer(body, user.id);
   }
 
@@ -40,7 +47,7 @@ export class TransfersController {
   }
 
   @Patch(':id/counter')
-  counter(@Param('id') id: string, @Body() body: { amount: number; message?: string }, @CurrentUser() user: any) {
+  counter(@Param('id') id: string, @Body() body: CounterOfferDto, @CurrentUser() user: any) {
     return this.transfers.counterOffer(id, Number(body.amount), body.message, user.id);
   }
 
@@ -52,7 +59,7 @@ export class TransfersController {
   @Patch(':id/payment')
   registerPayment(
     @Param('id') id: string,
-    @Body() body: { evidence?: string; evidenceContent?: string },
+    @Body() body: RegisterPaymentDto,
     @CurrentUser() user: any,
   ) {
     return this.transfers.registerPayment(id, body.evidence ?? body.evidenceContent ?? '', user.id);
@@ -75,19 +82,19 @@ export class TransfersController {
 
   /** Dueño solicita al TSE retirar el bono del escrow (cancelación con disputa). */
   @Patch(':id/request-return')
-  requestReturn(@Param('id') id: string, @Body() body: { reason?: string }, @CurrentUser() user: any) {
+  requestReturn(@Param('id') id: string, @Body() body: RequestReturnDto, @CurrentUser() user: any) {
     return this.transfers.requestReturn(id, body?.reason ?? '', user.id);
   }
 
   /** TSE aprueba el retorno: devuelve el token on-chain al dueño. */
   @Patch(':id/approve-return')
-  approveReturn(@Param('id') id: string, @Body() body: { notes?: string }, @CurrentUser() user: any) {
+  approveReturn(@Param('id') id: string, @Body() body: ReturnDecisionDto, @CurrentUser() user: any) {
     return this.transfers.approveReturn(id, body?.notes, user.id, user.profile?.role as Role);
   }
 
   /** TSE rechaza la solicitud de retorno. */
   @Patch(':id/reject-return')
-  rejectReturn(@Param('id') id: string, @Body() body: { notes?: string }, @CurrentUser() user: any) {
+  rejectReturn(@Param('id') id: string, @Body() body: ReturnDecisionDto, @CurrentUser() user: any) {
     return this.transfers.rejectReturn(id, body?.notes, user.id, user.profile?.role as Role);
   }
 }
