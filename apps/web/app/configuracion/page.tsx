@@ -6,6 +6,7 @@ import { ExternalLink, LogOut, ShieldCheck, User, Wallet, Plug } from 'lucide-re
 import { useRouter } from 'next/navigation';
 import { AppShell } from '../../components/AppShell';
 import { ConnectWalletButton } from '../../components/ConnectWalletButton';
+import { WalletBalances } from '../../components/WalletBalances';
 import { apiFetch, type Me } from '../../lib/api';
 import { shortKey, stellarExpert } from '../../lib/stellar';
 import { createClient } from '../../lib/supabase/client';
@@ -93,6 +94,7 @@ function Content({ token, me }: { token: string; me: Me }) {
               flujo con custodia asistida sigue funcionando igual.
             </p>
             <ConnectWalletButton variant="full" linkedPublicKey={me.stellar_wallet} />
+            <WalletBalances />
           </div>
         </SettingsCard>
 

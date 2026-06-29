@@ -3,6 +3,7 @@
 import { Bell, ExternalLink, Plug, User, Wallet } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { ConnectWalletButton } from '../../../components/ConnectWalletButton';
+import { WalletBalances } from '../../../components/WalletBalances';
 import { useSession } from '../../../lib/api';
 import { shortKey, stellarExpert } from '../../../lib/stellar';
 
@@ -87,7 +88,10 @@ export default function PartidoConfiguracionPage() {
                 <p className="text-sm text-on-surface-variant">Conectá una wallet propia para verificar activos on-chain. Opcional y no reemplaza la custodia asistida.</p>
               </div>
             </div>
-            <ConnectWalletButton variant="full" linkedPublicKey={partyWallet} />
+            <div className="space-y-4">
+              <ConnectWalletButton variant="full" linkedPublicKey={partyWallet} />
+              <WalletBalances />
+            </div>
           </section>
 
           <div className="glass-card flex items-center gap-4 rounded-2xl p-5 opacity-70">
