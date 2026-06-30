@@ -9,6 +9,7 @@ const services = [
 
 let shuttingDown = false;
 const children = [];
+const managedPorts = [3000, 3001];
 
 function writePrefixed(name, stream, chunk) {
   const lines = chunk.toString().split(/\r?\n/);
@@ -18,12 +19,27 @@ function writePrefixed(name, stream, chunk) {
 }
 
 function stopProcessTree(child, signal = 'SIGTERM') {
-  if (child.killed) return;
   if (isWindows) {
     spawnSync('taskkill.exe', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
     return;
   }
   child.kill(signal);
+}
+
+function stopManagedPorts() {
+  if (!isWindows) return;
+  for (const port of managedPorts) {
+    spawnSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-Command',
+        `$c = Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue; ` +
+          `$c | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`,
+      ],
+      { stdio: 'ignore' },
+    );
+  }
 }
 
 function startService({ name, workspace }) {
@@ -100,6 +116,7 @@ function stopDevServers(message) {
   shuttingDown = true;
   console.error(message);
   for (const child of children) stopProcessTree(child);
+  stopManagedPorts();
   process.exit(1);
 }
 
@@ -109,11 +126,22 @@ async function checkUrl(url) {
 }
 
 waitForUrl('http://localhost:3001/api', 'api').then(() => {
-  setInterval(() => {
-    checkUrl('http://localhost:3001/api').catch((error) => {
-      if (shuttingDown) return;
-      stopDevServers(`[dev] api stopped responding at http://localhost:3001/api. Last error: ${error.message}`);
-    });
+  const failureGraceMs = 45_000;
+  let firstFailureAt = null;
+
+  setInterval(async () => {
+    if (shuttingDown) return;
+    try {
+      await checkUrl('http://localhost:3001/api');
+      firstFailureAt = null;
+    } catch (error) {
+      firstFailureAt ??= Date.now();
+      const elapsed = Date.now() - firstFailureAt;
+      console.warn(`[dev] api health check failed (${error.message}); waiting ${Math.ceil((failureGraceMs - elapsed) / 1000)}s before stopping.`);
+      if (elapsed >= failureGraceMs) {
+        stopDevServers(`[dev] api stayed unavailable at http://localhost:3001/api for ${Math.round(elapsed / 1000)}s. Last error: ${error.message}`);
+      }
+    }
   }, 5000);
 }).catch((error) => {
   stopDevServers(`[dev] API readiness check failed: ${error.message}`);
@@ -125,6 +153,7 @@ function shutdown(signal) {
   for (const child of children) {
     stopProcessTree(child, signal);
   }
+  stopManagedPorts();
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'));

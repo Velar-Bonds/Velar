@@ -1,24 +1,60 @@
+'use client';
+
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { AuthBranding } from './AuthBranding';
 
 type AuthShellProps = {
+  mode: 'login' | 'signup';
   cardClassName?: string;
   children: ReactNode;
 };
 
-export function AuthShell({ cardClassName = '', children }: AuthShellProps) {
+function AuthTabs({ active }: { active: AuthShellProps['mode'] }) {
+  const tabs = [
+    { href: '/login', label: 'Iniciar sesion', value: 'login' },
+    { href: '/signup', label: 'Crear cuenta', value: 'signup' },
+  ] as const;
+
   return (
-    <div className="velar-auth-shell min-h-[100dvh] w-full overflow-x-hidden px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-6">
-      <div className="mx-auto flex min-h-full max-w-[1440px] flex-col gap-4 lg:grid lg:min-h-[calc(100dvh-3rem)] lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)] lg:items-center lg:gap-8">
-        <AuthBranding compact />
+    <nav className="velar-auth-tabs" aria-label="Acceso">
+      {tabs.map((tab) => (
+        <Link
+          key={tab.value}
+          href={tab.href}
+          aria-current={active === tab.value ? 'page' : undefined}
+          className="velar-auth-tab"
+        >
+          {tab.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+export function AuthShell({ mode, cardClassName = '', children }: AuthShellProps) {
+  return (
+    <div className="velar-auth-shell">
+      <div className="velar-auth-frame">
         <AuthBranding />
 
-        <section className="flex w-full min-w-0 items-center justify-center lg:px-2 xl:px-4">
+        <section className="velar-auth-form-panel">
           <div
-            className={`velar-auth-card w-full max-w-[560px] rounded-[20px] px-5 py-6 sm:px-7 sm:py-8 md:px-8 md:py-9 lg:px-8 lg:py-8 xl:px-10 xl:py-9 ${cardClassName}`}
+            className={`velar-auth-card velar-auth-card--${mode} ${cardClassName}`}
           >
+            <AuthTabs active={mode} />
             {children}
           </div>
+          <p className="velar-auth-legal">
+            Al iniciar sesion, aceptas nuestros{' '}
+            <Link href="/terminos" className="velar-auth-link">
+              Terminos de uso
+            </Link>{' '}
+            y{' '}
+            <Link href="/privacidad" className="velar-auth-link">
+              Politica de privacidad.
+            </Link>
+          </p>
         </section>
       </div>
     </div>

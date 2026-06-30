@@ -3,6 +3,7 @@
 import { useReducer } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Eye } from 'lucide-react';
 import { AuthField } from '../../components/AuthField';
 import { AuthShell } from '../../components/AuthShell';
 import { MailIcon, LockIcon, UserIcon, inputClass } from '../../components/AuthUI';
@@ -102,24 +103,15 @@ export default function SignUpPage() {
   );
 
   return (
-    <AuthShell>
+    <AuthShell mode="signup">
       <div className="mx-auto w-full max-w-[560px]">
-        <div className="mb-5 text-center sm:mb-6">
-          <h2 className="velar-brand-text text-[1.85rem] font-extrabold tracking-[-0.03em] text-[#10235d] sm:text-[2.2rem] xl:text-[2.45rem]">
-            Crear cuenta
-          </h2>
-          <p className="mt-1.5 text-sm leading-6 text-[#667698] sm:text-[15px]">
-            Registrate para usar VELAR.
-          </p>
-        </div>
-
-        <div className="mt-4 flex gap-1 rounded-[16px] border border-[#d8e2f5] bg-white/85 p-1.5 shadow-[0_8px_18px_rgba(15,35,93,0.04)]">
+        <div className="mt-5 flex gap-1 rounded-[10px] border border-[#d8e2f5] bg-white p-1">
           {tab('usuario', 'Usuario')}
           {tab('partido', 'Partido')}
           {tab('tse', 'TSE')}
         </div>
 
-        <form onSubmit={handleSubmit} className="velar-stagger mt-5 space-y-3.5 sm:mt-6 sm:space-y-4">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-3.5 sm:mt-6 sm:space-y-4">
           {perspectiva === 'usuario' ? (
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -162,7 +154,7 @@ export default function SignUpPage() {
           )}
 
           <AuthField label="Correo electronico" icon={MailIcon}>
-            <input type="email" required aria-label="Correo electronico" value={f.email ?? ''} onChange={setField('email')} placeholder="tu@correo.com" className={inputClass} />
+            <input type="email" required aria-label="Correo electronico" autoComplete="email" value={f.email ?? ''} onChange={setField('email')} placeholder="tu@correo.com" className={inputClass} />
           </AuthField>
 
           <AuthField label="Contrasena" icon={LockIcon}>
@@ -170,6 +162,7 @@ export default function SignUpPage() {
               type={showPass ? 'text' : 'password'}
               required
               aria-label="Contrasena"
+              autoComplete="new-password"
               value={f.password ?? ''}
               onChange={setField('password')}
               placeholder="Minimo 8 caracteres"
@@ -178,13 +171,10 @@ export default function SignUpPage() {
             <button
               type="button"
               onClick={() => setState({ showPass: !showPass })}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8b9ac0] transition hover:text-[#5f709b]"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8b96ad] transition hover:text-[#5f709b]"
               aria-label="Mostrar contrasena"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <Eye size={20} strokeWidth={1.9} aria-hidden />
             </button>
           </AuthField>
 
@@ -193,10 +183,9 @@ export default function SignUpPage() {
           <button
             type="submit"
             disabled={loading}
-            className="velar-primary-button flex h-11 w-full items-center justify-center gap-3 rounded-[14px] text-[15px] font-semibold transition disabled:opacity-60 sm:h-12 sm:text-base lg:h-[50px]"
+            className="velar-primary-button flex h-13 w-full items-center justify-center gap-3 rounded-[8px] text-[16px] font-semibold transition disabled:opacity-60"
           >
             {loading ? 'Creando...' : 'Crear cuenta'}
-            
           </button>
         </form>
 

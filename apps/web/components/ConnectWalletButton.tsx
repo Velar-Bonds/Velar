@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Wallet, ChevronDown, ExternalLink, LogOut, AlertTriangle, Link2 } from 'lucide-react';
 import { useWallet } from '../lib/wallet';
 import { accountUrl, STELLAR_WALLETS_KIT_URL, shortKey } from '../lib/stellar';
@@ -16,7 +17,9 @@ export function ConnectWalletButton({ onUseInAccount, linkedPublicKey }: Props) 
   const { publicKey, isConnected, connecting, available, network, wrongNetwork, connect, disconnect } =
     useWallet();
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -26,11 +29,46 @@ export function ConnectWalletButton({ onUseInAccount, linkedPublicKey }: Props) 
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      const button = buttonRef.current;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const desktop = viewportWidth >= 1024;
+      const width = desktop ? 288 : Math.min(320, viewportWidth - 24);
+      const gutter = 12;
+
+      let left = desktop ? rect.right + gutter : rect.left;
+      if (!desktop && left + width > viewportWidth - 12) left = viewportWidth - width - 12;
+      if (desktop && left + width > viewportWidth - 12) left = Math.max(12, rect.left - width - gutter);
+
+      let top = desktop ? rect.top : rect.bottom + 10;
+      if (desktop && top + 260 > viewportHeight - 12) top = Math.max(12, viewportHeight - 272);
+      if (!desktop && top + 260 > viewportHeight - 12) top = Math.max(12, rect.top - 270);
+
+      setMenuStyle({ top, left, width });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open]);
+
   async function handleConnect() {
     try {
       await connect();
-    } catch (e: any) {
-      notify.err(e?.message ?? 'No se pudo conectar la wallet');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'No se pudo conectar la wallet';
+      notify.err(message);
     }
   }
 
@@ -66,6 +104,7 @@ export function ConnectWalletButton({ onUseInAccount, linkedPublicKey }: Props) 
   return (
     <div className="relative shrink-0" ref={ref}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition ${
@@ -79,8 +118,11 @@ export function ConnectWalletButton({ onUseInAccount, linkedPublicKey }: Props) 
         <ChevronDown size={14} />
       </button>
 
-      {open && (
-        <div className="absolute right-0 z-[60] mt-2 w-64 overflow-hidden rounded-xl border border-outline-variant/30 bg-white shadow-xl">
+      {open && menuStyle && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed z-[120] overflow-hidden rounded-xl border border-outline-variant/30 bg-white shadow-2xl ring-1 ring-slate-950/5"
+          style={{ top: menuStyle.top, left: menuStyle.left, width: menuStyle.width }}
+        >
           <div className="border-b border-outline-variant/20 px-4 py-3">
             <p className="text-[11px] font-medium uppercase tracking-wide text-on-surface-variant">Wallet conectada</p>
             <p className="mono-data mt-0.5 truncate text-sm" title={publicKey ?? ''}>{publicKey}</p>
@@ -121,7 +163,8 @@ export function ConnectWalletButton({ onUseInAccount, linkedPublicKey }: Props) 
           >
             <LogOut size={15} /> Desconectar
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
