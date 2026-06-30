@@ -19,11 +19,14 @@ export function ConnectWalletButton({ onUseInAccount, linkedPublicKey }: Props) 
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
@@ -120,6 +123,7 @@ export function ConnectWalletButton({ onUseInAccount, linkedPublicKey }: Props) 
 
       {open && menuStyle && typeof document !== 'undefined' && createPortal(
         <div
+          ref={menuRef}
           className="fixed z-[120] overflow-hidden rounded-xl border border-outline-variant/30 bg-white shadow-2xl ring-1 ring-slate-950/5"
           style={{ top: menuStyle.top, left: menuStyle.left, width: menuStyle.width }}
         >
