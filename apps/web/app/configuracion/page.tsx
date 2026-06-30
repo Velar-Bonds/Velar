@@ -96,11 +96,11 @@ function Content({ token, me }: { token: string; me: Me }) {
           </div>
         </SettingsCard>
 
-        <SettingsCard icon={<Plug size={20} />} title="Tu wallet (Freighter)">
+        <SettingsCard icon={<Plug size={20} />} title="Tu wallet Stellar">
           <div className="space-y-4">
             <p className="text-sm text-on-surface-variant">
-              Conectá tu propia wallet de Stellar (Freighter) para verificar tus activos on-chain
-              y, en el futuro, firmar transferencias vos mismo (self-custody). Es opcional: el
+              Conecta tu propia wallet de Stellar con Stellar Wallets Kit para verificar tus activos on-chain
+              y firmar transferencias vos mismo (self-custody). Es opcional: el
               flujo con custodia asistida sigue funcionando igual.
             </p>
             <ConnectWalletButton variant="full" linkedPublicKey={linkedKey} onUseInAccount={linkWallet} />

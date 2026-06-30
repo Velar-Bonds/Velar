@@ -77,15 +77,15 @@ function Content({ token }: { token: string }) {
 
   /**
    * COMPRA INSTANTÁNEA (pago con wallet/USDC): construye el XDR atómico en el
-   * backend, lo firma con Freighter y lo somete. El bono se libera al comprador
+   * backend, lo firma con Stellar Wallets Kit y lo somete. El bono se libera al comprador
    * en la misma transacción en que el vendedor recibe el USDC.
    */
   async function pagarConWallet(bondTokenId: string) {
     if (!wallet.isConnected) {
       try { await wallet.connect(); }
-      catch { notify.err('Conectá tu wallet Freighter (testnet) para pagar con wallet.'); return; }
+      catch { notify.err('Conecta una wallet Stellar en testnet para pagar con wallet.'); return; }
     }
-    if (wallet.wrongNetwork) { notify.err('Cambiá tu Freighter a la red TESTNET.'); return; }
+    if (wallet.wrongNetwork) { notify.err('Cambia tu wallet a la red TESTNET.'); return; }
     setWalletBusy(bondTokenId);
     try {
       const built: any = await apiFetch(token, 'POST', `/transfers/instant-buy/${bondTokenId}/build-xdr`);
