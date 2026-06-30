@@ -1,0 +1,10 @@
+.codegraph
+.git
+**/node_modules
+**/.next
+**/dist
+**/.env
+**/.env.*
+**/.stellar-wallets.json
+contracts/**/target
+.claude

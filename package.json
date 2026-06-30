@@ -15,8 +15,10 @@
     "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {
+    "@vercel/node": "^5.3.0",
     "next": "16.2.6",
     "react-doctor": "^0.3.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vercel": "^54.18.4"
   }
 }
