@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { AuthBranding } from './AuthBranding';
+import Aurora from './Aurora';
 
 type AuthShellProps = {
   mode: 'login' | 'signup';
@@ -36,6 +37,10 @@ export function AuthShell({ mode, cardClassName = '', children }: AuthShellProps
   return (
     <div className="velar-auth-shell">
       <div className="velar-auth-frame">
+        <div className="velar-auth-aurora" aria-hidden="true">
+          <Aurora />
+        </div>
+
         <AuthBranding />
 
         <section className="velar-auth-form-panel">
