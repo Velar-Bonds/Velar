@@ -3,6 +3,7 @@
 import { useReducer } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Eye } from 'lucide-react';
 import { AuthDivider } from '../../components/AuthDivider';
 import { AuthField } from '../../components/AuthField';
 import { AuthShell } from '../../components/AuthShell';
@@ -31,8 +32,6 @@ const initialLoginState: LoginState = {
 function loginReducer(state: LoginState, patch: Partial<LoginState>) {
   return { ...state, ...patch };
 }
-
-const socialAuthEnabled = process.env.NEXT_PUBLIC_SOCIAL_AUTH === '1';
 
 export default function LoginPage() {
   const [state, setState] = useReducer(loginReducer, initialLoginState);
@@ -84,36 +83,18 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell cardClassName="lg:h-full">
-      <div className="mx-auto w-full max-w-[560px] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:justify-center">
-        <div className="mb-5 text-center sm:mb-6 lg:mb-6">
-          <h2 className="velar-brand-text text-[1.85rem] font-extrabold tracking-[-0.03em] text-[#10235d] sm:text-[2.2rem] xl:text-[2.45rem]">
-            Iniciar sesion
-          </h2>
-          <p className="mt-1.5 text-sm leading-6 text-[#667698] sm:text-[15px]">
-            Accede a tu cuenta para continuar.
-          </p>
-        </div>
-
-        {socialAuthEnabled && (
-          <>
-            <div className="velar-fade-in">
-              <p className="mb-2.5 text-sm font-medium text-[#10235d]">Continuar con</p>
-              <SocialButtons />
-            </div>
-            <AuthDivider text="O continua con correo" />
-          </>
-        )}
-
-        <form onSubmit={handleSubmit} className="velar-stagger space-y-3.5 sm:space-y-4">
-          <AuthField label="Correo electronico" icon={MailIcon}>
+    <AuthShell mode="login">
+      <div className="mx-auto w-full">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <AuthField label="Correo institucional" icon={MailIcon}>
             <input
               type="email"
               required
-              aria-label="Correo electronico"
+              aria-label="Correo institucional"
+              autoComplete="email"
               value={email}
               onChange={(e) => setState({ email: e.target.value })}
-              placeholder="tu@correo.com"
+              placeholder="nombre@institucion.edu"
               className={inputClass}
             />
           </AuthField>
@@ -123,25 +104,23 @@ export default function LoginPage() {
               type={showPass ? 'text' : 'password'}
               required
               aria-label="Contrasena"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setState({ password: e.target.value })}
-              placeholder="Ingresa tu contrasena"
+              placeholder="••••••••••••"
               className={`${inputClass} pr-11`}
             />
             <button
               type="button"
               onClick={() => setState({ showPass: !showPass })}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8b9ac0] transition hover:text-[#5f709b]"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8b96ad] transition hover:text-[#5f709b]"
               aria-label="Mostrar contrasena"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <Eye size={20} strokeWidth={1.9} aria-hidden />
             </button>
           </AuthField>
 
-          <div className="flex flex-col gap-2.5 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex items-center justify-between gap-3 pt-1 text-[13px] sm:text-sm">
             <label className="flex items-center gap-2 text-[#667698]">
               <input
                 type="checkbox"
@@ -151,7 +130,7 @@ export default function LoginPage() {
               />
               Recordarme
             </label>
-            <button type="button" className="text-left font-medium text-[#1f63ff] hover:underline sm:text-right">
+            <button type="button" className="shrink-0 text-right font-medium text-[#1f63ff] hover:underline">
               Olvidaste tu contrasena?
             </button>
           </div>
@@ -161,14 +140,16 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="velar-primary-button flex h-11 w-full items-center justify-center gap-3 rounded-[14px] text-[15px] font-semibold transition disabled:opacity-60 sm:h-12 sm:text-base lg:h-[50px]"
+            className="velar-primary-button flex h-13 w-full items-center justify-center gap-3 rounded-[8px] text-[16px] font-semibold transition disabled:opacity-60"
           >
             {loading ? 'Iniciando...' : 'Iniciar sesion'}
-            
           </button>
         </form>
 
-        <p className="mt-5 text-center text-sm text-[#667698] sm:mt-6">
+        <AuthDivider text="o continua con" />
+        <SocialButtons />
+
+        <p className="mt-5 text-center text-sm text-[#667698] sm:hidden">
           No tienes cuenta?{' '}
           <Link href="/signup" className="font-semibold text-[#1f63ff] hover:underline">
             Crear cuenta

@@ -7,6 +7,9 @@ import { WalletProvider } from '../lib/wallet';
 export const metadata: Metadata = {
   title: 'VELAR | Trazabilidad de Bonos',
   description: 'Infraestructura blockchain para el traspaso digital de bonos de partidos políticos',
+  icons: {
+    icon: '/velar-mark.ico',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

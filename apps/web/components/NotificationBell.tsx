@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
 import { NotificationType } from '@velar/types';
@@ -46,8 +47,8 @@ function summaryFor(n: NotifRow): string {
     case 'offer_received': {
       const bondId = str(p.bondId);
       const amount = num(p.amount);
-      if (bondId) return `Bono ${bondId}${amount != null ? `, ₡${amount}` : ''}`;
-      return 'Tenés una nueva oferta de compra';
+      if (bondId) return `Bono ${bondId}${amount != null ? `, CRC ${amount}` : ''}`;
+      return 'Tienes una nueva oferta de compra';
     }
     case 'offer_accepted': {
       const bondId = str(p.bondId);
@@ -58,7 +59,7 @@ function summaryFor(n: NotifRow): string {
     case 'counter_offer_received': {
       const counterOfferAmount = num(p.counterOfferAmount);
       return counterOfferAmount != null
-        ? `Nueva contraoferta: ₡${counterOfferAmount}`
+        ? `Nueva contraoferta: CRC ${counterOfferAmount}`
         : 'Recibiste una contraoferta';
     }
     case 'payment_confirmed':
@@ -102,10 +103,12 @@ type NotificationBellProps = {
 export function NotificationBell({ role, panelAlign = 'right' }: NotificationBellProps) {
   const router = useRouter();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const [token, setToken] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; width: number } | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -124,19 +127,25 @@ export function NotificationBell({ role, panelAlign = 'right' }: NotificationBel
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
     } catch {
-      /* silently ignore — never crash the navbar */
+      // Never break shell chrome for polling failures.
     }
   }, [token]);
 
   useEffect(() => {
     if (!token) return;
-    load();
-    const id = setInterval(load, 30_000);
+    const runLoad = () => {
+      void load();
+    };
+    runLoad();
+    const id = setInterval(runLoad, 30_000);
     return () => clearInterval(id);
   }, [token, load]);
 
   useEffect(() => {
-    if (open && token) load();
+    if (!open || !token) return;
+    queueMicrotask(() => {
+      void load();
+    });
   }, [open, token, load]);
 
   useEffect(() => {
@@ -150,13 +159,45 @@ export function NotificationBell({ role, panelAlign = 'right' }: NotificationBel
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      const button = buttonRef.current;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const width = Math.min(360, viewportWidth - 24);
+      let left = panelAlign === 'left' ? rect.left : rect.right - width;
+      left = Math.max(12, Math.min(left, viewportWidth - width - 12));
+
+      let top = rect.bottom + 12;
+      const estimatedHeight = Math.min(460, viewportHeight - 24);
+      if (top + estimatedHeight > viewportHeight - 12) {
+        top = Math.max(12, rect.top - estimatedHeight - 12);
+      }
+
+      setPanelStyle({ top, left, width });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open, panelAlign]);
+
   const markAllRead = async () => {
     if (!token) return;
     try {
       await apiFetch(token, 'PATCH', '/notifications/read-all');
       await load();
     } catch {
-      /* silent */
+      // Silent by design.
     }
   };
 
@@ -169,7 +210,7 @@ export function NotificationBell({ role, panelAlign = 'right' }: NotificationBel
       }
       load();
     } catch {
-      /* silent */
+      // Silent by design.
     }
     router.push(routeFor(n.type, role));
   };
@@ -179,6 +220,7 @@ export function NotificationBell({ role, panelAlign = 'right' }: NotificationBel
   return (
     <div ref={wrapperRef} className="relative">
       <button
+        ref={buttonRef}
         type="button"
         aria-expanded={open}
         aria-haspopup="true"
@@ -193,9 +235,10 @@ export function NotificationBell({ role, panelAlign = 'right' }: NotificationBel
         )}
       </button>
 
-      {open && (
+      {open && panelStyle && typeof document !== 'undefined' && createPortal(
         <div
-          className={`absolute z-50 mt-2 w-80 overflow-hidden rounded-xl border border-outline-variant/30 bg-white shadow-xl ${panelAlign === 'right' ? 'right-0' : 'left-0'}`}
+          className="fixed z-[120] overflow-hidden rounded-xl border border-outline-variant/30 bg-white shadow-2xl ring-1 ring-slate-950/5"
+          style={{ top: panelStyle.top, left: panelStyle.left, width: panelStyle.width }}
         >
           <div className="flex items-center justify-between border-b border-outline-variant/20 px-4 py-3">
             <p className="text-sm font-semibold text-on-surface">Notificaciones</p>
@@ -206,7 +249,7 @@ export function NotificationBell({ role, panelAlign = 'right' }: NotificationBel
                 className="flex items-center gap-1 text-xs font-medium text-primary transition hover:text-primary-container"
               >
                 <CheckCheck size={14} />
-                Marcar todas como leídas
+                Marcar todas como leidas
               </button>
             )}
           </div>
@@ -214,7 +257,7 @@ export function NotificationBell({ role, panelAlign = 'right' }: NotificationBel
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-on-surface-variant">
-                No tenés notificaciones
+                No tienes notificaciones
               </p>
             ) : (
               notifications.slice(0, 10).map((n) => (
@@ -236,7 +279,8 @@ export function NotificationBell({ role, panelAlign = 'right' }: NotificationBel
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

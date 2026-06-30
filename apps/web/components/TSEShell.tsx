@@ -56,10 +56,7 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
             <Link href="/tse" className="flex items-center" aria-label="VELAR">
               <VelarBrand size="sm" />
             </Link>
-            <div className="flex items-center gap-1.5">
-              {DEMO_MODE && <CountrySelector compact />}
-              <NotificationBell role={me.role} panelAlign="left" />
-            </div>
+            {DEMO_MODE && <CountrySelector compact />}
           </div>
           <div className="mb-4 flex flex-col gap-2">
             <ConnectWalletButton variant="full" />
@@ -94,23 +91,45 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
               <div className="h-1.5 w-full rounded-full bg-emerald-500" />
             </div>
           </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-on-surface">{me.full_name ?? `${profile.authority.code} Admin`}</p>
-              <p className="text-[11px] text-on-surface-variant uppercase tracking-wide" title={profile.authority.name}>
-                {profile.flag} {profile.authority.code}
-              </p>
-            </div>
-            <button onClick={logout} className="rounded-lg p-2 text-on-surface-variant transition hover:bg-red-50 hover:text-red-600">
-              <LogOut className="h-4 w-4" strokeWidth={2} />
-            </button>
-          </div>
         </div>
       </aside>
 
       {/* Main */}
       <main className="flex flex-1 flex-col overflow-y-auto">
+        <header className="sticky top-0 z-30 border-b border-surface-variant/40 bg-white/88 px-6 py-4 backdrop-blur-md">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="relative w-full max-w-2xl">
+              <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-outline" />
+              <input
+                type="search"
+                placeholder="Buscar bonos, partidos, wallets o hashes..."
+                className="w-full rounded-2xl border border-outline-variant/40 bg-[#FAFCFF] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-primary-container focus:bg-white focus:ring-2 focus:ring-primary-container/10"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <NotificationBell role={me.role} panelAlign="right" />
+              <div className="flex items-center gap-3 rounded-2xl border border-outline-variant/40 bg-white px-3 py-2 shadow-sm">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
+                  {(me.full_name ?? profile.authority.code).slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-on-surface">{me.full_name ?? `${profile.authority.code} Admin`}</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-on-surface-variant" title={profile.authority.name}>
+                    {profile.flag} {profile.authority.code}
+                  </p>
+                </div>
+                <button
+                  onClick={logout}
+                  className="rounded-xl p-2 text-on-surface-variant transition hover:bg-red-50 hover:text-red-600"
+                  aria-label="Cerrar sesion"
+                >
+                  <LogOut className="h-4 w-4" strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
         {children}
       </main>
     </div>
