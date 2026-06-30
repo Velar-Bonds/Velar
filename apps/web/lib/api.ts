@@ -16,25 +16,36 @@ function messageFromPayload(payload: unknown, fallback: string) {
   return fallback;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function requestJson(method: string, path: string, body?: unknown, token?: string) {
   const url = buildApiUrl(path);
   let res: Response;
+  const maxAttempts = method.toUpperCase() === 'GET' ? 8 : 1;
 
-  try {
-    res = await fetch(url, {
-      method,
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch {
-    throw new Error(`No se pudo conectar con la API en ${url}. Verifica que el backend este corriendo y que NEXT_PUBLIC_API_URL apunte a la URL correcta.`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      res = await fetch(url, {
+        method,
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      break;
+    } catch {
+      if (attempt === maxAttempts) {
+        throw new Error(`No se pudo conectar con la API en ${url}. Verifica que el backend este corriendo y que NEXT_PUBLIC_API_URL apunte a la URL correcta.`);
+      }
+      await sleep(1000);
+    }
   }
 
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(messageFromPayload(json, `Error ${res.status} en ${url}`));
+  const json = await res!.json().catch(() => ({}));
+  if (!res!.ok) throw new Error(messageFromPayload(json, `Error ${res!.status} en ${url}`));
   return json;
 }
 
