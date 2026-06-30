@@ -39,6 +39,20 @@ export class TransfersService {
     return data?.stellar_wallet ?? null;
   }
 
+  /**
+   * Wallet de cobro del vendedor/partido: self-custody vinculada → custodial perfil → custodial partido.
+   */
+  private async paymentWalletOf(profileId: string): Promise<string | null> {
+    const { data } = await this.supabase.admin
+      .from('profiles')
+      .select('stellar_public_key, stellar_wallet, party_id, parties(stellar_wallet)')
+      .eq('id', profileId)
+      .maybeSingle();
+    if (!data) return null;
+    const partyWallet = (data.parties as { stellar_wallet?: string } | null)?.stellar_wallet;
+    return data.stellar_public_key ?? data.stellar_wallet ?? partyWallet ?? null;
+  }
+
   /** Llave self-custody (Freighter) vinculada al perfil; null si no hay o falta migración. */
   private async selfCustodyKeyOf(profileId: string): Promise<string | null> {
     const { data, error } = await this.supabase.admin
@@ -154,8 +168,8 @@ export class TransfersService {
         'Conectá y vinculá tu wallet self-custody (PATCH /users/me/wallet) para pagar con wallet.',
       );
     }
-    const sellerAddress = await this.walletOf(bond.current_owner);
-    if (!sellerAddress) throw new BadRequestException('El vendedor no tiene una wallet de destino.');
+    const sellerAddress = await this.paymentWalletOf(bond.current_owner);
+    if (!sellerAddress) throw new BadRequestException('El vendedor no tiene una wallet de cobro configurada.');
 
     const priceCrc = Number(bond.amount ?? bond.face_value) || 0;
     if (priceCrc <= 0) throw new BadRequestException('El bono no tiene un precio de venta definido.');
@@ -211,6 +225,131 @@ export class TransfersService {
     return { success: true, txHash: hash, explorerUrl: this.stellar.txExplorerUrl(hash), newOwner: actorId };
   }
 
+  /**
+   * NEGOCIACIÓN + WALLET: tras aceptación, el comprador paga USDC on-chain (DvP atómico).
+   * El USDC va a la wallet predeterminada del partido/vendedor; el bono se libera al comprador.
+   */
+  async buildNegotiatedWalletPaymentXdr(transferId: string, actorId: string) {
+    const { data: transfer } = await this.supabase.admin
+      .from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.to_owner !== actorId) {
+      throw new ForbiddenException('Solo el comprador puede pagar esta negociación');
+    }
+    if ((transfer.payment_method ?? 'sinpe') !== 'wallet') {
+      throw new BadRequestException('Esta negociación no usa pago con wallet.');
+    }
+    if (transfer.status !== TransferStatus.ACEPTADA) {
+      throw new BadRequestException('La venta debe estar aceptada antes de pagar con wallet.');
+    }
+
+    const bond = await this.getBond(transfer.bond_token_id);
+    const buyerAddress = await this.selfCustodyKeyOf(actorId);
+    if (!buyerAddress) {
+      throw new BadRequestException(
+        'Conectá y vinculá tu wallet (PATCH /users/me/wallet) para pagar con USDC.',
+      );
+    }
+    const sellerAddress = await this.paymentWalletOf(transfer.from_owner);
+    if (!sellerAddress) {
+      throw new BadRequestException('El vendedor no tiene wallet de cobro configurada.');
+    }
+
+    const priceCrc = Number(transfer.amount) || Number(bond.face_value) || 0;
+    if (priceCrc <= 0) throw new BadRequestException('La negociación no tiene un monto válido.');
+    const usdcAmount = this.usdcAmountFromCrc(priceCrc);
+
+    const xdr = await this.stellar.buildInstantBuyXdr({
+      buyerAddress, sellerAddress, bondId: bond.bond_id, usdcAmount,
+    });
+    return {
+      xdr,
+      networkPassphrase: this.stellar.networkPassphrase,
+      usdcAmount,
+      priceCrc,
+      buyerAddress,
+      sellerAddress,
+      transferId,
+    };
+  }
+
+  async submitNegotiatedWalletPaymentXdr(transferId: string, signedXdr: string, actorId: string) {
+    if (!signedXdr) throw new BadRequestException('Falta el XDR firmado');
+    const { data: transfer } = await this.supabase.admin
+      .from('transfers').select('*').eq('id', transferId).single();
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.to_owner !== actorId) throw new ForbiddenException('Solo el comprador puede enviar el pago');
+    if ((transfer.payment_method ?? 'sinpe') !== 'wallet') {
+      throw new BadRequestException('Esta negociación no usa pago con wallet.');
+    }
+    if (transfer.status !== TransferStatus.ACEPTADA) {
+      throw new BadRequestException('La venta debe estar aceptada para liquidar con wallet.');
+    }
+
+    const bond = await this.getBond(transfer.bond_token_id);
+    const priceCrc = Number(transfer.amount) || Number(bond.face_value) || null;
+    const { hash } = await this.stellar.submitSignedXdr(signedXdr);
+
+    const { data: updated } = await this.supabase.admin
+      .from('transfers')
+      .update({ status: TransferStatus.LIBERADA })
+      .eq('id', transferId)
+      .select()
+      .single();
+    await this.supabase.admin
+      .from('bonds')
+      .update({ current_owner: actorId, status: BondStatus.ACTIVO })
+      .eq('token_id', transfer.bond_token_id);
+
+    await this.audit.emit({
+      type: AuditEventType.TOKEN_LIBERADO,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: { negotiatedWallet: true, paymentMethod: 'wallet', priceCrc },
+      txHash: hash,
+    });
+    return {
+      success: true,
+      txHash: hash,
+      explorerUrl: this.stellar.txExplorerUrl(hash),
+      transfer: updated,
+      newOwner: actorId,
+    };
+  }
+
+  /** Tras aceptar oferta con pago wallet: queda en ACEPTADA esperando DvP on-chain (sin escrow TW). */
+  private async finishWalletAcceptedOffer(
+    transferId: string,
+    transfer: { bond_token_id: string; to_owner: string; from_owner: string; amount?: number | null },
+    bond: { bond_id: string },
+    actorId: string,
+    amount?: number | null,
+  ) {
+    const { data: updated } = await this.supabase.admin
+      .from('transfers').select('*').eq('id', transferId).single();
+
+    await this.audit.emit({
+      type: AuditEventType.TRANSFER_ACEPTADA,
+      bondTokenId: transfer.bond_token_id,
+      transferId,
+      actorId,
+      payload: {
+        paymentMethod: 'wallet',
+        awaitingOnChainPayment: true,
+        amount: amount ?? transfer.amount ?? null,
+      },
+    });
+    await this.notifications.emit(transfer.to_owner, NotificationType.OFFER_ACCEPTED, {
+      transferId,
+      bondTokenId: transfer.bond_token_id,
+      bondId: bond.bond_id,
+      amount: amount ?? transfer.amount ?? null,
+      paymentMethod: 'wallet',
+    });
+    return updated;
+  }
+
   // El COMPRADOR solicita comprar un bono a su dueño actual (modelo "vitrina").
   async requestTransfer(input: RequestTransferInput, actorId: string) {
     if (input.toOwner && input.toOwner !== actorId) {
@@ -250,20 +389,52 @@ export class TransfersService {
       .limit(1).maybeSingle();
     if (open) throw new BadRequestException('Ya hay una solicitud en curso para este bono');
 
-    const { data: transfer, error } = await this.supabase.admin
+    const paymentMethod = input.paymentMethod ?? 'sinpe';
+    const allowedMethods: string[] = Array.isArray(bond.payment_methods) ? bond.payment_methods : [];
+    if (allowedMethods.length > 0 && !allowedMethods.includes(paymentMethod)) {
+      throw new BadRequestException(
+        `Este bono no acepta el método "${paymentMethod}". Métodos disponibles: ${allowedMethods.join(', ')}.`,
+      );
+    }
+    if (paymentMethod === 'wallet') {
+      const buyerKey = await this.selfCustodyKeyOf(actorId);
+      if (!buyerKey) {
+        throw new BadRequestException(
+          'Para ofertar con wallet, conectá Freighter y vinculá tu llave (Configuración → wallet).',
+        );
+      }
+      const sellerKey = await this.paymentWalletOf(bond.current_owner);
+      if (!sellerKey) {
+        throw new BadRequestException('El vendedor aún no tiene wallet de cobro configurada.');
+      }
+    }
+
+    const insertPayload: Record<string, unknown> = {
+      bond_token_id: input.bondTokenId,
+      from_owner: bond.current_owner,
+      to_owner: actorId,
+      status: TransferStatus.SOLICITADA,
+      amount: input.amount ?? null,
+      buyer_message: input.message ?? null,
+      payment_method: paymentMethod,
+    };
+
+    let transfer: any;
+    let error: any;
+    ({ data: transfer, error } = await this.supabase.admin
       .from('transfers')
-      .insert({
-        bond_token_id: input.bondTokenId,
-        from_owner: bond.current_owner,
-        to_owner: actorId,
-        status: TransferStatus.SOLICITADA,
-        amount: input.amount ?? null,
-        buyer_message: input.message ?? null,
-      })
-      .select().single();
+      .insert(insertPayload)
+      .select().single());
+    if (error?.message?.includes('payment_method')) {
+      delete insertPayload.payment_method;
+      ({ data: transfer, error } = await this.supabase.admin
+        .from('transfers')
+        .insert(insertPayload)
+        .select().single());
+    }
     if (error) throw new BadRequestException(error.message);
 
-    await this.audit.emit({ type: AuditEventType.TRANSFER_SOLICITADA, bondTokenId: input.bondTokenId, transferId: transfer.id, actorId, payload: { buyer: actorId, seller: bond.current_owner, amount: input.amount } });
+    await this.audit.emit({ type: AuditEventType.TRANSFER_SOLICITADA, bondTokenId: input.bondTokenId, transferId: transfer.id, actorId, payload: { buyer: actorId, seller: bond.current_owner, amount: input.amount, paymentMethod } });
     await this.notifications.emit(bond.current_owner, NotificationType.OFFER_RECEIVED, { transferId: transfer.id, bondTokenId: input.bondTokenId, bondId: bond.bond_id, amount: input.amount ?? null, buyerId: actorId });
     return transfer;
   }
@@ -279,6 +450,12 @@ export class TransfersService {
     await this.supabase.admin.from('bonds').update({ status: BondStatus.EN_ESCROW }).eq('token_id', transfer.bond_token_id);
 
     const bond = await this.getBond(transfer.bond_token_id);
+    const paymentMethod = transfer.payment_method ?? 'sinpe';
+
+    if (paymentMethod === 'wallet') {
+      return this.finishWalletAcceptedOffer(transferId, transfer, bond, actorId);
+    }
+
     const fromWallet = await this.walletOf(transfer.from_owner);
     const toWallet = await this.walletOf(transfer.to_owner);
     const saleAmount = Number(transfer.amount) || 1;
@@ -411,6 +588,14 @@ export class TransfersService {
     await this.supabase.admin.from('bonds').update({ status: BondStatus.EN_ESCROW }).eq('token_id', transfer.bond_token_id);
 
     const bond = await this.getBond(transfer.bond_token_id);
+    const paymentMethod = transfer.payment_method ?? 'sinpe';
+
+    if (paymentMethod === 'wallet') {
+      return this.finishWalletAcceptedOffer(
+        transferId, transfer, bond, actorId, transfer.counter_offer_amount,
+      );
+    }
+
     const fromWallet = await this.walletOf(transfer.from_owner);
     const toWallet = await this.walletOf(transfer.to_owner);
     const saleAmount = Number(transfer.counter_offer_amount) || 1;

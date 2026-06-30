@@ -131,33 +131,31 @@ Como evolución, VELAR permite que un usuario use **su propia wallet** ([Freight
 
 Se activa con `NEXT_PUBLIC_SELF_CUSTODY=1`. Con el flag apagado, las negociaciones usan el camino custodial (`acceptTransfer`/`releaseToken`) sin cambios. El botón "Firmar con mi wallet" aparece solo para el vendedor (dueño actual) cuando el flag está activo.
 
-### Métodos de pago elegidos por el dueño + compra instantánea (DvP atómico)
+### Métodos de pago elegidos por el dueño + liquidación wallet (DvP atómico)
 
 Al publicar un bono, el **dueño elige qué métodos de pago acepta** (columna `bonds.payment_methods`, migración `20260629140000_bond_payment_methods`):
 
-- `sinpe` / `transferencia` → pago **P2P off-chain**: el comprador negocia/compra y el pago se valida con evidencia (flujo de escrow/negociación existente).
-- `wallet` → **liquidación atómica on-chain (Delivery vs. Payment)** con USDC: el bono se libera al comprador en la **misma transacción** en que el vendedor recibe el pago.
+- `sinpe` / `transferencia` → pago **P2P off-chain**: negociación → escrow → evidencia → release.
+- `wallet` → **USDC on-chain** tras aceptación: el comprador elige `paymentMethod: wallet` al ofertar; cuando el vendedor acepta, la negociación queda en `aceptada` y el comprador paga en **Negociaciones** con Freighter (DvP atómico).
 
-El marketplace muestra los métodos aceptados como badges y habilita el botón "Pagar con wallet (USDC)" solo si el bono acepta `wallet`. La compra instantánea no usa escrow ni negociación:
+La wallet de cobro del partido/vendedor se resuelve en este orden: `profiles.stellar_public_key` (Freighter vinculada) → `profiles.stellar_wallet` → `parties.stellar_wallet`.
+
+Flujo negociado + wallet (`transfers.payment_method`, migración `20260630120000_transfer_payment_method`):
 
 ```
-1. Front  →  POST /api/transfers/instant-buy/:bondTokenId/build-xdr
-      Backend asegura la trustline USDC del vendedor y arma UNA tx atómica:
-        op A (si falta): changeTrust del bono       (source = comprador)
-        op B: payment USDC  comprador → vendedor     (source = comprador)
-        op C: payment bono  vendedor → comprador     (source = vendedor)
-      El backend CO-FIRMA la op C con la llave custodial del vendedor y
-      devuelve el XDR (source/fee = comprador, aún sin la firma del comprador).
-
-2. Front  →  freighter-api.signTransaction(xdr)  → el comprador firma.
-
-3. Front  →  POST /api/transfers/instant-buy/:bondTokenId/submit-xdr { signedXdr }
-      Backend somete a Horizon. Como la tx es atómica, el token solo se mueve
-      si el USDC se pagó en la misma tx. Al confirmar, se registra la venta y
-      el nuevo dueño en la BD.
+1. Comprador oferta en marketplace con paymentMethod: wallet
+2. Vendedor acepta → transfer queda ACEPTADA (sin escrow TW off-chain)
+3. Comprador  →  POST /api/transfers/:id/build-wallet-payment-xdr
+      Backend arma tx atómica USDC↔bono (monto de la negociación)
+4. Freighter firma  →  POST /api/transfers/:id/submit-wallet-payment-xdr
+      USDC va a la wallet del partido; bono al comprador; transfer LIBERADA
 ```
+
+También existe **compra instantánea** (`instant-buy/*`) como atajo sin negociación; el flujo principal recomendado es negociar primero.
 
 Atomicidad: el vendedor no necesita estar online (su op va pre-firmada) y nadie puede quedarse con el pago sin entregar el bono, ni viceversa. La tasa CRC→USDC es configurable con `STELLAR_USDC_CRC_RATE` (default 530).
+
+**Mainnet:** configurar `STELLAR_NETWORK=mainnet` en la API y `NEXT_PUBLIC_STELLAR_NETWORK=mainnet` en el front; Freighter debe estar en PUBLIC. Requiere USDC real y wallets fondeadas (sin Friendbot).
 
 ---
 

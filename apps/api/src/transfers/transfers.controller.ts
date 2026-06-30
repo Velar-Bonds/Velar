@@ -109,6 +109,21 @@ export class TransfersController {
     return this.transfers.submitInstantBuy(bondTokenId, body.signedXdr, user.id);
   }
 
+  /** NEGOCIACIÓN + WALLET: XDR DvP tras aceptación (comprador firma con Freighter). */
+  @Post(':id/build-wallet-payment-xdr')
+  buildWalletPayment(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.transfers.buildNegotiatedWalletPaymentXdr(id, user.id);
+  }
+
+  @Post(':id/submit-wallet-payment-xdr')
+  submitWalletPayment(
+    @Param('id') id: string,
+    @Body() body: SubmitXdrDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.transfers.submitNegotiatedWalletPaymentXdr(id, body.signedXdr, user.id);
+  }
+
   /** Dueño solicita al TSE retirar el bono del escrow (cancelación con disputa). */
   @Patch(':id/request-return')
   requestReturn(@Param('id') id: string, @Body() body: RequestReturnDto, @CurrentUser() user: any) {

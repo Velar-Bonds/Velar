@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import type { RequestTransferInput } from '@velar/types';
 
 export class CreateTransferDto implements RequestTransferInput {
@@ -15,6 +15,14 @@ export class CreateTransferDto implements RequestTransferInput {
   @IsOptional()
   @IsString()
   toOwner?: string;
+
+  @ApiPropertyOptional({
+    description: 'Método de pago elegido por el comprador',
+    enum: ['sinpe', 'transferencia', 'wallet'],
+  })
+  @IsOptional()
+  @IsIn(['sinpe', 'transferencia', 'wallet'])
+  paymentMethod?: 'sinpe' | 'transferencia' | 'wallet';
 
   @ApiPropertyOptional({ example: 950000 })
   @IsOptional()

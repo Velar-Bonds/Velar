@@ -48,6 +48,8 @@ export interface RequestTransferInput {
   bondTokenId: string;
   /** Opcional: el comprador es siempre el usuario autenticado (actorId). */
   toOwner?: string;
+  /** Cómo pagará si el vendedor acepta: sinpe | transferencia | wallet. */
+  paymentMethod?: 'sinpe' | 'transferencia' | 'wallet';
   /** Monto acordado de la recompra (off-chain). */
   amount?: number;
   message?: string;
