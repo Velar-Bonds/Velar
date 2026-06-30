@@ -171,7 +171,7 @@ export default function SignUpPage() {
             <button
               type="button"
               onClick={() => setState({ showPass: !showPass })}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8b96ad] transition hover:text-[#5f709b]"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9fb2d4] transition hover:text-[#cfe0ff]"
               aria-label="Mostrar contrasena"
             >
               <Eye size={20} strokeWidth={1.9} aria-hidden />
