@@ -67,7 +67,7 @@ export default function LandingPage() {
           </nav>
 
           <a
-            href="/entrar"
+            href="/login"
             className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-white no-underline transition hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25"
           >
             Acceder a la plataforma
@@ -296,7 +296,7 @@ export default function LandingPage() {
                   'Cada movimiento queda firmado en tu wallet de custodia',
                 ],
                 cta: 'Crear cuenta de partido',
-                href: '/signup',
+                href: '/login?mode=signup',
               },
               {
                 Icon: ShieldCheck,
