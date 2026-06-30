@@ -10,45 +10,61 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  getAddress,
-  getNetwork,
-  isConnected,
-  requestAccess,
-  signTransaction as freighterSign,
-} from '@stellar/freighter-api';
+  KitEventType,
+  Networks,
+  StellarWalletsKit,
+} from '@creit.tech/stellar-wallets-kit';
+import { defaultModules } from '@creit.tech/stellar-wallets-kit/modules/utils';
 
 const STORAGE_KEY = 'velar.wallet.publicKey';
 
-/** Red esperada por VELAR. Freighter devuelve 'TESTNET' | 'PUBLIC' | 'FUTURENET' ... */
 export const EXPECTED_NETWORK = 'TESTNET';
 export const TESTNET_PASSPHRASE = 'Test SDF Network ; September 2015';
 
+let kitInitialized = false;
+
 export type WalletState = {
-  /** Llave pública (G...) de la wallet conectada, o null. */
   publicKey: string | null;
   isConnected: boolean;
-  /** true mientras corre connect(). */
   connecting: boolean;
-  /** Red reportada por Freighter ('TESTNET', 'PUBLIC', ...). */
   network: string | null;
   networkPassphrase: string | null;
-  /** ¿La extensión Freighter está instalada/disponible en el navegador? */
   available: boolean | null;
-  /** true si está conectada pero en una red distinta a TESTNET. */
   wrongNetwork: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
-  /** Firma un XDR con Freighter (testnet). Devuelve el XDR firmado. */
   signXdr: (xdr: string) => Promise<string>;
 };
 
 const WalletContext = createContext<WalletState | null>(null);
 
-function readError(res: { error?: unknown } | undefined): string | null {
-  const err = res?.error as { message?: string } | string | undefined;
-  if (!err) return null;
-  if (typeof err === 'string') return err;
-  return err.message ?? 'Error de Freighter';
+function ensureKit() {
+  if (kitInitialized) return;
+  StellarWalletsKit.init({
+    modules: defaultModules(),
+    network: Networks.TESTNET,
+    authModal: {
+      showInstallLabel: true,
+      hideUnsupportedWallets: false,
+    },
+  });
+  kitInitialized = true;
+}
+
+function networkLabel(passphrase: string | null | undefined) {
+  if (passphrase === Networks.TESTNET) return 'TESTNET';
+  if (passphrase === Networks.PUBLIC) return 'PUBLIC';
+  if (passphrase === Networks.FUTURENET) return 'FUTURENET';
+  if (passphrase === Networks.SANDBOX) return 'SANDBOX';
+  if (passphrase === Networks.STANDALONE) return 'STANDALONE';
+  return null;
+}
+
+function errorMessage(error: unknown, fallback = 'No se pudo conectar la wallet') {
+  if (error instanceof Error && error.message) return error.message;
+  const kitError = error as { message?: unknown };
+  if (typeof kitError?.message === 'string' && kitError.message.trim()) return kitError.message;
+  return fallback;
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
@@ -58,91 +74,108 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [connecting, setConnecting] = useState(false);
 
-  const refreshNetwork = useCallback(async () => {
-    try {
-      const net = await getNetwork();
-      if (!readError(net)) {
-        setNetwork(net.network ?? null);
-        setNetworkPassphrase(net.networkPassphrase ?? null);
-      }
-    } catch {
-      /* Freighter no disponible */
+  const setWalletState = useCallback((address: string | null, passphrase?: string | null) => {
+    setPublicKey(address);
+    if (typeof passphrase !== 'undefined') {
+      setNetworkPassphrase(passphrase);
+      setNetwork(networkLabel(passphrase));
+    }
+    if (typeof window !== 'undefined') {
+      if (address) window.localStorage.setItem(STORAGE_KEY, address);
+      else window.localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
 
-  // Al montar: detectar Freighter y restaurar la sesión previa (si la había).
+  const refreshNetwork = useCallback(async () => {
+    ensureKit();
+    try {
+      const net = await StellarWalletsKit.getNetwork();
+      setNetwork(net.network || networkLabel(net.networkPassphrase));
+      setNetworkPassphrase(net.networkPassphrase ?? null);
+    } catch {
+      setNetwork(networkLabel(TESTNET_PASSPHRASE));
+      setNetworkPassphrase(TESTNET_PASSPHRASE);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
+    ensureKit();
+
+    const unsubscribeState = StellarWalletsKit.on(KitEventType.STATE_UPDATED, (event) => {
+      if (!active) return;
+      setWalletState(event.payload.address ?? null, event.payload.networkPassphrase ?? null);
+    });
+
+    const unsubscribeDisconnect = StellarWalletsKit.on(KitEventType.DISCONNECT, () => {
+      if (!active) return;
+      setWalletState(null, null);
+    });
+
     (async () => {
       try {
-        const conn = await isConnected();
-        const installed = !readError(conn) && Boolean(conn.isConnected);
+        const supportedWallets = await StellarWalletsKit.refreshSupportedWallets();
         if (!active) return;
-        setAvailable(installed);
-        if (!installed) return;
+        setAvailable(supportedWallets.length > 0);
 
         const stored = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
         if (stored) {
-          // Intentar recuperar la dirección sin re-pedir permiso (si ya está autorizada).
-          const addr = await getAddress();
-          if (!active) return;
-          if (!readError(addr) && addr.address) {
-            setPublicKey(addr.address);
-            await refreshNetwork();
-          } else {
-            window.localStorage.removeItem(STORAGE_KEY);
-          }
+          setWalletState(stored, TESTNET_PASSPHRASE);
+          await refreshNetwork();
         }
       } catch {
         if (active) setAvailable(false);
       }
     })();
+
     return () => {
       active = false;
+      unsubscribeState();
+      unsubscribeDisconnect();
     };
-  }, [refreshNetwork]);
+  }, [refreshNetwork, setWalletState]);
 
   const connect = useCallback(async () => {
+    ensureKit();
     setConnecting(true);
     try {
-      const conn = await isConnected();
-      const installed = !readError(conn) && Boolean(conn.isConnected);
-      setAvailable(installed);
-      if (!installed) {
-        throw new Error('FREIGHTER_NOT_INSTALLED');
-      }
-
-      const access = await requestAccess();
-      const accessErr = readError(access);
-      if (accessErr || !access.address) {
-        throw new Error(accessErr ?? 'No se pudo obtener la dirección de Freighter');
-      }
-      setPublicKey(access.address);
-      if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, access.address);
+      const { address } = await StellarWalletsKit.authModal();
+      if (!address) throw new Error('La wallet no devolvio una direccion publica');
+      setAvailable(true);
+      setWalletState(address, TESTNET_PASSPHRASE);
       await refreshNetwork();
+    } catch (error) {
+      throw new Error(errorMessage(error));
     } finally {
       setConnecting(false);
     }
-  }, [refreshNetwork]);
+  }, [refreshNetwork, setWalletState]);
 
   const disconnect = useCallback(() => {
-    setPublicKey(null);
-    setNetwork(null);
-    setNetworkPassphrase(null);
-    if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    ensureKit();
+    setWalletState(null, null);
+    StellarWalletsKit.disconnect().catch(() => undefined);
+  }, [setWalletState]);
 
   const signXdr = useCallback(
     async (xdr: string) => {
-      const res = await freighterSign(xdr, {
+      ensureKit();
+      let address = publicKey;
+      if (!address) {
+        const result = await StellarWalletsKit.authModal();
+        address = result.address;
+        if (!address) throw new Error('La wallet no devolvio una direccion publica');
+        setWalletState(address, TESTNET_PASSPHRASE);
+      }
+
+      const result = await StellarWalletsKit.signTransaction(xdr, {
         networkPassphrase: TESTNET_PASSPHRASE,
-        address: publicKey ?? undefined,
+        address,
       });
-      const err = readError(res);
-      if (err || !res.signedTxXdr) throw new Error(err ?? 'No se pudo firmar la transacción');
-      return res.signedTxXdr;
+      if (!result.signedTxXdr) throw new Error('No se pudo firmar la transaccion');
+      return result.signedTxXdr;
     },
-    [publicKey],
+    [publicKey, setWalletState],
   );
 
   const value = useMemo<WalletState>(
@@ -153,7 +186,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       network,
       networkPassphrase,
       available,
-      wrongNetwork: Boolean(publicKey && network && network !== EXPECTED_NETWORK),
+      wrongNetwork: Boolean(publicKey && networkPassphrase && networkPassphrase !== TESTNET_PASSPHRASE),
       connect,
       disconnect,
       signXdr,

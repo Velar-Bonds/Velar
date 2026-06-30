@@ -60,11 +60,11 @@ function Content({ token, me }: { token: string; me: Me }) {
     finally { setBusy(null); }
   }
 
-  // Self-custody: el vendedor firma la transferencia con su propia wallet (Freighter).
-  // build-xdr (backend) → signTransaction (Freighter) → submit-xdr (backend).
+  // Self-custody: el vendedor firma la transferencia con la wallet Stellar seleccionada.
+  // build-xdr (backend) -> signTransaction (Stellar Wallets Kit) -> submit-xdr (backend).
   async function signSelfCustody(id: string) {
-    if (!wallet.isConnected) { notify.err('Conectá tu wallet Freighter primero (botón "Conectar wallet").'); return; }
-    if (wallet.wrongNetwork) { notify.err('Cambiá Freighter a la red TESTNET para firmar.'); return; }
+    if (!wallet.isConnected) { notify.err('Conecta una wallet Stellar primero con el boton "Conectar wallet".'); return; }
+    if (wallet.wrongNetwork) { notify.err('Cambia tu wallet a la red TESTNET para firmar.'); return; }
     setBusy(id);
     try {
       const built = await apiFetch(token, 'POST', `/transfers/${id}/build-xdr`);

@@ -3,19 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Wallet, ChevronDown, ExternalLink, LogOut, AlertTriangle, Link2 } from 'lucide-react';
 import { useWallet } from '../lib/wallet';
-import { accountUrl, FREIGHTER_INSTALL_URL, shortKey } from '../lib/stellar';
+import { accountUrl, STELLAR_WALLETS_KIT_URL, shortKey } from '../lib/stellar';
 import { notify } from './Toast';
 
 type Props = {
-  /** Variante visual: 'compact' para navbars/sidebars, 'full' para páginas. */
   variant?: 'compact' | 'full';
-  /** Si se provee, muestra "Usar esta wallet en mi cuenta" en el menú. */
   onUseInAccount?: (publicKey: string) => void;
-  /** Llave ya vinculada al perfil, para marcar el estado. */
   linkedPublicKey?: string | null;
 };
 
-export function ConnectWalletButton({ variant = 'compact', onUseInAccount, linkedPublicKey }: Props) {
+export function ConnectWalletButton({ onUseInAccount, linkedPublicKey }: Props) {
   const { publicKey, isConnected, connecting, available, network, wrongNetwork, connect, disconnect } =
     useWallet();
   const [open, setOpen] = useState(false);
@@ -33,25 +30,19 @@ export function ConnectWalletButton({ variant = 'compact', onUseInAccount, linke
     try {
       await connect();
     } catch (e: any) {
-      if (e?.message === 'FREIGHTER_NOT_INSTALLED') {
-        notify.err('Freighter no está instalado. Abrí freighter.app para instalarlo.');
-        window.open(FREIGHTER_INSTALL_URL, '_blank', 'noopener,noreferrer');
-      } else {
-        notify.err(e?.message ?? 'No se pudo conectar la wallet');
-      }
+      notify.err(e?.message ?? 'No se pudo conectar la wallet');
     }
   }
 
-  // Freighter no instalado → estado claro con link de instalación (sin romper la página).
   if (available === false && !isConnected) {
     return (
       <a
-        href={FREIGHTER_INSTALL_URL}
+        href={STELLAR_WALLETS_KIT_URL}
         target="_blank"
         rel="noopener noreferrer"
         className="flex shrink-0 items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-100"
       >
-        <Wallet size={16} /> Instalar Freighter
+        <Wallet size={16} /> Wallets Stellar
       </a>
     );
   }
@@ -65,7 +56,7 @@ export function ConnectWalletButton({ variant = 'compact', onUseInAccount, linke
         className="flex shrink-0 items-center gap-2 rounded-full border border-primary-container/30 bg-primary-container/10 px-3.5 py-2 text-sm font-semibold text-primary-container transition hover:bg-primary-container/20 disabled:opacity-60"
       >
         <Wallet size={16} />
-        {connecting ? 'Conectando…' : 'Conectar wallet'}
+        {connecting ? 'Conectando...' : 'Conectar wallet'}
       </button>
     );
   }
@@ -95,7 +86,7 @@ export function ConnectWalletButton({ variant = 'compact', onUseInAccount, linke
             <p className="mono-data mt-0.5 truncate text-sm" title={publicKey ?? ''}>{publicKey}</p>
             {wrongNetwork ? (
               <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-amber-700">
-                <AlertTriangle size={12} /> Red {network ?? '—'} — cambiá Freighter a TESTNET
+                <AlertTriangle size={12} /> Red {network ?? '-'} - cambia tu wallet a TESTNET
               </p>
             ) : (
               <p className="mt-1.5 text-xs font-medium text-emerald-600">Stellar Testnet</p>

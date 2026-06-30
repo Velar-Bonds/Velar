@@ -97,8 +97,8 @@ export default function PartidoConfiguracionPage() {
             <div className="mb-4 flex items-center gap-4">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Plug size={20} /></span>
               <div>
-                <p className="font-semibold">Tu wallet (Freighter)</p>
-                <p className="text-sm text-on-surface-variant">Conectá una wallet propia para verificar activos on-chain. Opcional y no reemplaza la custodia asistida.</p>
+                <p className="font-semibold">Tu wallet Stellar</p>
+                <p className="text-sm text-on-surface-variant">Conecta una wallet propia con Stellar Wallets Kit para verificar activos on-chain. Opcional y no reemplaza la custodia asistida.</p>
               </div>
             </div>
             <div className="space-y-4">

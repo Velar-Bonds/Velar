@@ -8,8 +8,8 @@ export const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 export const FRIENDBOT_URL = 'https://friendbot.stellar.org';
 /** Dashboard de estado de la red Stellar. */
 export const STELLAR_DASHBOARD_URL = 'https://dashboard.stellar.org/';
-/** Página para instalar la wallet Freighter. */
-export const FREIGHTER_INSTALL_URL = 'https://www.freighter.app/';
+/** Documentacion del selector multi-wallet usado por VELAR. */
+export const STELLAR_WALLETS_KIT_URL = 'https://stellarwalletskit.dev/';
 
 /**
  * Helper unificado de enlaces a Stellar Expert (testnet). Es la fuente de verdad
