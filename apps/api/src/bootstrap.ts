@@ -8,13 +8,20 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter, NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import express = require('express');
+import * as expressImport from 'express';
+import type { Express } from 'express';
 import { AppModule } from './app.module';
 
-let cachedApp: express.Express | null = null;
+/** Express 5 en Vercel serverless exporta la factory sin `.default`; en local puede venir como default. */
+const express: typeof expressImport =
+  typeof expressImport === 'function'
+    ? expressImport
+    : ((expressImport as { default?: typeof expressImport }).default ?? expressImport);
+
+let cachedApp: Express | null = null;
 
 /** Crea (o reutiliza) la app Express de NestJS. Usada por main.ts y Vercel serverless. */
-export async function createNestExpressApp(): Promise<express.Express> {
+export async function createNestExpressApp(): Promise<Express> {
   if (cachedApp) return cachedApp;
 
   const server = express();

@@ -386,7 +386,8 @@ export class BondsService {
       .from('bonds').insert(insertPayload).select().single();
     // Si aún no se aplicó la migración multi_country, insertamos sin country.
     if (bondErr && /country|column|schema cache/i.test(bondErr.message)) {
-      const { country: _c, ...legacy } = insertPayload;
+      const legacy = { ...insertPayload };
+      delete (legacy as Record<string, unknown>).country;
       ({ data: bond, error: bondErr } = await this.supabase.admin
         .from('bonds').insert(legacy).select().single());
     }
