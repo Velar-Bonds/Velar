@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { Public } from '../auth/public.decorator';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import {
   EXPLORER_NETWORK,
@@ -12,6 +13,7 @@ import { WalletService } from '../escrow/wallet.service';
  * Endpoints PÚBLICOS (sin auth) para el explorador del ledger de VELAR.
  * Cualquiera puede consultarlos para verificar el estado on-chain.
  */
+@Public()
 @Controller('explorer')
 export class ExplorerController {
   constructor(

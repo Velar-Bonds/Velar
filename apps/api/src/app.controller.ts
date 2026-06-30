@@ -1,7 +1,9 @@
 import { Controller, Get, Header } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { Public } from './auth/public.decorator';
 
+@Public()
 @Controller()
 export class AppController {
   @Get()

@@ -17,6 +17,7 @@ import { ExplorerModule } from './explorer/explorer.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthModule } from './health/health.module';
 import { RolesGuard } from './auth/roles.guard';
+import { AuthGuard } from './auth/auth.guard';
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
@@ -53,6 +54,7 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   controllers: [AppController],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
