@@ -367,25 +367,29 @@ export class BondsService {
     const bondId = `SOL-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
     const docHash = BondsService.hashDocument(`${bondId}:${req.party_id}:${Date.now()}`);
 
-    const { data: bond, error: bondErr } = await this.supabase.admin
-      .from('bonds')
-      .insert({
-        bond_id: bondId,
-        issuer_party_id: req.party_id,
-        country: owner.country,
-        current_owner: owner.id,
-        status: BondStatus.PENDIENTE,
-        document_hash: docHash,
-        face_value: req.face_value,
-        certificate_number: req.certificate_number,
-        currency: req.currency ?? currencyForCountry(owner.country),
-        interest_rate: req.interest_rate,
-        series: req.series,
-        issue_date: req.issue_date,
-        maturity_date: req.maturity_date,
-      })
-      .select()
-      .single();
+    const insertPayload: Record<string, unknown> = {
+      bond_id: bondId,
+      issuer_party_id: req.party_id,
+      country: owner.country,
+      current_owner: owner.id,
+      status: BondStatus.PENDIENTE,
+      document_hash: docHash,
+      face_value: req.face_value,
+      certificate_number: req.certificate_number,
+      currency: req.currency ?? currencyForCountry(owner.country),
+      interest_rate: req.interest_rate,
+      series: req.series,
+      issue_date: req.issue_date,
+      maturity_date: req.maturity_date,
+    };
+    let { data: bond, error: bondErr } = await this.supabase.admin
+      .from('bonds').insert(insertPayload).select().single();
+    // Si aún no se aplicó la migración multi_country, insertamos sin country.
+    if (bondErr && /country|column|schema cache/i.test(bondErr.message)) {
+      const { country: _c, ...legacy } = insertPayload;
+      ({ data: bond, error: bondErr } = await this.supabase.admin
+        .from('bonds').insert(legacy).select().single());
+    }
     if (bondErr) throw new BadRequestException(bondErr.message);
 
     const stellarResult = await this.issueApprovedBondOnchain(bond, owner.id);
