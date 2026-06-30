@@ -32,4 +32,4 @@ export const LockIcon = <Lock size={19} strokeWidth={1.9} aria-hidden />;
 export const UserIcon = <User size={19} strokeWidth={1.9} aria-hidden />;
 
 export const inputClass =
-  'velar-input h-12 w-full rounded-[8px] border bg-white py-3 pl-12 pr-4 text-[15px] placeholder:text-[#7c879d] outline-none transition';
+  'velar-input h-12 w-full rounded-[8px] border py-3 pl-12 pr-4 text-[15px] outline-none transition';

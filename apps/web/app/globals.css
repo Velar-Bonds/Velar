@@ -258,15 +258,15 @@ body {
   position: relative;
   z-index: 1;
   width: min(100%, 604px);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
-  /* Vidrio esmerilado sutil: deja asomar el aurora en los bordes sin perder
-     legibilidad del texto oscuro y los inputs. */
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(18px) saturate(120%);
-  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  /* Vidrio ahumado: gris/navy translucido que deja ver el aurora detras,
+     con el contenido reestilado a tema oscuro para que todo siga legible. */
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(22px) saturate(130%);
+  -webkit-backdrop-filter: blur(22px) saturate(130%);
   padding: 40px 48px 44px;
-  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.3);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.45);
 }
 
 .velar-auth-card--login {
@@ -291,17 +291,17 @@ body {
   min-height: 38px;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid #d9e2f0;
-  color: #667085;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(226, 235, 252, 0.62);
   font-size: 1rem;
   font-weight: 500;
   text-decoration: none;
 }
 
 .velar-auth-tab[aria-current="page"] {
-  border-bottom-color: #1f63ff;
+  border-bottom-color: #5b9bff;
   border-bottom-width: 2px;
-  color: #0b63ff;
+  color: #cfe0ff;
 }
 
 .velar-auth-legal {
@@ -331,14 +331,14 @@ body {
   align-items: center;
   gap: 16px;
   margin: 28px 0 24px;
-  color: #7c879d;
+  color: rgba(203, 215, 236, 0.6);
   font-size: 0.92rem;
 }
 
 .velar-auth-divider span {
   height: 1px;
   flex: 1;
-  background: #d9e2f0;
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .velar-social-grid {
@@ -385,17 +385,28 @@ body {
 }
 
 .velar-input {
-  border-color: #d8e2f5;
-  background: #ffffff;
-  color: #0b1739;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4f8ff;
+  box-shadow: none;
+}
+
+.velar-input::placeholder {
+  color: rgba(203, 215, 236, 0.45);
 }
 
 .velar-input:focus {
-  border-color: #1f63ff;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    0 0 0 3px rgba(31, 99, 255, 0.12);
+  border-color: #5b9bff;
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 0 0 3px rgba(91, 155, 255, 0.22);
+}
+
+/* "Recordarme" y texto auxiliar dentro de la tarjeta (sobre vidrio ahumado). */
+.velar-auth-card label.flex {
+  color: rgba(226, 235, 252, 0.82);
+}
+.velar-auth-card p {
+  color: rgba(203, 215, 236, 0.8);
 }
 
 @media (min-width: 768px) {
