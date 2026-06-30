@@ -213,6 +213,9 @@ export class TransfersService {
 
   // El COMPRADOR solicita comprar un bono a su dueño actual (modelo "vitrina").
   async requestTransfer(input: RequestTransferInput, actorId: string) {
+    if (input.toOwner && input.toOwner !== actorId) {
+      throw new ForbiddenException('Solo podés solicitar una compra para tu propia cuenta');
+    }
     const bond = await this.getBond(input.bondTokenId);
     if (!bond.current_owner) throw new BadRequestException('El bono no tiene dueño asignado');
     if (bond.current_owner === actorId) throw new BadRequestException('No podés solicitar comprar tu propio bono');

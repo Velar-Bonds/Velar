@@ -46,7 +46,8 @@ export interface Transfer {
 
 export interface RequestTransferInput {
   bondTokenId: string;
-  toOwner: string;
+  /** Opcional: el comprador es siempre el usuario autenticado (actorId). */
+  toOwner?: string;
   /** Monto acordado de la recompra (off-chain). */
   amount?: number;
   message?: string;

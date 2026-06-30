@@ -9,10 +9,12 @@ export class CreateTransferDto implements RequestTransferInput {
   @IsNotEmpty()
   bondTokenId!: string;
 
-  @ApiProperty({ description: 'UUID del nuevo dueño (recomprador)' })
+  @ApiPropertyOptional({
+    description: 'UUID del comprador (opcional; por defecto el usuario autenticado)',
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  toOwner!: string;
+  toOwner?: string;
 
   @ApiPropertyOptional({ example: 950000 })
   @IsOptional()
