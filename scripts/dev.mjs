@@ -1,11 +1,9 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const isWindows = process.platform === 'win32';
 const npm = isWindows ? 'npm.cmd' : 'npm';
-const services = [
-  { name: 'api', workspace: 'apps/api' },
-  { name: 'web', workspace: 'apps/web' },
-];
+const rootDir = fileURLToPath(new URL('..', import.meta.url));
 
 let shuttingDown = false;
 const children = [];
@@ -19,6 +17,7 @@ function writePrefixed(name, stream, chunk) {
 }
 
 function stopProcessTree(child, signal = 'SIGTERM') {
+  if (!child?.pid) return;
   if (isWindows) {
     spawnSync('taskkill.exe', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
     return;
@@ -42,13 +41,13 @@ function stopManagedPorts() {
   }
 }
 
-function startService({ name, workspace }) {
+function startService({ name, workspace, script }) {
   let child;
   try {
-    const args = ['run', 'dev', '--workspace', workspace];
+    const args = ['run', script, '--workspace', workspace];
     const command = isWindows ? `${npm} ${args.join(' ')}` : npm;
     child = spawn(command, isWindows ? [] : args, {
-      cwd: process.cwd(),
+      cwd: rootDir,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: process.env,
       shell: isWindows,
@@ -77,14 +76,12 @@ function startService({ name, workspace }) {
     for (const other of children) {
       if (other !== child) stopProcessTree(other);
     }
+    stopManagedPorts();
     process.exit(code ?? 1);
   });
 
+  children.push(child);
   return child;
-}
-
-for (const service of services) {
-  children.push(startService(service));
 }
 
 async function waitForUrl(url, label, timeoutMs = 90000) {
@@ -125,8 +122,19 @@ async function checkUrl(url) {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
-waitForUrl('http://localhost:3001/api', 'api').then(() => {
-  const failureGraceMs = 45_000;
+async function main() {
+  console.log('[dev] Clearing managed dev ports 3000 and 3001 before startup.');
+  stopManagedPorts();
+
+  console.log('[dev] Starting API first. Web will start only after http://localhost:3001/api is ready.');
+  startService({ name: 'api', workspace: 'apps/api', script: 'dev' });
+  await waitForUrl('http://localhost:3001/api', 'api');
+
+  console.log('[dev] Starting web after API readiness check passed.');
+  startService({ name: 'web', workspace: 'apps/web', script: 'dev:next' });
+  await waitForUrl('http://localhost:3000', 'web');
+
+  const failureGraceMs = 15_000;
   let firstFailureAt = null;
 
   setInterval(async () => {
@@ -143,7 +151,9 @@ waitForUrl('http://localhost:3001/api', 'api').then(() => {
       }
     }
   }, 5000);
-}).catch((error) => {
+}
+
+main().catch((error) => {
   stopDevServers(`[dev] API readiness check failed: ${error.message}`);
 });
 
