@@ -6,9 +6,13 @@
 
 > Trazabilidad, custodia y auditoría en tiempo real sobre Stellar — para el TSE, partidos y ciudadanos.
 
+<div align="center">
+
+[![Demo en vivo](https://img.shields.io/badge/▶_Demo_en_vivo-velar--web.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://velar-web.vercel.app/)
+[![Desplegado en Vercel](https://img.shields.io/badge/Desplegado_en-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://velar-web.vercel.app/)
 [![CI](https://github.com/Velar-Bonds/Velar/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Velar-Bonds/Velar/actions/workflows/ci.yml)
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template)
+</div>
 
 ---
 
@@ -22,6 +26,17 @@
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=flat&logo=tailwindcss&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel&logoColor=white)
+
+</div>
+
+---
+
+<div align="center">
+
+### 🌐 Probá VELAR ahora → **[velar-web.vercel.app](https://velar-web.vercel.app/)**
+
+_Prototipo funcional en Stellar Testnet — explorador público, flujo institucional del TSE y trazabilidad on-chain._
 
 </div>
 
@@ -63,6 +78,22 @@ VELAR convierte cada bono en un **token único en la blockchain de Stellar** —
 ```
 
 Cada paso genera una **transacción inmutable en Stellar**, auditable públicamente en [stellar.expert](https://stellar.expert/explorer/testnet).
+
+---
+
+## Stack tecnológico
+
+| Capa | Tecnología | Rol en VELAR | Dónde corre |
+|---|---|---|---|
+| **Frontend** | Next.js 16 · React · Tailwind CSS v4 | Shells de TSE, partido y comprador; explorador público | **Vercel** |
+| **Backend** | NestJS · TypeScript | Lógica de negocio, firma de transacciones, auditoría | **Vercel** (serverless) |
+| **Blockchain** | Stellar (capa 1) | Cada bono es un activo único; fuente de verdad de la propiedad | Stellar Testnet |
+| **Smart contracts** | Soroban · Rust · WebAssembly | Contrato `VelarBond` con metadata on-chain | Stellar Testnet |
+| **Escrow** | Trustless Work | Escrow on-chain durante el traspaso (Single-Release) | Stellar Testnet |
+| **Auth + Índice** | Supabase (Postgres · RLS) | Sesiones/JWT y cache de lectura; `audit_events` append-only | Supabase Cloud |
+| **Tipos** | `@velar/types` | Contrato de tipos compartido entre web y API | Monorepo |
+
+> Todo el proyecto es un monorepo TypeScript. **El frontend y el backend se despliegan en [Vercel](https://vercel.com)**; la verdad de la propiedad vive en Stellar, no en la base de datos.
 
 ---
 
@@ -214,10 +245,29 @@ npm run demo:register     # crea partido + usuario nuevos y corre el flujo
 
 ---
 
+## Despliegue
+
+VELAR está desplegado en **Vercel**:
+
+- **Web (Next.js):** [velar-web.vercel.app](https://velar-web.vercel.app/)
+- **API (NestJS serverless):** definida en [`vercel.api.json`](vercel.api.json), sirviendo `api/index.ts` con los tipos y el build del backend.
+
+Cada push a `main` dispara el pipeline de CI y el redeploy automático en Vercel.
+
+---
+
 ## Contribuir
 
 Ver [CONTRIBUTING.md](CONTRIBUTING.md) y el [ROADMAP.md](ROADMAP.md) para saber qué tareas están abiertas.
 
 ---
 
-> Testnet / demo. Las wallets son de custodia sin dinero real. No usar en producción sin auditoría de seguridad.
+<div align="center">
+
+**Hecho para la comunidad Stellar 🚀 · Trazabilidad pública, verificable y en tiempo real.**
+
+[🌐 Demo en vivo](https://velar-web.vercel.app/) · [📄 Docs](docs/) · [🗺️ Roadmap](ROADMAP.md)
+
+</div>
+
+> ⚠️ Testnet / demo. Las wallets son de custodia sin dinero real. No usar en producción sin auditoría de seguridad.
