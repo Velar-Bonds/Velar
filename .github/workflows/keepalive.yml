@@ -1,0 +1,46 @@
+name: Supabase Keep-Alive
+
+# Evita que el proyecto Supabase (plan Free) se auto-pause por inactividad.
+# El Free pausa tras ~7 días sin actividad; esto hace una consulta liviana a la
+# base varias veces por semana para mantenerla despierta.
+#
+# Requiere dos secrets en el repo (Settings -> Secrets and variables -> Actions):
+#   - SUPABASE_URL       ej: https://xxxx.supabase.co
+#   - SUPABASE_ANON_KEY  la anon/publishable key (NO la service_role)
+
+on:
+  schedule:
+    # Lunes y jueves 06:00 UTC -> gap máximo ~3-4 días, bien por debajo del límite de 7.
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch: {} # permite dispararlo a mano desde la pestaña Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (consulta liviana a la base)
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "Faltan los secrets SUPABASE_URL / SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          # select liviano contra una tabla real -> golpea Postgres = cuenta como actividad.
+          # limit=1 y RLS pueden devolver 0 filas; da igual, lo importante es que la consulta llegue.
+          code=$(curl -s -o /tmp/resp.txt -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/profiles?select=id&limit=1")
+          echo "HTTP $code"
+          # 2xx o 4xx (ej. RLS/permiso) = el proyecto está DESPIERTO y respondió.
+          # 000/5xx o timeout = pausado o caído -> falla para que te enteres.
+          if [ "$code" -ge 200 ] && [ "$code" -lt 500 ]; then
+            echo "Supabase activo ✅"
+          else
+            echo "Supabase NO respondió (¿pausado/caído?) ❌"
+            cat /tmp/resp.txt || true
+            exit 1
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
