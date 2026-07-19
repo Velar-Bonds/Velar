@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 // WebSocket polyfill (Supabase SDK lo inicializa al construir el cliente).
 import { WebSocket } from 'ws';
 if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === 'undefined') {
@@ -6,7 +9,10 @@ if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === 'undefined') {
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ExpressAdapter, NestExpressApplication } from '@nestjs/platform-express';
+import {
+  ExpressAdapter,
+  NestExpressApplication,
+} from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as expressImport from 'express';
 import type { Express } from 'express';
@@ -16,7 +22,8 @@ import { AppModule } from './app.module';
 const express: typeof expressImport =
   typeof expressImport === 'function'
     ? expressImport
-    : ((expressImport as { default?: typeof expressImport }).default ?? expressImport);
+    : ((expressImport as { default?: typeof expressImport }).default ??
+      expressImport);
 
 let cachedApp: Express | null = null;
 
@@ -25,11 +32,16 @@ export async function createNestExpressApp(): Promise<Express> {
   if (cachedApp) return cachedApp;
 
   const server = express();
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, new ExpressAdapter(server));
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule,
+    new ExpressAdapter(server),
+  );
   app.set('trust proxy', 1);
 
   const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+    ? process.env.CORS_ORIGINS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : [process.env.WEB_URL ?? 'http://localhost:3000'];
 
   app.enableCors({ origin: corsOrigins, credentials: true });
@@ -45,8 +57,20 @@ export async function createNestExpressApp(): Promise<Express> {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+
+  if (process.env.NODE_ENV !== 'production') {
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+
+    const publicDir = path.join(__dirname, '..', 'public');
+
+    fs.mkdirSync(publicDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(publicDir, 'openapi.json'),
+      JSON.stringify(document, null, 2),
+    );
+    
+  }
 
   await app.init();
   cachedApp = server;
