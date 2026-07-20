@@ -1,30 +1,11 @@
 import { Injectable, BadRequestException, Logger, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { WalletService } from '../escrow/wallet.service';
+import type { LoginRequest, RegisterRequest } from '@velar/types';
 
-export type Perspectiva = 'usuario' | 'partido' | 'tse';
-
-export interface RegisterInput {
-  email: string;
-  password: string;
-  perspectiva: Perspectiva;
-  // Usuario (comprador/recomprador)
-  nombres?: string;
-  apellidos?: string;
-  identificacion?: string;
-  telefono?: string;
-  direccion?: string;
-  // Partido
-  nombrePartido?: string;
-  codigo?: string;
-  representanteLegal?: string;
-  cedulaJuridica?: string;
-}
-
-export interface LoginInput {
-  email: string;
-  password: string;
-}
+export type Perspectiva = RegisterRequest['perspectiva'];
+export type RegisterInput = RegisterRequest;
+export type LoginInput = LoginRequest;
 
 /**
  * Registro de cuentas con las 3 perspectivas:
@@ -145,9 +126,7 @@ export class AuthService {
       }
 
       // 4) Completar el profile (lo creó el trigger handle_new_user) con la info.
-      const role = input.perspectiva === 'partido' ? 'emisor'
-        : input.perspectiva === 'tse' ? 'tse'
-        : 'comprador';
+      const role = input.perspectiva === 'partido' ? 'emisor' : 'comprador';
       const core = {
         role,
         full_name: this.fullName(input),

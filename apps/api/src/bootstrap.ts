@@ -11,6 +11,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as expressImport from 'express';
 import type { Express } from 'express';
 import { AppModule } from './app.module';
+import { ContractExceptionFilter } from './common/contracts/contract-exception.filter';
+import { ContractValidationInterceptor } from './common/contracts/contract-validation.interceptor';
 
 /** Express 5 en Vercel serverless exporta la factory sin `.default`; en local puede venir como default. */
 const express: typeof expressImport =
@@ -34,6 +36,8 @@ export async function createNestExpressApp(): Promise<Express> {
 
   app.enableCors({ origin: corsOrigins, credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalInterceptors(new ContractValidationInterceptor());
+  app.useGlobalFilters(new ContractExceptionFilter());
   app.setGlobalPrefix('api');
 
   const swaggerConfig = new DocumentBuilder()

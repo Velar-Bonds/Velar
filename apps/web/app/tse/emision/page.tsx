@@ -5,6 +5,10 @@ import { TSEShell } from '../../../components/TSEShell';
 import { notify } from '../../../components/Toast';
 import { useSession, apiFetch, API_URL } from '../../../lib/api';
 import { useCountry } from '../../../lib/country';
+import { createBondRequestSchema, type FieldErrors } from '@velar/types';
+import { validateSchemaForm } from '../../../lib/forms/schema-form';
+import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFieldError';
+import { typedApi } from '../../../lib/typed-api';
 
 const LATAM_CURRENCIES = ['CRC', 'COP', 'BRL', 'ARS', 'USD'];
 
@@ -25,6 +29,7 @@ export default function EmisionPage() {
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState('');
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [parties, setParties] = useState<any[]>([]);
 
   useEffect(() => {
@@ -40,26 +45,29 @@ export default function EmisionPage() {
   }
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+    { setForm((f) => ({ ...f, [k]: e.target.value })); setFieldErrors({}); };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.party_id || !form.face_value) { setMsg({ type: 'err', text: 'Completá el partido y el monto.' }); return; }
+    const bondId = form.bond_id || `SOL-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
+    const payload = {
+      bondId,
+      issuerPartyId: form.party_id,
+      documentHash: 'pending-' + bondId,
+      faceValue: Number(form.face_value),
+      certificateNumber: form.certificate_number || undefined,
+      currency: form.currency,
+      interestRate: form.interest_rate ? Number(form.interest_rate) : undefined,
+      series: form.series || undefined,
+      issueDate: form.issue_date || undefined,
+      maturityDate: form.maturity_date || undefined,
+    };
+    const validation = validateSchemaForm(createBondRequestSchema, payload);
+    if (!validation.success) { setFieldErrors(validation.errors); setMsg(null); return; }
     setBusy(true); setMsg(null); setStep('Emitiendo bono…');
     try {
-      const bondId = form.bond_id || `SOL-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
-      const bond = await apiFetch(token, 'POST', '/bonds', {
-        bondId,
-        issuerPartyId: form.party_id,
-        documentHash: 'pending-' + bondId,
-        faceValue: Number(form.face_value),
-        certificateNumber: form.certificate_number || undefined,
-        currency: form.currency,
-        interestRate: form.interest_rate ? Number(form.interest_rate) : undefined,
-        series: form.series || undefined,
-        issueDate: form.issue_date || undefined,
-        maturityDate: form.maturity_date || undefined,
-      });
+      const bond = await typedApi.call('bonds.create', { body: validation.data }, token);
+      setFieldErrors({});
 
       if (docFile && bond?.token_id) {
         setStep('Subiendo certificado PDF…');
@@ -81,7 +89,8 @@ export default function EmisionPage() {
         setMsg({ type: 'ok', text: `Bono ${bondId} emitido correctamente y asignado al partido.` });
       }
 
-      notify.tx(bond?.txHash, `Bono ${bondId} emitido on-chain.`);
+      const txHash = typeof bond.stellar_transaction_hash === 'string' ? bond.stellar_transaction_hash : undefined;
+      notify.tx(txHash, `Bono ${bondId} emitido on-chain.`);
 
       setForm({ party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: profile.currency.code, interest_rate: '', series: '', issue_date: '', maturity_date: '' });
       setDocFile(null);
@@ -112,15 +121,16 @@ export default function EmisionPage() {
           </div>
         )}
 
-        <form onSubmit={submit} className="glass-card flex flex-col gap-5 rounded-2xl p-7" style={{ background: 'rgba(255,255,255,0.85)' }}>
+        <form noValidate onSubmit={submit} className="glass-card flex flex-col gap-5 rounded-2xl p-7" style={{ background: 'rgba(255,255,255,0.85)' }}>
           <div>
             <label className="field-label">Partido emisor <span className="text-red-500">*</span></label>
-            <select value={form.party_id} onChange={set('party_id')} required className="field-input bg-white">
+            <select value={form.party_id} onChange={set('party_id')} required className="field-input bg-white" {...schemaFieldProps(fieldErrors, 'issuerPartyId')}>
               <option value="">Seleccioná un partido de {profile.flag} {profile.name}</option>
               {parties
                 .filter((p) => (p.country ?? 'CR') === country)
                 .map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
+            <SchemaFieldError errors={fieldErrors} field="issuerPartyId" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -137,7 +147,8 @@ export default function EmisionPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="field-label">Monto total <span className="text-red-500">*</span></label>
-              <input type="number" min="0" step="1000" required value={form.face_value} onChange={set('face_value')} placeholder="5000000" className="field-input" />
+              <input type="number" min="0" step="1000" required value={form.face_value} onChange={set('face_value')} placeholder="5000000" className="field-input" {...schemaFieldProps(fieldErrors, 'faceValue')} />
+              <SchemaFieldError errors={fieldErrors} field="faceValue" />
             </div>
             <div>
               <label className="field-label">Moneda</label>
@@ -154,18 +165,21 @@ export default function EmisionPage() {
             </div>
             <div>
               <label className="field-label">Tasa de interés (%)</label>
-              <input type="number" min="0" max="100" step="0.01" value={form.interest_rate} onChange={set('interest_rate')} placeholder="6.5" className="field-input" />
+              <input type="number" min="0" max="100" step="0.01" value={form.interest_rate} onChange={set('interest_rate')} placeholder="6.5" className="field-input" {...schemaFieldProps(fieldErrors, 'interestRate')} />
+              <SchemaFieldError errors={fieldErrors} field="interestRate" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="field-label">Fecha de emisión</label>
-              <input type="date" value={form.issue_date} onChange={set('issue_date')} className="field-input" />
+              <input type="date" value={form.issue_date} onChange={set('issue_date')} className="field-input" {...schemaFieldProps(fieldErrors, 'issueDate')} />
+              <SchemaFieldError errors={fieldErrors} field="issueDate" />
             </div>
             <div>
               <label className="field-label">Fecha de vencimiento</label>
-              <input type="date" value={form.maturity_date} onChange={set('maturity_date')} className="field-input" />
+              <input type="date" value={form.maturity_date} onChange={set('maturity_date')} className="field-input" {...schemaFieldProps(fieldErrors, 'maturityDate')} />
+              <SchemaFieldError errors={fieldErrors} field="maturityDate" />
             </div>
           </div>
 

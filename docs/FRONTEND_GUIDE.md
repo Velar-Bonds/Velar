@@ -203,3 +203,52 @@ const current = owners.find(o => o.current); // dueño actual
 
 No cambies el backend por tu cuenta. Anotá lo que necesitás (campo faltante, endpoint nuevo,
 forma distinta) en este archivo o en `docs/BACKEND.md` y avisá al humano / agente de backend.
+
+---
+
+## 10. Cliente tipado, schemas de formulario y errores (issue #43)
+
+No declares a mano el tipo de un endpoint cubierto. Usá el registro `apiContracts` de
+`@velar/types` mediante `typedApi`:
+
+```typescript
+const report = await typedApi.call(
+  'reports.create',
+  { body: { title, description, period_start, period_end } },
+  token,
+);
+```
+
+El nombre del contrato determina el tipo de `body`, `params`, `query` y respuesta. El cliente de
+`apps/web/lib/contract-client.ts` valida inputs antes de hacer `fetch`, valida la respuesta en
+runtime y lanza `ContractApiError` con `code`, `status`, `fields` y `details`. `apiFetch` también
+pasa automáticamente por esta capa para que las pantallas existentes obtengan validación runtime.
+
+Para formularios, importá el mismo schema del endpoint y el mapper reutilizable:
+
+```typescript
+const validation = validateSchemaForm(createTransferRequestSchema, values, 'es');
+if (!validation.success) {
+  setFieldErrors(validation.errors);
+  return;
+}
+await typedApi.call('transfers.create', { body: validation.data }, token);
+```
+
+`SchemaFieldError` y `schemaFieldProps` agregan mensaje inline, `role="alert"`,
+`aria-invalid` y `aria-describedby`. Signup, emisión/solicitud de bonos, ofertas de transferencia
+y creación/revisión de reportes ya usan este patrón. Los mensajes salen del catálogo compartido
+español/inglés, no de strings duplicados en cada formulario.
+
+### Comprobación local sin credenciales
+
+```bash
+npm run build --workspace @velar/types
+npm run typecheck --workspace apps/web
+npm run lint --workspace apps/web
+npm run test --workspace apps/web
+npm run build --workspace apps/web
+```
+
+Las pruebas del cliente usan `fetch` simulado y las pruebas de formularios son puras; ninguna
+requiere Supabase, VELAR DB, wallets ni proveedores externos.

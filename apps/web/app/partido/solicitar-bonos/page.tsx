@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { FileText, CheckCircle, ArrowLeft, Info, Clock } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { createBondRequestRequestSchema, type FieldErrors } from '@velar/types';
+import { validateSchemaForm } from '../../../lib/forms/schema-form';
+import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFieldError';
+import { typedApi } from '../../../lib/typed-api';
 
 type BondRequest = {
   id: string;
@@ -49,6 +53,7 @@ export default function SolicitarBonosPage() {
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const load = (tok: string) =>
     apiFetch(tok, 'GET', '/bonds/requests').then(setRequests).catch(() => {});
@@ -64,26 +69,25 @@ export default function SolicitarBonosPage() {
   }
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+    { setForm((f) => ({ ...f, [k]: e.target.value })); setFieldErrors({}); };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.face_value || isNaN(Number(form.face_value))) {
-      setMsg({ type: 'err', text: 'Ingresá un monto válido.' });
-      return;
-    }
+    const payload = {
+      certificateNumber: form.certificate_number || undefined,
+      faceValue: Number(form.face_value),
+      currency: form.currency,
+      interestRate: form.interest_rate ? Number(form.interest_rate) : undefined,
+      series: form.series || undefined,
+      issueDate: form.issue_date || undefined,
+      maturityDate: form.maturity_date || undefined,
+      notes: form.notes || undefined,
+    };
+    const validation = validateSchemaForm(createBondRequestRequestSchema, payload);
+    if (!validation.success) { setFieldErrors(validation.errors); setMsg(null); return; }
     setBusy(true); setMsg(null);
     try {
-      await apiFetch(token, 'POST', '/bonds/requests', {
-        certificateNumber: form.certificate_number || undefined,
-        faceValue: Number(form.face_value),
-        currency: form.currency,
-        interestRate: form.interest_rate ? Number(form.interest_rate) : undefined,
-        series: form.series || undefined,
-        issueDate: form.issue_date || undefined,
-        maturityDate: form.maturity_date || undefined,
-        notes: form.notes || undefined,
-      });
+      await typedApi.call('bonds.requests.create', { body: validation.data }, token);
       setMsg({ type: 'ok', text: 'Solicitud enviada al TSE. Te notificaremos cuando sea procesada.' });
       setForm({ certificate_number: '', face_value: '', currency: 'CRC', interest_rate: '', series: '', issue_date: '', maturity_date: '', notes: '' });
       load(token);
@@ -130,7 +134,7 @@ export default function SolicitarBonosPage() {
                 </div>
               )}
 
-              <form onSubmit={submit} className="flex flex-col gap-5">
+              <form noValidate onSubmit={submit} className="flex flex-col gap-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="field-label">Número de certificado</label>
@@ -148,7 +152,8 @@ export default function SolicitarBonosPage() {
                   <div>
                     <label className="field-label">Monto total <span className="text-red-500">*</span></label>
                     <input type="number" min="0" step="1000" required value={form.face_value} onChange={set('face_value')}
-                      placeholder="5000000" className="field-input" />
+                      placeholder="5000000" className="field-input" {...schemaFieldProps(fieldErrors, 'faceValue')} />
+                    <SchemaFieldError errors={fieldErrors} field="faceValue" />
                   </div>
                   <div>
                     <label className="field-label">Moneda</label>
@@ -161,17 +166,20 @@ export default function SolicitarBonosPage() {
                 <div>
                   <label className="field-label">Tasa de interés (%) <span className="text-on-surface-variant font-normal normal-case">opcional</span></label>
                   <input type="number" min="0" max="100" step="0.01" value={form.interest_rate} onChange={set('interest_rate')}
-                    placeholder="Ej. 6.5" className="field-input" />
+                    placeholder="Ej. 6.5" className="field-input" {...schemaFieldProps(fieldErrors, 'interestRate')} />
+                  <SchemaFieldError errors={fieldErrors} field="interestRate" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="field-label">Fecha de emisión</label>
-                    <input type="date" value={form.issue_date} onChange={set('issue_date')} className="field-input" />
+                    <input type="date" value={form.issue_date} onChange={set('issue_date')} className="field-input" {...schemaFieldProps(fieldErrors, 'issueDate')} />
+                    <SchemaFieldError errors={fieldErrors} field="issueDate" />
                   </div>
                   <div>
                     <label className="field-label">Fecha de vencimiento</label>
-                    <input type="date" value={form.maturity_date} onChange={set('maturity_date')} className="field-input" />
+                    <input type="date" value={form.maturity_date} onChange={set('maturity_date')} className="field-input" {...schemaFieldProps(fieldErrors, 'maturityDate')} />
+                    <SchemaFieldError errors={fieldErrors} field="maturityDate" />
                   </div>
                 </div>
 

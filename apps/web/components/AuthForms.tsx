@@ -1,14 +1,17 @@
 'use client';
 
 import { useReducer } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { AuthDivider } from './AuthDivider';
 import { AuthField } from './AuthField';
 import { MailIcon, LockIcon, UserIcon, SocialButtons, inputClass } from './AuthUI';
-import { publicApiFetch } from '../lib/api';
 import { getDefaultRouteForRole, getSafeRedirectTarget } from '../lib/auth/routing';
 import { createClient } from '../lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { registerRequestSchema, type FieldErrors, type RegisterRequest } from '@velar/types';
+import { validateSchemaForm, clearFieldError } from '../lib/forms/schema-form';
+import { SchemaFieldError, schemaFieldProps } from './SchemaFieldError';
+import { typedApi } from '../lib/typed-api';
 
 type LoginState = {
   email: string;
@@ -97,24 +100,28 @@ export function LoginForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
           />
         </AuthField>
 
-        <AuthField label="Contrasena" icon={LockIcon}>
+        <AuthField label="Contraseña" icon={LockIcon}>
           <input
             type={showPass ? 'text' : 'password'}
             required
-            aria-label="Contrasena"
+            aria-label="Contraseña"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setState({ password: e.target.value })}
-            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+            placeholder="Contraseña"
             className={`${inputClass} pr-11`}
           />
           <button
             type="button"
             onClick={() => setState({ showPass: !showPass })}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9fb2d4] transition hover:text-[#cfe0ff]"
-            aria-label="Mostrar contrasena"
+            aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
           >
-            <Eye size={20} strokeWidth={1.9} aria-hidden />
+            {showPass ? (
+              <EyeOff size={20} strokeWidth={1.9} aria-hidden />
+            ) : (
+              <Eye size={20} strokeWidth={1.9} aria-hidden />
+            )}
           </button>
         </AuthField>
 
@@ -129,7 +136,7 @@ export function LoginForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
             Recordarme
           </label>
           <button type="button" className="shrink-0 text-right font-medium text-[#1f63ff] hover:underline">
-            Olvidaste tu contrasena?
+            ¿Olvidaste tu contraseña?
           </button>
         </div>
 
@@ -161,13 +168,14 @@ export function LoginForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
   );
 }
 
-type Perspectiva = 'usuario' | 'partido' | 'tse';
+type Perspectiva = RegisterRequest['perspectiva'];
 
 type SignUpState = {
   perspectiva: Perspectiva;
   f: Record<string, string>;
   showPass: boolean;
   error: string;
+  fieldErrors: FieldErrors;
   loading: boolean;
 };
 
@@ -176,6 +184,7 @@ const initialSignUpState: SignUpState = {
   f: {},
   showPass: false,
   error: '',
+  fieldErrors: {},
   loading: false,
 };
 
@@ -184,16 +193,16 @@ function signUpReducer(state: SignUpState, patch: Partial<SignUpState>) {
 }
 
 const defaultRoute = (p: Perspectiva) =>
-  p === 'partido' ? '/partido' : p === 'tse' ? '/tse' : '/marketplace';
+  p === 'partido' ? '/partido' : '/marketplace';
 
 export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
   const [state, setState] = useReducer(signUpReducer, initialSignUpState);
-  const { perspectiva, f, showPass, error, loading } = state;
+  const { perspectiva, f, showPass, error, fieldErrors, loading } = state;
   const router = useRouter();
   const supabase = createClient();
 
   const setField = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setState({ f: { ...f, [key]: e.target.value } });
+    setState({ f: { ...f, [key]: e.target.value }, fieldErrors: clearFieldError(fieldErrors, key) });
 
   async function resolveDestination() {
     try {
@@ -217,10 +226,15 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setState({ loading: true, error: '' });
+    const validation = validateSchemaForm(registerRequestSchema, { ...f, perspectiva });
+    if (!validation.success) {
+      setState({ fieldErrors: validation.errors, error: '' });
+      return;
+    }
+    setState({ loading: true, error: '', fieldErrors: {} });
 
     try {
-      await publicApiFetch('POST', '/auth/register', { ...f, perspectiva });
+      await typedApi.call('auth.register', { body: validation.data });
 
       const { error: loginErr } = await supabase.auth.signInWithPassword({
         email: f.email,
@@ -241,7 +255,7 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
   const tab = (value: Perspectiva, label: string) => (
     <button
       type="button"
-      onClick={() => setState({ perspectiva: value })}
+      onClick={() => setState({ perspectiva: value, fieldErrors: {} })}
       className={`flex-1 rounded-[12px] py-2.5 text-sm font-semibold transition sm:py-3 ${
         perspectiva === value
           ? 'bg-[#1f63ff] text-white shadow-[0_10px_22px_rgba(31,99,255,0.18)]'
@@ -257,23 +271,25 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
       <div className="mt-5 flex gap-1 rounded-[10px] border border-[#d8e2f5] bg-white p-1">
         {tab('usuario', 'Usuario')}
         {tab('partido', 'Partido')}
-        {tab('tse', 'TSE')}
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-5 space-y-3.5 sm:mt-6 sm:space-y-4">
+      <form noValidate onSubmit={handleSubmit} className="mt-5 space-y-3.5 sm:mt-6 sm:space-y-4">
         {perspectiva === 'usuario' ? (
           <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <AuthField label="Nombres" icon={UserIcon}>
-                <input required aria-label="Nombres" value={f.nombres ?? ''} onChange={setField('nombres')} placeholder="Maria" className={inputClass} />
+                <input required aria-label="Nombres" value={f.nombres ?? ''} onChange={setField('nombres')} placeholder="Maria" className={inputClass} {...schemaFieldProps(fieldErrors, 'nombres')} />
               </AuthField>
+              <SchemaFieldError errors={fieldErrors} field="nombres" />
               <AuthField label="Apellidos" icon={UserIcon}>
-                <input required aria-label="Apellidos" value={f.apellidos ?? ''} onChange={setField('apellidos')} placeholder="Gomez" className={inputClass} />
+                <input required aria-label="Apellidos" value={f.apellidos ?? ''} onChange={setField('apellidos')} placeholder="Gomez" className={inputClass} {...schemaFieldProps(fieldErrors, 'apellidos')} />
               </AuthField>
+              <SchemaFieldError errors={fieldErrors} field="apellidos" />
             </div>
             <AuthField label="Identificacion" icon={UserIcon}>
-              <input required aria-label="Identificacion" value={f.identificacion ?? ''} onChange={setField('identificacion')} placeholder="1-2345-6789" className={inputClass} />
+              <input required aria-label="Identificacion" value={f.identificacion ?? ''} onChange={setField('identificacion')} placeholder="1-2345-6789" className={inputClass} {...schemaFieldProps(fieldErrors, 'identificacion')} />
             </AuthField>
+            <SchemaFieldError errors={fieldErrors} field="identificacion" />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <AuthField label="Telefono" icon={UserIcon}>
                 <input aria-label="Telefono" value={f.telefono ?? ''} onChange={setField('telefono')} placeholder="8888-0000" className={inputClass} />
@@ -287,11 +303,13 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
           <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <AuthField label="Nombre del partido" icon={UserIcon}>
-                <input required aria-label="Nombre del partido" value={f.nombrePartido ?? ''} onChange={setField('nombrePartido')} placeholder="Partido X" className={inputClass} />
+                <input required aria-label="Nombre del partido" value={f.nombrePartido ?? ''} onChange={setField('nombrePartido')} placeholder="Partido X" className={inputClass} {...schemaFieldProps(fieldErrors, 'nombrePartido')} />
               </AuthField>
+              <SchemaFieldError errors={fieldErrors} field="nombrePartido" />
               <AuthField label="Codigo" icon={UserIcon}>
-                <input required aria-label="Codigo" value={f.codigo ?? ''} onChange={setField('codigo')} placeholder="PX" className={inputClass} />
+                <input required aria-label="Codigo" value={f.codigo ?? ''} onChange={setField('codigo')} placeholder="PX" className={inputClass} {...schemaFieldProps(fieldErrors, 'codigo')} />
               </AuthField>
+              <SchemaFieldError errors={fieldErrors} field="codigo" />
             </div>
             <AuthField label="Representante legal" icon={UserIcon}>
               <input aria-label="Representante legal" value={f.representanteLegal ?? ''} onChange={setField('representanteLegal')} placeholder="Juan Perez" className={inputClass} />
@@ -303,29 +321,36 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
         )}
 
         <AuthField label="Correo electronico" icon={MailIcon}>
-          <input type="email" required aria-label="Correo electronico" autoComplete="email" value={f.email ?? ''} onChange={setField('email')} placeholder="tu@correo.com" className={inputClass} />
+          <input type="email" required aria-label="Correo electronico" autoComplete="email" value={f.email ?? ''} onChange={setField('email')} placeholder="tu@correo.com" className={inputClass} {...schemaFieldProps(fieldErrors, 'email')} />
         </AuthField>
+        <SchemaFieldError errors={fieldErrors} field="email" />
 
-        <AuthField label="Contrasena" icon={LockIcon}>
+        <AuthField label="Contraseña" icon={LockIcon}>
           <input
             type={showPass ? 'text' : 'password'}
             required
-            aria-label="Contrasena"
+            aria-label="Contraseña"
             autoComplete="new-password"
             value={f.password ?? ''}
             onChange={setField('password')}
-            placeholder="Minimo 8 caracteres"
+            placeholder="Mínimo 8 caracteres"
             className={`${inputClass} pr-11`}
+            {...schemaFieldProps(fieldErrors, 'password')}
           />
           <button
             type="button"
             onClick={() => setState({ showPass: !showPass })}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9fb2d4] transition hover:text-[#cfe0ff]"
-            aria-label="Mostrar contrasena"
+            aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
           >
-            <Eye size={20} strokeWidth={1.9} aria-hidden />
+            {showPass ? (
+              <EyeOff size={20} strokeWidth={1.9} aria-hidden />
+            ) : (
+              <Eye size={20} strokeWidth={1.9} aria-hidden />
+            )}
           </button>
         </AuthField>
+        <SchemaFieldError errors={fieldErrors} field="password" />
 
         {error && <div className="rounded-[14px] bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 

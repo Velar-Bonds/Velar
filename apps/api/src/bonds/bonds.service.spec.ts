@@ -67,7 +67,7 @@ describe('BondsService', () => {
       type: 'bond_published',
       bondTokenId: 'bond-1',
       actorId: 'owner-1',
-      payload: { previousStatus: 'activo' },
+      payload: { previousStatus: 'activo', paymentMethods: ['sinpe', 'transferencia'] },
     });
   });
 });

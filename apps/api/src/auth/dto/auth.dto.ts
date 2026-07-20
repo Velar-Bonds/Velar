@@ -30,8 +30,8 @@ export class RegisterDto implements RegisterInput {
   @MinLength(8)
   password!: string;
 
-  @ApiProperty({ enum: ['usuario', 'partido', 'tse'] })
-  @IsIn(['usuario', 'partido', 'tse'])
+  @ApiProperty({ enum: ['usuario', 'partido'] })
+  @IsIn(['usuario', 'partido'])
   perspectiva!: Perspectiva;
 
   @ApiPropertyOptional()

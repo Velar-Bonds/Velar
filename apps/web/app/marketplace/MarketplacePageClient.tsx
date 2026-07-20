@@ -15,6 +15,10 @@ import {
   defaultPaymentMethod,
   type PaymentMethodId,
 } from '../../components/PaymentMethodPicker';
+import { createTransferRequestSchema, type FieldErrors } from '@velar/types';
+import { validateSchemaForm } from '../../lib/forms/schema-form';
+import { SchemaFieldError, schemaFieldProps } from '../../components/SchemaFieldError';
+import { typedApi } from '../../lib/typed-api';
 
 type Bond = {
   token_id: string;
@@ -56,6 +60,7 @@ function Content({ token }: { token: string }) {
   const [offerAmounts, setOfferAmounts] = useState<Record<string, string>>({});
   const [offerMessages, setOfferMessages] = useState<Record<string, string>>({});
   const [offerPaymentMethods, setOfferPaymentMethods] = useState<Record<string, PaymentMethodId>>({});
+  const [offerErrors, setOfferErrors] = useState<Record<string, FieldErrors>>({});
 
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -73,6 +78,17 @@ function Content({ token }: { token: string }) {
     message?: string,
     paymentMethod?: PaymentMethodId,
   ) {
+    const payload = {
+      bondTokenId: id,
+      amount: amount ?? undefined,
+      message: message || undefined,
+      paymentMethod,
+    };
+    const validation = validateSchemaForm(createTransferRequestSchema, payload);
+    if (!validation.success) {
+      setOfferErrors((current) => ({ ...current, [id]: validation.errors }));
+      return;
+    }
     setBusy(id);
     try {
       if (paymentMethod === 'wallet') {
@@ -85,7 +101,8 @@ function Content({ token }: { token: string }) {
           return;
         }
       }
-      await apiFetch(token, 'POST', '/transfers', { bondTokenId: id, amount, message, paymentMethod });
+      await typedApi.call('transfers.create', { body: validation.data }, token);
+      setOfferErrors((current) => ({ ...current, [id]: {} }));
       notify.ok(
         paymentMethod === 'wallet'
           ? 'Oferta enviada. Si el vendedor acepta, pagás con wallet en Negociaciones.'
@@ -213,11 +230,12 @@ function Content({ token }: { token: string }) {
                       type="number"
                       min="1"
                       value={offerValue}
-                      onChange={(event) => setOfferAmounts((prev) => ({ ...prev, [bond.token_id]: event.target.value }))}
+                      onChange={(event) => { setOfferAmounts((prev) => ({ ...prev, [bond.token_id]: event.target.value })); setOfferErrors((current) => ({ ...current, [bond.token_id]: {} })); }}
                       placeholder="Monto de oferta"
                       aria-label={`Monto de oferta para ${bond.bond_id}`}
                       className="velar-input rounded-xl border px-3 py-2 text-sm outline-none"
                       disabled={!!currentTransfer}
+                      {...schemaFieldProps(offerErrors[bond.token_id] ?? {}, 'amount')}
                     />
                     <button
                       type="button"
@@ -233,6 +251,7 @@ function Content({ token }: { token: string }) {
                       {busy === bond.token_id ? <span className="btn-spinner" /> : <><Handshake size={14} /> Negociar</>}
                     </button>
                   </div>
+                  <SchemaFieldError errors={offerErrors[bond.token_id] ?? {}} field="amount" />
                   <input
                     value={offerMessages[bond.token_id] ?? ''}
                     onChange={(event) => setOfferMessages((prev) => ({ ...prev, [bond.token_id]: event.target.value }))}
