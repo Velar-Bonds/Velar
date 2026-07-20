@@ -41,17 +41,8 @@ export interface Transfer {
     createdAt: string;
     updatedAt: string;
 }
-export interface RequestTransferInput {
-    bondTokenId: string;
-    /** Opcional: el comprador es siempre el usuario autenticado (actorId). */
-    toOwner?: string;
-    /** Cómo pagará si el vendedor acepta: sinpe | transferencia | wallet. */
-    paymentMethod?: 'sinpe' | 'transferencia' | 'wallet';
-    /** Monto acordado de la recompra (off-chain). */
-    amount?: number;
-    message?: string;
-    counterOfferAmount?: number;
-}
+/** @deprecated Import `CreateTransferRequest`; kept as a schema-derived compatibility alias. */
+export type RequestTransferInput = import('zod').infer<typeof import('./schemas/transfers').createTransferRequestSchema>;
 export interface RegisterPaymentInput {
     transferId: string;
     paymentEvidenceHash: string;

@@ -198,7 +198,7 @@ Endpoint de trazabilidad consolidada. Reemplaza el patrón de dos fetch paralelo
 4. `paid: true` solo para transfers con status `liberada`
 5. El último owner siempre tiene `current: true`
 
-**404:** `HttpException` — retorna `{ error: "Bond not found", statusCode: 404 }` para tokenId desconocido.
+**404:** retorna el error estructurado descrito en la sección de contratos (`NOT_FOUND`).
 
 **Seguridad:** Las transfers en la respuesta NO incluyen `from_profile` / `to_profile` (no hay fuga de datos de perfil).
 
@@ -208,3 +208,54 @@ Endpoint de trazabilidad consolidada. Reemplaza el patrón de dos fetch paralelo
 - [ ] Confirmar Node 22+ disponible (o autorizar el polyfill `ws`).
 - [ ] Para escrow real: dirección Stellar de plataforma + decisión de custodia + fondos testnet.
 - [ ] Confirmar si la migración ya se aplicó a la base o si hay que aplicarla.
+
+---
+
+## 6. Contratos compartidos y validación runtime (issue #43)
+
+`@velar/types` es la fuente de verdad para requests y responses JSON de `auth`, `bonds`,
+`transfers`, `reports`, operaciones de `escrow`, `notifications` y `users`.
+
+- `packages/types/src/schemas/`: schemas Zod por módulo.
+- `packages/types/src/contracts.ts`: registro versionado `apiContracts`; asocia método, ruta,
+  schemas de body/params/query y schema de respuesta.
+- `packages/types/src/errors.ts`: códigos `ErrorCode`, catálogo español/inglés y forma estándar.
+- Los DTOs de Nest conservan `class-validator` y Swagger; el contrato compartido agrega una
+  segunda barrera sin remover reglas de negocio ni autorización.
+
+El interceptor global `ContractValidationInterceptor` valida en el límite HTTP. Los requests se
+validan siempre. Las respuestas se validan en desarrollo y tests; en producción se puede activar
+con `CONTRACT_VALIDATE_RESPONSES=true`. Los downloads binarios se excluyen del registro JSON y el
+upload multipart valida params y respuesta.
+
+Forma de error estable:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Los datos enviados no son válidos.",
+    "fields": { "email": ["Ingresá un correo electrónico válido."] }
+  }
+}
+```
+
+`ContractExceptionFilter` adapta también las excepciones existentes (`401`, `403`, `404`, reglas
+de negocio y errores internos) a esta taxonomía. `Accept-Language: en` selecciona el catálogo en
+inglés; español es el valor por defecto.
+
+El signup público solo admite `usuario` y `partido`. `tse` y los demás roles privilegiados se
+asignan por administración; nunca se autoasignan desde `/auth/register`.
+
+### Comprobación local sin credenciales
+
+```bash
+npm run build --workspace @velar/types
+npm run build --workspace apps/api
+npm run lint --workspace apps/api
+npm run test --workspace apps/api -- --runInBand
+```
+
+Las pruebas `common/contracts/*.spec.ts` validan payloads válidos/inválidos por cada módulo,
+localización, drift de responses y que toda ruta JSON de los controladores cubiertos tenga contrato.

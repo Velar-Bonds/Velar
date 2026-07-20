@@ -4,6 +4,9 @@
   "private": true,
   "main": "./types/index.js",
   "types": "./types/index.d.ts",
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit"

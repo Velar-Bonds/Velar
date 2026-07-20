@@ -4,6 +4,10 @@ import { FileText, Send, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../lib/api';
 import { unwrapPaginated } from '../../../lib/pagination';
+import { createReportRequestSchema, type FieldErrors } from '@velar/types';
+import { validateSchemaForm } from '../../../lib/forms/schema-form';
+import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFieldError';
+import { typedApi } from '../../../lib/typed-api';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : ':';
 const fmtCRC = (n?: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -25,6 +29,7 @@ export default function PartidoReportesPage() {
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const load = () =>
     Promise.all([
@@ -44,20 +49,20 @@ export default function PartidoReportesPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim() || !form.description.trim()) {
-      setMsg({ type: 'err', text: 'Título y descripción son obligatorios.' });
-      return;
-    }
+    const payload = {
+      title: form.title,
+      description: form.description,
+      period_start: form.period_start || undefined,
+      period_end: form.period_end || undefined,
+      total_amount: form.total_amount ? Number(form.total_amount) : undefined,
+      bond_token_ids: form.bond_token_ids.length ? form.bond_token_ids : undefined,
+    };
+    const validation = validateSchemaForm(createReportRequestSchema, payload);
+    if (!validation.success) { setFieldErrors(validation.errors); setMsg(null); return; }
     setBusy(true); setMsg(null);
     try {
-      await apiFetch(token, 'POST', '/reports', {
-        title: form.title,
-        description: form.description,
-        period_start: form.period_start || undefined,
-        period_end: form.period_end || undefined,
-        total_amount: form.total_amount ? Number(form.total_amount) : undefined,
-        bond_token_ids: form.bond_token_ids.length ? form.bond_token_ids : undefined,
-      });
+      await typedApi.call('reports.create', { body: validation.data }, token);
+      setFieldErrors({});
       setMsg({ type: 'ok', text: 'Reporte enviado al TSE.' });
       setForm({ title: '', description: '', period_start: '', period_end: '', total_amount: '', bond_token_ids: [] });
       load();
@@ -92,31 +97,36 @@ export default function PartidoReportesPage() {
                 </div>
               )}
 
-              <form onSubmit={submit} className="flex flex-col gap-4">
+              <form noValidate onSubmit={submit} className="flex flex-col gap-4">
                 <div>
                   <label className="field-label">Título <span className="text-red-500">*</span></label>
-                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej. Informe trimestral Q1 2026" className="field-input" />
+                  <input value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setFieldErrors({}); }} placeholder="Ej. Informe trimestral Q1 2026" className="field-input" {...schemaFieldProps(fieldErrors, 'title')} />
+                  <SchemaFieldError errors={fieldErrors} field="title" />
                 </div>
 
                 <div>
                   <label className="field-label">Descripción <span className="text-red-500">*</span></label>
-                  <textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Detalle de bonos emitidos, ventas realizadas, uso de fondos…" className="field-input resize-none" />
+                  <textarea rows={4} value={form.description} onChange={(e) => { setForm({ ...form, description: e.target.value }); setFieldErrors({}); }} placeholder="Detalle de bonos emitidos, ventas realizadas, uso de fondos…" className="field-input resize-none" {...schemaFieldProps(fieldErrors, 'description')} />
+                  <SchemaFieldError errors={fieldErrors} field="description" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="field-label">Desde</label>
-                    <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })} className="field-input" />
+                    <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })} className="field-input" {...schemaFieldProps(fieldErrors, 'period_start')} />
+                    <SchemaFieldError errors={fieldErrors} field="period_start" />
                   </div>
                   <div>
                     <label className="field-label">Hasta</label>
-                    <input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} className="field-input" />
+                    <input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} className="field-input" {...schemaFieldProps(fieldErrors, 'period_end')} />
+                    <SchemaFieldError errors={fieldErrors} field="period_end" />
                   </div>
                 </div>
 
                 <div>
                   <label className="field-label">Monto total reportado (CRC)</label>
-                  <input type="number" min="0" step="1000" value={form.total_amount} onChange={(e) => setForm({ ...form, total_amount: e.target.value })} placeholder="5000000" className="field-input" />
+                  <input type="number" min="0" step="1000" value={form.total_amount} onChange={(e) => setForm({ ...form, total_amount: e.target.value })} placeholder="5000000" className="field-input" {...schemaFieldProps(fieldErrors, 'total_amount')} />
+                  <SchemaFieldError errors={fieldErrors} field="total_amount" />
                 </div>
 
                 {bonds.length > 0 && (

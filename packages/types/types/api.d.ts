@@ -9,11 +9,8 @@ export interface ApiResponse<T> {
     message: string;
     success: boolean;
 }
-export interface ApiError {
-    message: string;
-    statusCode: number;
-    error?: string;
-}
+/** Structured error response shared by the API and web client. */
+export type ApiError = import('./errors').ApiErrorResponse;
 export interface BondSearchQuery {
     tokenId?: string;
     bondId?: string;

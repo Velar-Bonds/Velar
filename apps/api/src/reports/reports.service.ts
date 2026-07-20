@@ -1,17 +1,10 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
-import { Role } from '@velar/types';
+import { Role, type CreateReportRequest } from '@velar/types';
 
 const AUTHORITY: Role[] = ['tse', 'admin'];
 
-export interface CreateReportInput {
-  title: string;
-  description: string;
-  period_start?: string;
-  period_end?: string;
-  bond_token_ids?: string[];
-  total_amount?: number;
-}
+export type CreateReportInput = CreateReportRequest;
 
 @Injectable()
 export class ReportsService {
