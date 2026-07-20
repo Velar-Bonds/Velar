@@ -14,6 +14,7 @@ import {
   zodIssuesToFieldErrors,
   type EndpointContract,
   type Locale,
+  type ValidationIssue,
 } from '@velar/types';
 import type { Request } from 'express';
 import { map, type Observable } from 'rxjs';
@@ -25,12 +26,29 @@ export interface ContractRequestParts {
   query: unknown;
 }
 
+/**
+ * Normaliza los issues de zod v4 (cuyo `path` puede incluir `symbol`) a la
+ * forma ValidationIssue esperada por @velar/types, descartando segmentos symbol.
+ */
+function toValidationIssues(
+  issues: ReadonlyArray<{ code: unknown; message: string; path: ReadonlyArray<PropertyKey> }>,
+): ValidationIssue[] {
+  return issues.map((issue) => ({
+    code: String(issue.code),
+    message: issue.message,
+    path: issue.path.filter(
+      (segment): segment is string | number =>
+        typeof segment === 'string' || typeof segment === 'number',
+    ),
+  }));
+}
+
 function parsePart(schema: ZodTypeAny, value: unknown, locale: Locale) {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
   throw new BadRequestException(
     createApiError(ErrorCode.VALIDATION_ERROR, locale, {
-      fields: zodIssuesToFieldErrors(result.error.issues, locale),
+      fields: zodIssuesToFieldErrors(toValidationIssues(result.error.issues), locale),
       details: result.error.issues.map((issue) => ({ code: issue.code, path: issue.path })),
     }),
   );
@@ -57,7 +75,7 @@ export function validateContractResponse(
   if (result.success) return result.data;
   throw new InternalServerErrorException(
     createApiError(ErrorCode.RESPONSE_VALIDATION_ERROR, locale, {
-      fields: zodIssuesToFieldErrors(result.error.issues, locale),
+      fields: zodIssuesToFieldErrors(toValidationIssues(result.error.issues), locale),
       details: result.error.issues.map((issue) => ({ code: issue.code, path: issue.path })),
     }),
   );

@@ -6,7 +6,7 @@ export const notificationRowSchema = z.object({
   id: idSchema,
   user_id: idSchema,
   type: z.nativeEnum(NotificationType),
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
   read: z.boolean(),
   created_at: z.string(),
 }).passthrough();

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { requiredStringSchema } from './common';
 
-export const perspectiveSchema = z.enum(['usuario', 'partido'], { errorMap: () => ({ message: 'validation.enum' }) });
+export const perspectiveSchema = z.enum(['usuario', 'partido'], { error: 'validation.enum' });
 
 export const loginRequestSchema = z.object({
   email: requiredStringSchema.email('validation.email'),
