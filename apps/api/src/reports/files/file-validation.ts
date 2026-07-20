@@ -60,6 +60,6 @@ export function validateUpload(
 
 /** Ruta canónica dentro del bucket privado: <party_id>/<report_id>/<file_name>. */
 export function reportFilePath(partyId: string, reportId: string, fileName: string): string {
-  const safeName = fileName.replace(/[^\w.\-]+/g, '_');
+  const safeName = fileName.replace(/[^\w.-]+/g, '_');
   return `${partyId}/${reportId}/${safeName}`;
 }
