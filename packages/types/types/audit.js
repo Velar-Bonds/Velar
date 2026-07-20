@@ -24,4 +24,10 @@ exports.AuditEventType = {
     WALLET_PROVISIONED: 'wallet_provisioned',
     BOND_PUBLISHED: 'bond_published',
     COUNTER_OFFER_SENT: 'counter_offer_sent',
+    REPORT_SUBMITTED: 'report_submitted',
+    REPORT_RESUBMITTED: 'report_resubmitted',
+    REPORT_VERSION_CREATED: 'report_version_created',
+    REPORT_OBSERVED: 'report_observed',
+    REPORT_APPROVED: 'report_approved',
+    REPORT_FILE_UPLOADED: 'report_file_uploaded',
 };
