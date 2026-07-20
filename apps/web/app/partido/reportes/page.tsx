@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { FileText, Send, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { FileText, Send, CheckCircle, AlertCircle, Clock, ClipboardList, ArrowRight } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../lib/api';
 import { unwrapPaginated } from '../../../lib/pagination';
+import { clientCompliance, COMPLIANCE_LABEL, COMPLIANCE_STYLE, periodLabel } from '../../../lib/reports';
 import { createReportRequestSchema, type FieldErrors } from '@velar/types';
 import { validateSchemaForm } from '../../../lib/forms/schema-form';
 import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFieldError';
@@ -20,6 +22,7 @@ const STATUS: Record<string, [string, string, any]> = {
 };
 
 export default function PartidoReportesPage() {
+  const router = useRouter();
   const { token, me, loading, error } = useSession();
   const [reports, setReports] = useState<any[]>([]);
   const [bonds, setBonds] = useState<any[]>([]);
@@ -79,6 +82,22 @@ export default function PartidoReportesPage() {
       </header>
 
       <div className="mx-auto w-full max-w-[1100px] p-10 pb-20">
+        {/* Reporte mensual estructurado (ciclo de vida completo) */}
+        <button
+          onClick={() => router.push('/partido/reportes/nuevo')}
+          className="glass-card mb-8 flex w-full items-center justify-between rounded-3xl p-6 text-left transition hover:shadow-lg"
+          style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(255,255,255,0.9))' }}
+        >
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ClipboardList size={24} /></span>
+            <div>
+              <h2 className="font-semibold" style={{ fontFamily: 'Geist' }}>Reporte mensual estructurado</h2>
+              <p className="text-xs text-on-surface-variant">Líneas, archivos, conciliación on-chain y control de vencimientos.</p>
+            </div>
+          </div>
+          <span className="flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white">Crear <ArrowRight size={15} /></span>
+        </button>
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           {/* Formulario */}
           <div className="lg:col-span-3">
@@ -162,19 +181,34 @@ export default function PartidoReportesPage() {
               <div className="flex flex-col gap-3">
                 {reports.map((r) => {
                   const [cls, lbl, Icon] = STATUS[r.status] ?? ['bg-gray-100 text-gray-600 border-gray-200', r.status, Clock];
+                  const comp = r.period_year && r.period_month
+                    ? clientCompliance(r.period_year, r.period_month, r.submitted_at ?? null)
+                    : null;
                   return (
-                    <div key={r.id} className="glass-card rounded-2xl p-4">
+                    <div
+                      key={r.id}
+                      onClick={() => router.push(`/partido/reportes/${r.id}`)}
+                      className="glass-card cursor-pointer rounded-2xl p-4 transition hover:shadow-md"
+                    >
                       <div className="mb-1 flex items-center justify-between">
                         <p className="font-semibold">{r.title}</p>
                         <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
                           <Icon size={11} /> {lbl}
                         </span>
                       </div>
+                      {r.period_year && r.period_month && (
+                        <p className="mb-1 text-[11px] font-medium text-primary">{periodLabel(r.period_year, r.period_month)}</p>
+                      )}
                       <p className="line-clamp-2 text-xs text-on-surface-variant">{r.description}</p>
-                      <div className="mt-2 flex justify-between text-[11px] text-on-surface-variant">
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-on-surface-variant">
                         <span>{fmtDate(r.created_at)}</span>
                         {r.total_amount && <span className="font-mono font-semibold">{fmtCRC(r.total_amount)}</span>}
                       </div>
+                      {comp && (
+                        <span className={`mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium ${COMPLIANCE_STYLE[comp.status]}`}>
+                          {COMPLIANCE_LABEL[comp.status]}
+                        </span>
+                      )}
                       {r.tse_notes && (
                         <div className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-700">
                           <strong>TSE:</strong> {r.tse_notes}
