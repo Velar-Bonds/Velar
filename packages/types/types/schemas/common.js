@@ -4,13 +4,13 @@ exports.paginationQuerySchema = exports.successSchema = exports.okSchema = expor
 exports.paginatedSchema = paginatedSchema;
 const zod_1 = require("zod");
 const roles_1 = require("../roles");
-exports.requiredStringSchema = zod_1.z.string({ required_error: 'validation.required' }).trim().min(1, 'validation.required');
+exports.requiredStringSchema = zod_1.z.string({ error: 'validation.required' }).trim().min(1, 'validation.required');
 exports.idSchema = exports.requiredStringSchema;
 exports.isoDateSchema = zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'validation.date');
 exports.optionalIsoDateSchema = exports.isoDateSchema.optional();
-exports.positiveNumberSchema = zod_1.z.coerce.number({ invalid_type_error: 'validation.positive' }).finite().positive('validation.positive');
-exports.paymentMethodSchema = zod_1.z.enum(['sinpe', 'transferencia', 'wallet'], { errorMap: () => ({ message: 'validation.enum' }) });
-exports.roleSchema = zod_1.z.nativeEnum(roles_1.Role, { errorMap: () => ({ message: 'validation.enum' }) });
+exports.positiveNumberSchema = zod_1.z.coerce.number({ error: 'validation.positive' }).finite().positive('validation.positive');
+exports.paymentMethodSchema = zod_1.z.enum(['sinpe', 'transferencia', 'wallet'], { error: 'validation.enum' });
+exports.roleSchema = zod_1.z.nativeEnum(roles_1.Role, { error: 'validation.enum' });
 exports.paramsIdSchema = zod_1.z.object({ id: exports.idSchema });
 exports.paramsTokenIdSchema = zod_1.z.object({ tokenId: exports.idSchema });
 exports.paramsBondTokenIdSchema = zod_1.z.object({ bondTokenId: exports.idSchema });

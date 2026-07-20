@@ -259,3 +259,60 @@ npm run test --workspace apps/api -- --runInBand
 
 Las pruebas `common/contracts/*.spec.ts` validan payloads válidos/inválidos por cada módulo,
 localización, drift de responses y que toda ruta JSON de los controladores cubiertos tenga contrato.
+
+## 7. Reporte mensual: ciclo de vida y motor de cumplimiento (issue #40)
+
+El módulo `reports` original solo guardaba metadata de texto libre. Se **extendió**
+(sin reescribir lo anterior) a un reporte estructurado, versionado, con archivos y
+conciliación contra los bonos que el partido posee on-chain. La lógica de negocio
+central vive en **funciones puras** (`apps/api/src/reports/domain/`), probadas por
+fixtures y sin acceso a DB.
+
+### Esquema (migración `20260701000000_report_lifecycle_compliance.sql`)
+- `reports`: se le agregan `period_year`, `period_month`, `current_version`,
+  `submitted_at`; el `CHECK` de `status` se amplía al workflow completo. Único por
+  `(party_id, period_year, period_month)`.
+- `report_line_items`: concepto, monto, categoría (`ingreso|egreso|donacion|bono|otro`)
+  y `bond_token_id` opcional (referencia declarada a un bono).
+- `report_files`: metadata del adjunto (`file_path`, `checksum` sha-256, `scan_status`).
+  El binario vive en el bucket privado `report-files` (`<party_id>/<report_id>/<file>`).
+- `report_versions`: snapshot inmutable por envío (**append-only** vía trigger
+  `deny_report_version_mutation`, igual que `audit_events`).
+- `report_deadlines`: config de vencimientos (`due_day_of_month`, `grace_days`).
+- RLS: el partido ve solo lo suyo; TSE/admin ven todo. Subida al bucket solo rol
+  `emisor` a su carpeta.
+
+### Workflow (`domain/workflow.ts`)
+`borrador → enviado → en_revision → observado → reenviado → en_revision → aprobado`.
+`aprobado` es terminal. `assertTransition` rechaza saltos ilegales; `resolveSubmit`
+codifica primer envío (`borrador→enviado`) vs corrección (`observado→reenviado`,
+que bumpea versión y preserva historial). Solo `borrador` y `observado` son editables.
+
+### Conciliación (`domain/reconciliation.ts`)
+Función pura `reconcile(declarados, poseídos)` que cruza las referencias de bono
+declaradas contra los bonos que el partido tiene en cadena y emite discrepancias
+tipadas: `amount_mismatch`, `missing_bond`, `unknown_reference`. Agrega montos por
+bono y tolera ruido flotante sub-centavo. Determinística.
+
+### Vencimientos (`domain/deadlines.ts`)
+`computeCompliance` deriva el estado del período (`not_due | on_time | late |
+overdue | missing`) y los días restantes a partir de la config, la fecha de envío y
+un "hoy" de referencia. Un reporte vence el `due_day_of_month` del mes siguiente.
+
+### Antivirus (`files/file-scanner.ts`)
+Hook detrás de la interfaz `FileScanner` (token DI `FILE_SCANNER`). El default es
+`StubFileScanner` (marca EICAR como infectado, el resto limpio) — sin vendor real.
+Se reemplaza por ClamAV/VirusTotal sin tocar el resto del módulo.
+
+### Endpoints (`reports/lifecycle`, todos con `@Roles('emisor')` en mutaciones)
+- `POST /reports/lifecycle` — crea borrador
+- `POST /reports/lifecycle/:id/line-items` · `DELETE .../:lineItemId` · `GET .../line-items`
+- `POST /reports/lifecycle/:id/files` (multipart, valida tipo/tamaño + checksum + antivirus)
+- `GET /reports/lifecycle/:id/reconciliation` — preview de discrepancias
+- `POST /reports/lifecycle/:id/submit` — envía/reenvía: snapshot inmutable, audita
+  (`report_version_created` + `report_submitted`/`report_resubmitted`) y notifica al
+  partido y al TSE
+- `GET /reports/lifecycle/:id` — detalle con líneas, archivos, versiones y conciliación
+
+El TSE (revisión/observación/aprobación) es un **epic aparte**; este issue cubre el
+lado del partido y el dominio compartido de reporte/conciliación.
