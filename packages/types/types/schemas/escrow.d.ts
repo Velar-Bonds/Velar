@@ -5,32 +5,17 @@ export declare const escrowOperationSchema: z.ZodObject<{
     seller: z.ZodString;
     buyer: z.ZodString;
     approver: z.ZodString;
-    amount: z.ZodNumber;
+    amount: z.ZodCoercedNumber<unknown>;
     title: z.ZodString;
-}, "strict", z.ZodTypeAny, {
-    bondTokenId: string;
-    amount: number;
-    title: string;
-    transferId: string;
-    seller: string;
-    buyer: string;
-    approver: string;
-}, {
-    bondTokenId: string;
-    amount: number;
-    title: string;
-    transferId: string;
-    seller: string;
-    buyer: string;
-    approver: string;
-}>;
+}, z.core.$strict>;
 export declare const escrowStateSchema: z.ZodObject<{
     contractId: z.ZodOptional<z.ZodString>;
-    status: z.ZodOptional<z.ZodEnum<["initialized", "funded", "approved", "released", "refunded", "disputed"]>>;
-}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
-    contractId: z.ZodOptional<z.ZodString>;
-    status: z.ZodOptional<z.ZodEnum<["initialized", "funded", "approved", "released", "refunded", "disputed"]>>;
-}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
-    contractId: z.ZodOptional<z.ZodString>;
-    status: z.ZodOptional<z.ZodEnum<["initialized", "funded", "approved", "released", "refunded", "disputed"]>>;
-}, z.ZodTypeAny, "passthrough">>;
+    status: z.ZodOptional<z.ZodEnum<{
+        initialized: "initialized";
+        funded: "funded";
+        approved: "approved";
+        released: "released";
+        refunded: "refunded";
+        disputed: "disputed";
+    }>>;
+}, z.core.$loose>;

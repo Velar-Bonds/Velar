@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { Role } from '../roles';
 
-export const requiredStringSchema = z.string({ required_error: 'validation.required' }).trim().min(1, 'validation.required');
+export const requiredStringSchema = z.string({ error: 'validation.required' }).trim().min(1, 'validation.required');
 export const idSchema = requiredStringSchema;
 export const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'validation.date');
 export const optionalIsoDateSchema = isoDateSchema.optional();
-export const positiveNumberSchema = z.coerce.number({ invalid_type_error: 'validation.positive' }).finite().positive('validation.positive');
-export const paymentMethodSchema = z.enum(['sinpe', 'transferencia', 'wallet'], { errorMap: () => ({ message: 'validation.enum' }) });
-export const roleSchema = z.nativeEnum(Role, { errorMap: () => ({ message: 'validation.enum' }) });
+export const positiveNumberSchema = z.coerce.number({ error: 'validation.positive' }).finite().positive('validation.positive');
+export const paymentMethodSchema = z.enum(['sinpe', 'transferencia', 'wallet'], { error: 'validation.enum' });
+export const roleSchema = z.nativeEnum(Role, { error: 'validation.enum' });
 export const paramsIdSchema = z.object({ id: idSchema });
 export const paramsTokenIdSchema = z.object({ tokenId: idSchema });
 export const paramsBondTokenIdSchema = z.object({ bondTokenId: idSchema });

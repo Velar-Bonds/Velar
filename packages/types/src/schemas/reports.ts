@@ -16,7 +16,7 @@ export const createReportRequestSchema = z.object({
 );
 
 export const reviewReportRequestSchema = z.object({
-  status: z.enum(['revisado', 'observado', 'aprobado'], { errorMap: () => ({ message: 'validation.enum' }) }),
+  status: z.enum(['revisado', 'observado', 'aprobado'], { error: 'validation.enum' }),
   notes: z.string().trim().max(2000).optional(),
 }).strict();
 

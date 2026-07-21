@@ -252,3 +252,37 @@ npm run build --workspace apps/web
 
 Las pruebas del cliente usan `fetch` simulado y las pruebas de formularios son puras; ninguna
 requiere Supabase, VELAR DB, wallets ni proveedores externos.
+
+## 11. Reporte mensual del partido (issue #40)
+
+Pantallas en `apps/web/app/partido/reportes/` (rol `emisor`). Helpers de UI en
+`lib/reports.ts` (etiquetas de estado/categoría/cumplimiento, formato CRC/fecha,
+espejo cliente del cálculo de vencimiento y `uploadReportFile` multipart).
+
+### Builder multi-paso — `reportes/nuevo`
+Cinco pasos: **Período → Líneas → Archivos → Conciliación → Revisar**.
+- Al pasar de "Período" se crea el borrador (`POST /reports/lifecycle`).
+- Líneas: alta/baja con total corriente y selector de bono declarado
+  (`POST`/`DELETE /reports/lifecycle/:id/line-items`).
+- Archivos: subida multipart (`uploadReportFile`); el backend valida tipo/tamaño,
+  calcula checksum y pasa el antivirus antes de guardar.
+- Conciliación: preview de discrepancias (`GET /reports/lifecycle/:id/reconciliation`)
+  antes de enviar. Se puede enviar con discrepancias; el TSE las verá.
+- Revisar → `POST /reports/lifecycle/:id/submit` y redirige al detalle.
+
+### Detalle e historial — `reportes/[id]`
+`GET /reports/lifecycle/:id` (líneas, archivos, versiones, conciliación).
+- Badge de estado + badge de cumplimiento (vence el 15 del mes siguiente, 5 días
+  de gracia; espejo de la lógica pura del backend).
+- **Timeline de versiones**: cada envío con su estado, fecha, total y resultado de
+  conciliación (los snapshots son inmutables).
+- **Corrección guiada**: si el estado es `observado`, se muestra la observación del
+  TSE, se pueden agregar líneas y **reenviar** (nueva versión, conserva historial).
+
+### Listado — `reportes`
+CTA hacia el builder estructurado, badges de cumplimiento por período y tarjetas
+que enlazan al detalle. Convive con el formulario legacy de reporte de texto libre.
+
+### Estados a manejar
+Localizado (es), responsive y accesible; con estados de carga, vacío y error en cada
+pantalla. Nunca se usa `service_role` ni secretos en el cliente.

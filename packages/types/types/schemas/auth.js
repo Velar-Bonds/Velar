@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.loginResponseSchema = exports.registerResponseSchema = exports.registerRequestSchema = exports.loginRequestSchema = exports.perspectiveSchema = void 0;
 const zod_1 = require("zod");
 const common_1 = require("./common");
-exports.perspectiveSchema = zod_1.z.enum(['usuario', 'partido'], { errorMap: () => ({ message: 'validation.enum' }) });
+exports.perspectiveSchema = zod_1.z.enum(['usuario', 'partido'], { error: 'validation.enum' });
 exports.loginRequestSchema = zod_1.z.object({
     email: common_1.requiredStringSchema.email('validation.email'),
     password: common_1.requiredStringSchema,

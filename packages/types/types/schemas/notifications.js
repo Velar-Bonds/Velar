@@ -8,7 +8,7 @@ exports.notificationRowSchema = zod_1.z.object({
     id: common_1.idSchema,
     user_id: common_1.idSchema,
     type: zod_1.z.nativeEnum(notification_1.NotificationType),
-    payload: zod_1.z.record(zod_1.z.unknown()),
+    payload: zod_1.z.record(zod_1.z.string(), zod_1.z.unknown()),
     read: zod_1.z.boolean(),
     created_at: zod_1.z.string(),
 }).passthrough();

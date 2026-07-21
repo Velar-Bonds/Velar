@@ -24,6 +24,10 @@ const LABELS: Record<NotificationType, string> = {
   payment_confirmed: 'Pago confirmado',
   bond_approved: 'Bono aprobado',
   bond_rejected: 'Solicitud de bono rechazada',
+  report_submitted: 'Reporte enviado al TSE',
+  report_observed: 'Reporte observado por el TSE',
+  report_approved: 'Reporte aprobado',
+  report_resubmitted: 'Reporte reenviado',
 };
 
 function str(v: unknown): string | undefined {
