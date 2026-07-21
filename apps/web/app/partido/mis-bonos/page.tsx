@@ -2,7 +2,8 @@
 import { notify } from '../../../components/Toast';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Wallet, Boxes, ExternalLink, ShoppingCart, TrendingUp } from 'lucide-react';
+import { Wallet, Boxes, ExternalLink, ShoppingCart, TrendingUp, FileText } from 'lucide-react';
+import { ContractReaderDialog } from '../../../components/contract-reader/ContractReaderDialog';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { PaginationControls } from '../../../components/PaginationControls';
 import { PublishBondDialog, type PaymentMethod } from '../../../components/PublishBondDialog';
@@ -51,6 +52,7 @@ export default function PartidoMisBonosPage() {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [publishTarget, setPublishTarget] = useState<string | null>(null);
+  const [readerBondId, setReaderBondId] = useState<string | null>(null);
 
   const load = (tok: string, p = page) =>
     apiFetch(tok, 'GET', `/bonds?${paginatedQuery(p, limit)}`)
@@ -150,6 +152,11 @@ export default function PartidoMisBonosPage() {
                             {busy === b.token_id ? <><span className="btn-spinner" /> Publicando…</> : <><ShoppingCart size={12} /> Publicar</>}
                           </button>
                         )}
+                        <button onClick={() => setReaderBondId(b.bond_id)}
+                          className="flex items-center gap-1 rounded-lg border border-outline-variant/40 px-2.5 py-1.5 text-xs text-on-surface-variant transition hover:text-primary"
+                          aria-label={`Leer el contrato del bono ${b.bond_id}`}>
+                          <FileText size={12} /> Contrato
+                        </button>
                         <a href={bondExplorerUrl(b.soroban_contract_id, b.bond_id)} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1 rounded-lg border border-outline-variant/40 px-2.5 py-1.5 text-xs text-on-surface-variant transition hover:text-primary">
                           <ExternalLink size={12} /> Stellar
@@ -171,6 +178,10 @@ export default function PartidoMisBonosPage() {
         onClose={() => setPublishTarget(null)}
         onConfirm={(methods) => publishTarget && publicar(publishTarget, methods)}
       />
+
+      {readerBondId && (
+        <ContractReaderDialog bondId={readerBondId} onClose={() => setReaderBondId(null)} />
+      )}
     </PartidoShell>
   );
 }
