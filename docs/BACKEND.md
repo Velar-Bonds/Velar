@@ -260,7 +260,56 @@ npm run test --workspace apps/api -- --runInBand
 Las pruebas `common/contracts/*.spec.ts` validan payloads válidos/inválidos por cada módulo,
 localización, drift de responses y que toda ruta JSON de los controladores cubiertos tenga contrato.
 
-## 7. Reporte mensual: ciclo de vida y motor de cumplimiento (issue #40)
+## 7. Lector de contratos y glosario (issue #39)
+
+Módulo `apps/api/src/contracts/` — experiencia de lectura y comprensión del contrato de un bono.
+Complementa el contrato legal en lenguaje simple; **nunca lo reemplaza**.
+
+### Derivación a lenguaje simple (funciones puras)
+
+`contracts/plain-language.ts` transforma un contrato estructurado + un glosario en explicaciones
+por cláusula y un set de términos clave resaltados. Reglas:
+
+- El significado legal **no se inventa**: el lenguaje simple viene de plantillas mantenidas por
+  categoría de cláusula (`ClauseCategory`); el texto legal específico se preserva en `legalText`.
+- Cláusulas sin plantilla (categoría o idioma sin cobertura) se marcan con `unknown: true` y
+  `plainLanguage: ''` (la UI muestra un estado neutral, sin inventar).
+- `extractKeyTerms` hace match de términos + alias como palabra completa (Unicode, sin distinguir
+  mayúsculas), una referencia por término.
+- `buildContractReaderResponse` arma el `ContractReaderResponse` tipado, con el glosario limitado a
+  los términos referenciados y anchors por cláusula (`clausula-<order>`) para deep-link.
+
+### Glosario (Supabase)
+
+- Tabla `glossary_terms` (migración `20260701000000_glossary_terms.sql`): `id, term, definition,
+  locale, aliases[], created_at`. **RLS: lectura pública** (`USING (true)`); escritura solo por
+  `service_role` (backend). Semilla idempotente con los términos base en español.
+- `ContractsService` lee el glosario vía `SupabaseService` (mockeable en tests) y deriva el lector
+  con las funciones puras. El origen del contrato estructurado es un fixture hasta que aterrice el
+  epic #38 (Contract intelligence & assembly).
+
+### Endpoints (públicos — también los usa `/verificar/[id]`)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/contracts/glossary?locale=es` | Términos del glosario para un idioma |
+| GET | `/contracts/:bondId/reader?locale=es` | `ContractReaderResponse` tipado del bono |
+
+### Tipos
+
+En `@velar/types`: `ContractReaderResponse`, `PlainLanguageClause`, `GlossaryTerm`, `ClauseKeyTerm`,
+`ReaderLocale` (reader), y el modelo provisional `ContractSummary`/`ContractClause`/`ClauseCategory`
+(fixture de #38, a reemplazar cuando ese epic aterrice).
+
+### Comprobación local sin credenciales
+
+```bash
+npm run test --workspace apps/api -- --testPathPatterns contracts
+```
+
+Tests puros sobre el fixture (mapeo, `unknown` flagged, alias/palabra completa, subset de glosario,
+anchors) y tests del servicio con `SupabaseService` mockeado (glosario tipado + reader response).
+## 8. Reporte mensual: ciclo de vida y motor de cumplimiento (issue #40)
 
 El módulo `reports` original solo guardaba metadata de texto libre. Se **extendió**
 (sin reescribir lo anterior) a un reporte estructurado, versionado, con archivos y
