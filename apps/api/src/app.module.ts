@@ -16,6 +16,7 @@ import { ReportsModule } from './reports/reports.module';
 import { ExplorerModule } from './explorer/explorer.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthModule } from './health/health.module';
+import { ContractsModule } from './contracts/contracts.module';
 import { RolesGuard } from './auth/roles.guard';
 import { AuthGuard } from './auth/auth.guard';
 
@@ -50,6 +51,7 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
     ExplorerModule,
     NotificationsModule,
     HealthModule,
+    ContractsModule,
   ],
   controllers: [AppController],
   providers: [
