@@ -13,7 +13,7 @@ exports.createReportRequestSchema = zod_1.z.object({
     total_amount: common_1.positiveNumberSchema.optional(),
 }).strict().refine((value) => !value.period_start || !value.period_end || value.period_end >= value.period_start, { path: ['period_end'], message: 'validation.date' });
 exports.reviewReportRequestSchema = zod_1.z.object({
-    status: zod_1.z.enum(['revisado', 'observado', 'aprobado'], { errorMap: () => ({ message: 'validation.enum' }) }),
+    status: zod_1.z.enum(['revisado', 'observado', 'aprobado'], { error: 'validation.enum' }),
     notes: zod_1.z.string().trim().max(2000).optional(),
 }).strict();
 exports.reportRowSchema = zod_1.z.object({

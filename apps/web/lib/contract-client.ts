@@ -63,9 +63,29 @@ function appendQuery(path: string, query?: Record<string, unknown>): string {
   return suffix ? `${path}?${suffix}` : path;
 }
 
-function validationError(issues: Parameters<typeof zodIssuesToFieldErrors>[0], locale: Locale): ContractApiError {
+/**
+ * Normaliza issues de zod v4 (cuyo `path` puede incluir `symbol`) a la forma
+ * ValidationIssue esperada por @velar/types. Espejo del helper del backend.
+ */
+function toValidationIssues(
+  issues: ReadonlyArray<{ code: unknown; message: string; path: ReadonlyArray<PropertyKey> }>,
+): Parameters<typeof zodIssuesToFieldErrors>[0] {
+  return issues.map((issue) => ({
+    code: String(issue.code),
+    message: issue.message,
+    path: issue.path.filter(
+      (segment): segment is string | number =>
+        typeof segment === 'string' || typeof segment === 'number',
+    ),
+  }));
+}
+
+function validationError(
+  issues: ReadonlyArray<{ code: unknown; message: string; path: ReadonlyArray<PropertyKey> }>,
+  locale: Locale,
+): ContractApiError {
   return new ContractApiError(createApiError(ErrorCode.VALIDATION_ERROR, locale, {
-    fields: zodIssuesToFieldErrors(issues, locale),
+    fields: zodIssuesToFieldErrors(toValidationIssues(issues), locale),
   }).error);
 }
 
@@ -139,7 +159,7 @@ export async function requestContractPath(
   const output = match.contract.response.safeParse(json);
   if (!output.success) {
     throw new ContractApiError(createApiError(ErrorCode.RESPONSE_VALIDATION_ERROR, locale, {
-      fields: zodIssuesToFieldErrors(output.error.issues, locale),
+      fields: zodIssuesToFieldErrors(toValidationIssues(output.error.issues), locale),
       details: output.error.issues.map((issue) => ({ code: issue.code, path: issue.path })),
     }).error);
   }

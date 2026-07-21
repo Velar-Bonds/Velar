@@ -91,7 +91,7 @@ export interface ValidationIssue {
 export const contractErrorSchema = z.object({
   code: errorCodeSchema,
   message: z.string().min(1),
-  fields: z.record(z.array(z.string())).optional(),
+  fields: z.record(z.string(), z.array(z.string())).optional(),
   details: z.unknown().optional(),
   requestId: z.string().optional(),
 });

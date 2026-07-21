@@ -84,7 +84,7 @@ const VALIDATION_MESSAGES = {
 exports.contractErrorSchema = zod_1.z.object({
     code: exports.errorCodeSchema,
     message: zod_1.z.string().min(1),
-    fields: zod_1.z.record(zod_1.z.array(zod_1.z.string())).optional(),
+    fields: zod_1.z.record(zod_1.z.string(), zod_1.z.array(zod_1.z.string())).optional(),
     details: zod_1.z.unknown().optional(),
     requestId: zod_1.z.string().optional(),
 });
