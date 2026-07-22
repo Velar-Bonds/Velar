@@ -6,6 +6,7 @@ import {
   BondSearchQuery,
   type AuditEvent,
   type BondToken,
+  type ProvenanceInput,
   type Transfer,
   type TraceabilityResponse,
 } from '@velar/types';
@@ -185,6 +186,35 @@ export class AuditService {
     const full = await this.getBondTraceability(tokenId);
     const transfers = full.transfers.map((t) => ({ ...t, sellerMessage: null, buyerMessage: null }));
     return { ...full, transfers };
+  }
+
+  /**
+   * Raw inputs for the provenance engine (issue #36): the bond, its append-only
+   * audit events and its transfers, mapped to the shared @velar/types shapes.
+   * Reuses the traceability row mappers so both features read the DB the same way.
+   */
+  async getProvenanceInput(tokenId: string): Promise<ProvenanceInput> {
+    const { bond, events, transfers } = await this.getBondTimeline(tokenId);
+    return {
+      bond: this.mapBondTraceabilityBond(bond),
+      events: events.map((event) => this.mapAuditEvent(event)),
+      transfers: transfers.map((transfer) => this.mapTransfer(transfer)),
+    };
+  }
+
+  /**
+   * Resolves a token_id (UUID) or a human-readable bond_id (e.g. "SOL-2026-114")
+   * to the token_id, for public lookups. Throws 404 if the bond does not exist.
+   */
+  async resolveTokenId(idOrToken: string): Promise<string> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrToken);
+    if (isUuid) return idOrToken;
+    const { data } = await this.supabase.admin
+      .from('bonds').select('token_id').eq('bond_id', idOrToken).maybeSingle();
+    if (!data) {
+      throw new HttpException({ error: 'Bond not found', statusCode: 404 }, HttpStatus.NOT_FOUND);
+    }
+    return data.token_id;
   }
 
   async searchBonds(query: BondSearchQuery) {
