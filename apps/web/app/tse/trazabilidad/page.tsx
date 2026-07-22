@@ -2,9 +2,10 @@
 import { useEffect, useState } from 'react';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, ExternalLink, User, Clock, CheckCircle } from 'lucide-react';
+import { ArrowRight, ExternalLink, User, Clock, CheckCircle, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { TSEShell } from '../../../components/TSEShell';
+import { ProvenanceDialog } from '../../../components/provenance/ProvenanceDialog';
 import { useSession, apiFetch } from '../../../lib/api';
 import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
@@ -32,6 +33,7 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
   const [traceError, setTraceError] = useState<string | null>(null);
   const [loadingTrace, setLoadingTrace] = useState(false);
   const [sel, setSel] = useState<string>('');
+  const [provOpen, setProvOpen] = useState(false);
   const [filterParty, setFilterParty] = useState('');
   const [search, setSearch] = useState('');
 
@@ -138,10 +140,16 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
 
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="font-semibold">Historial de propietarios</h3>
-                  <a href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-blue-100">
-                    <ExternalLink size={12} /> Ver en Stellar Expert
-                  </a>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => setProvOpen(true)}
+                      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                      <ShieldCheck size={12} /> Procedencia verificada
+                    </button>
+                    <a href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-blue-100">
+                      <ExternalLink size={12} /> Ver en Stellar Expert
+                    </a>
+                  </div>
                 </div>
 
                 {owners.length === 0 ? (
@@ -189,6 +197,10 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
           </div>
         </div>
       </div>
+
+      {provOpen && sel && (
+        <ProvenanceDialog subjectId={sel} mode="auth" token={token} onClose={() => setProvOpen(false)} />
+      )}
     </TSEShell>
   );
 }

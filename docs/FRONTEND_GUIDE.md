@@ -317,3 +317,37 @@ que enlazan al detalle. Convive con el formulario legacy de reporte de texto lib
 ### Estados a manejar
 Localizado (es), responsive y accesible; con estados de carga, vacío y error en cada
 pantalla. Nunca se usa `service_role` ni secretos en el cliente.
+
+## 13. Explorador de procedencia y trazabilidad (issue #36)
+
+Explora la **historia verificada** de un bono: cadena de propiedad, ciclo de vida de
+cada transferencia y reporte de integridad. La bitácora se muestra en orden y **nunca
+se reordena ni se muta** en la UI.
+
+### Helpers puros — `lib/provenance.ts`
+Cliente tipado + helpers sin framework (testeables en node):
+`createProvenanceClient` (`getBondProvenance` autenticado / `getPublicBondProvenance`
+público), `provenanceSummary`, `sortAnomalies` / `anomalyLabel`, `ownershipDurationLabel`,
+`stepStates` / `abortedStage`, `statusLabel`, `buildProvenanceCsv` y
+`buildProvenanceExportText`.
+
+### Componentes — `components/provenance/`
+- **`OwnershipTimeline`** — cadena de dueños (emisor → dueño actual) con el período
+  que cada uno lo tuvo.
+- **`TransferLifecycleStepper`** — los seis pasos (`solicitada → aceptada → en_escrow →
+  pago_registrado → pago_validado → liberada`); `rechazada`/`cancelada` marcan los
+  pasos no alcanzados como abortados.
+- **`ProvenanceExplorer`** — compone lo anterior + reporte de integridad, chips de
+  resumen, inspector de eventos con filtro por tipo, links on-chain (Stellar Expert),
+  diff de dueño por transferencia y export **CSV / imprimir (PDF)**. Estados de
+  carga/vacío/error incluidos.
+- **`ProvenanceDialog`** — modal accesible que hospeda el explorer (Escape / click
+  fuera, foco al abrir, bloquea scroll).
+
+### Integración (6 superficies)
+Botón "Procedencia verificada" (autenticado) en `trazabilidad/`, `tse/trazabilidad/`,
+`partido/trazabilidad/`, y "Procedencia" por transferencia en `negociaciones/` y
+`partido/negociaciones/`. En la verificación pública `verificar/[id]/` el explorer va
+embebido en modo público. Los componentes son presentacionales (reciben datos del
+motor); el fetch vive en `ProvenanceExplorer`. Nunca se usa `service_role` ni secretos
+en el cliente.

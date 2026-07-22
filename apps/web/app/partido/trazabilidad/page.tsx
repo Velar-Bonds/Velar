@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Waypoints, ArrowRight, ExternalLink, User } from 'lucide-react';
+import { Waypoints, ArrowRight, ExternalLink, User, ShieldCheck } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
+import { ProvenanceDialog } from '../../../components/provenance/ProvenanceDialog';
 import { useSession, apiFetch } from '../../../lib/api';
 import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
@@ -18,6 +19,7 @@ export default function PartidoTrazabilidadPage() {
   const [traceError, setTraceError] = useState<string | null>(null);
   const [loadingTrace, setLoadingTrace] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  const [provOpen, setProvOpen] = useState(false);
 
   // Sidebar bond list: separate /bonds call (unchanged)
   useEffect(() => {
@@ -105,10 +107,16 @@ export default function PartidoTrazabilidadPage() {
                 )}
 
                 {bond && (
-                  <a href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} target="_blank" rel="noopener noreferrer"
-                    className="mb-5 flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-xs font-medium text-primary transition hover:bg-blue-100">
-                    <ExternalLink size={13} /> Ver transacciones en Stellar Expert
-                  </a>
+                  <div className="mb-5 flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => setProvOpen(true)}
+                      className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                      <ShieldCheck size={13} /> Procedencia verificada
+                    </button>
+                    <a href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-xs font-medium text-primary transition hover:bg-blue-100">
+                      <ExternalLink size={13} /> Ver transacciones en Stellar Expert
+                    </a>
+                  </div>
                 )}
 
                 {loadingTrace ? (
@@ -155,6 +163,10 @@ export default function PartidoTrazabilidadPage() {
           </div>
         )}
       </div>
+
+      {provOpen && sel && (
+        <ProvenanceDialog subjectId={sel} mode="auth" token={token} onClose={() => setProvOpen(false)} />
+      )}
     </PartidoShell>
   );
 }

@@ -2,6 +2,7 @@ import type { BondProvenance, TransferLifecycle } from '@velar/types';
 import {
   abortedStage,
   anomalyLabel,
+  buildProvenanceCsv,
   buildProvenanceExportText,
   createProvenanceClient,
   ownershipDurationLabel,
@@ -51,7 +52,10 @@ const provenance: BondProvenance = {
     { ownerId: 'buyer', from: '2026-03-01T10:00:00.000Z', to: null, current: true, viaTransferId: 't1', viaEventId: 'e7' },
   ],
   transfers: [liberadaLifecycle],
-  events: [],
+  events: [
+    { id: 'e1', bondTokenId: 'token-1', transferId: null, type: 'bond_emitido', actorId: 'tse, cr', payload: {}, createdAt: '2026-01-10T09:00:00.000Z' },
+    { id: 'e7', bondTokenId: 'token-1', transferId: 't1', type: 'token_liberado', actorId: 'party', payload: {}, txHash: 'tx-hash-1', createdAt: '2026-03-01T10:00:00.000Z' },
+  ],
   integrity: {
     ok: false,
     checkedAt: '2026-04-01T00:00:00.000Z',
@@ -135,6 +139,17 @@ describe('ownershipDurationLabel', () => {
   it('marks the current segment as ongoing', () => {
     const label = ownershipDurationLabel(provenance.ownership[1], new Date('2026-03-15T00:00:00.000Z'));
     expect(label).toMatch(/en curso/);
+  });
+});
+
+describe('buildProvenanceCsv', () => {
+  it('emits a header plus one row per event and escapes commas', () => {
+    const csv = buildProvenanceCsv(provenance);
+    const lines = csv.split('\n');
+    expect(lines[0]).toBe('event_id,type,created_at,transfer_id,actor_id,tx_hash');
+    expect(lines).toHaveLength(3); // header + 2 events
+    expect(lines[2]).toContain('tx-hash-1');
+    expect(lines[1]).toContain('"tse, cr"'); // comma-bearing actor_id is quoted
   });
 });
 

@@ -1,8 +1,9 @@
 'use client';
 import { notify } from '../../../components/Toast';
 import { useEffect, useState } from 'react';
-import { Handshake, ArrowRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Handshake, ArrowRight, Clock, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
+import { ProvenanceDialog } from '../../../components/provenance/ProvenanceDialog';
 import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch, type Me } from '../../../lib/api';
 import { contractUrl } from '../../../lib/stellar';
@@ -11,6 +12,7 @@ import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pa
 type Transfer = {
   id: string; status: string; amount: number | null;
   from_owner: string; to_owner: string; created_at?: string;
+  bond_token_id?: string;
   bonds?: { bond_id?: string };
   from_profile?: { full_name?: string };
   to_profile?: { full_name?: string };
@@ -38,6 +40,7 @@ export default function PartidoNegociacionesPage() {
   const [limit] = useState(20);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
+  const [provFor, setProvFor] = useState<string | null>(null);
   
 
   const load = (tok: string, p = page) => apiFetch(tok, 'GET', `/transfers?${paginatedQuery(p, limit)}`)
@@ -117,6 +120,15 @@ export default function PartidoNegociacionesPage() {
                   Canasta on-chain (Trustless Work)
                 </a>
               )}
+              {t.bond_token_id && (
+                <button
+                  type="button"
+                  onClick={() => setProvFor(t.bond_token_id ?? null)}
+                  className="mt-1.5 ml-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-100"
+                >
+                  <ShieldCheck size={10} /> Procedencia
+                </button>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -174,6 +186,10 @@ export default function PartidoNegociacionesPage() {
         )}
         <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
       </div>
+
+      {provFor && (
+        <ProvenanceDialog subjectId={provFor} mode="auth" token={token} onClose={() => setProvFor(null)} />
+      )}
     </PartidoShell>
   );
 }
