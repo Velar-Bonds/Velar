@@ -1,7 +1,8 @@
 'use client';
 import { notify } from '../../components/Toast';
 import { useEffect, useState } from 'react';
-import { Wallet, TrendingUp, Boxes, ShoppingCart } from 'lucide-react';
+import { Wallet, TrendingUp, Boxes, ShoppingCart, FileText } from 'lucide-react';
+import { ContractReaderDialog } from '../../components/contract-reader/ContractReaderDialog';
 import { AppShell } from '../../components/AppShell';
 import { StellarExpertButton, StatusBadge, EmptyState, fmtMoney } from '../../components/ui';
 import { PaginationControls } from '../../components/PaginationControls';
@@ -23,6 +24,7 @@ function Content({ token }: { token: string }) {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [publishTarget, setPublishTarget] = useState<string | null>(null);
+  const [readerBondId, setReaderBondId] = useState<string | null>(null);
 
   const load = (p = page) => apiFetch(token, 'GET', `/bonds?${paginatedQuery(p, limit)}`)
     .then((res) => {
@@ -90,6 +92,9 @@ function Content({ token }: { token: string }) {
                             {busy === b.token_id ? <><span className="btn-spinner" /> Publicando…</> : <><ShoppingCart size={12} /> Publicar</>}
                           </button>
                         )}
+                        <button onClick={() => setReaderBondId(b.bond_id)} className="btn-action" aria-label={`Leer el contrato del bono ${b.bond_id}`}>
+                          <FileText size={12} /> Contrato
+                        </button>
                         <StellarExpertButton href={bondExplorerUrl(b.soroban_contract_id, b.bond_id)} label="Stellar" small />
                       </div>
                     </td>
@@ -108,6 +113,10 @@ function Content({ token }: { token: string }) {
         onClose={() => setPublishTarget(null)}
         onConfirm={(methods) => publishTarget && publicar(publishTarget, methods)}
       />
+
+      {readerBondId && (
+        <ContractReaderDialog bondId={readerBondId} onClose={() => setReaderBondId(null)} />
+      )}
     </>
   );
 }

@@ -8,6 +8,7 @@ import {
   Radio, RefreshCw, ExternalLink,
 } from 'lucide-react';
 import { TSEShell } from '../../../../components/TSEShell';
+import { ContractReader } from '../../../../components/contract-reader/ContractReader';
 import { useSession, apiFetch, apiFetchBlob, API_URL } from '../../../../lib/api';
 import { contractUrl, accountUrl } from '../../../../lib/stellar';
 
@@ -442,6 +443,12 @@ export default function BonoDetallePage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Lector del contrato en lenguaje simple (#39) */}
+            <div className="mt-8">
+              <h2 className="mb-3 text-lg font-semibold text-slate-900">Entiende el contrato</h2>
+              <ContractReader bondId={data.bond_id ?? tokenId} />
             </div>
           </>
         )}

@@ -253,7 +253,38 @@ npm run build --workspace apps/web
 Las pruebas del cliente usan `fetch` simulado y las pruebas de formularios son puras; ninguna
 requiere Supabase, VELAR DB, wallets ni proveedores externos.
 
-## 11. Reporte mensual del partido (issue #40)
+## 11. Lector de contratos (issue #39)
+
+Experiencia de lectura y comprensión del contrato de un bono en lenguaje simple. **Complementa el
+contrato legal; no lo reemplaza.** Consume los endpoints públicos del backend
+(`GET /contracts/:bondId/reader`, `GET /contracts/glossary`).
+
+### Componentes
+
+- `components/contract-reader/ContractReader.tsx` — el lector: resumen arriba, vista
+  cláusula-por-cláusula en lenguaje simple, tooltips de glosario sobre términos resaltados,
+  toggle **Lenguaje simple ⇄ Documento legal**, barra de progreso de lectura, checkpoints de
+  comprensión ("¿Entendiste esta cláusula?") e **imprimir / exportar**. Localizado (es),
+  responsive y accesible (navegación por teclado entre cláusulas con flechas, `aria`, foco visible,
+  definiciones para lector de pantalla, `motion-reduce`). Maneja loading / error / vacío.
+  - Props: `bondId` (requerido), `locale?` (`'es' | 'en'`), `initialReader?` (para fixtures/SSR).
+- `components/contract-reader/ContractReaderDialog.tsx` — modal accesible que monta el lector bajo
+  demanda (usado en las listas de bonos).
+
+### Helpers puros (`lib/contract-reader.ts`)
+
+`createContractReaderClient({ baseUrl, fetch })`, `highlightSegments`, `computeReadingProgress`,
+`plainLanguageText`, `buildExportText`, `glossaryById`. Testeados en `lib/contract-reader.spec.ts`.
+
+### Dónde está integrado
+
+- `app/mis-bonos/` y `app/partido/mis-bonos/` — botón **Contrato** por bono → abre el modal.
+- `app/tse/bono/[tokenId]/` — lector embebido en el detalle del bono.
+- `app/verificar/[id]/` (público) — lector embebido bajo la trazabilidad.
+
+> Nota: el contrato estructurado proviene de un fixture hasta que aterrice el epic #38 (Contract
+> intelligence & assembly); el backend inyecta el `bondId` solicitado.
+## 12. Reporte mensual del partido (issue #40)
 
 Pantallas en `apps/web/app/partido/reportes/` (rol `emisor`). Helpers de UI en
 `lib/reports.ts` (etiquetas de estado/categoría/cumplimiento, formato CRC/fecha,
