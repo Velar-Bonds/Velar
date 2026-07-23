@@ -1,8 +1,9 @@
 'use client';
 import { notify } from '../../components/Toast';
 import { useEffect, useState } from 'react';
-import { Handshake, Shield } from 'lucide-react';
+import { Handshake, Shield, ShieldCheck } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
+import { ProvenanceDialog } from '../../components/provenance/ProvenanceDialog';
 import { PaginationControls } from '../../components/PaginationControls';
 import { StatusBadge, EmptyState, fmtMoney } from '../../components/ui';
 import { PAYMENT_METHOD_META } from '../../components/PaymentMethodPicker';
@@ -16,6 +17,7 @@ const SELF_CUSTODY = process.env.NEXT_PUBLIC_SELF_CUSTODY === '1';
 
 type Transfer = {
   id: string; status: string; amount: number | null; from_owner: string; to_owner: string;
+  bond_token_id?: string;
   payment_method?: string | null;
   bonds?: { bond_id?: string }; from_profile?: { full_name?: string }; to_profile?: { full_name?: string };
   created_at?: string;
@@ -35,6 +37,7 @@ function Content({ token, me }: { token: string; me: Me }) {
   const [total, setTotal] = useState(0);
   const wallet = useWallet();
   const [busy, setBusy] = useState<string | null>(null);
+  const [provFor, setProvFor] = useState<string | null>(null);
 
   const load = (p = page) => apiFetch(token, 'GET', `/transfers?${paginatedQuery(p, limit)}`)
     .then((res) => {
@@ -154,6 +157,15 @@ function Content({ token, me }: { token: string; me: Me }) {
                 <Shield size={10} /> Canasta on-chain (Trustless Work)
               </a>
             )}
+            {t.bond_token_id && (
+              <button
+                type="button"
+                onClick={() => setProvFor(t.bond_token_id ?? null)}
+                className="mt-1.5 ml-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-100"
+              >
+                <ShieldCheck size={10} /> Procedencia
+              </button>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -192,6 +204,10 @@ function Content({ token, me }: { token: string; me: Me }) {
         </>
       )}
       <PaginationControls page={page} limit={limit} total={total} onPageChange={setPage} />
+
+      {provFor && (
+        <ProvenanceDialog subjectId={provFor} mode="auth" token={token} onClose={() => setProvFor(null)} />
+      )}
     </>
   );
 }

@@ -189,6 +189,20 @@ export function abortedStage(lifecycle: TransferLifecycle) {
 const fmt = (iso: string | null | undefined): string =>
   iso ? new Date(iso).toISOString() : '—';
 
+const csvCell = (value: string | null | undefined): string => {
+  const s = value ?? '';
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+/** CSV of the append-only event history (one row per event), for export. */
+export function buildProvenanceCsv(p: BondProvenance): string {
+  const header = ['event_id', 'type', 'created_at', 'transfer_id', 'actor_id', 'tx_hash'];
+  const rows = p.events.map((e) =>
+    [e.id, e.type, e.createdAt, e.transferId, e.actorId, e.txHash].map(csvCell).join(','),
+  );
+  return [header.join(','), ...rows].join('\n');
+}
+
 /** Plain-text provenance report for download/print (no PII beyond owner ids). */
 export function buildProvenanceExportText(p: BondProvenance): string {
   const s = provenanceSummary(p);

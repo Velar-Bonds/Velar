@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { GitBranch, ArrowRight, Boxes } from 'lucide-react';
+import { GitBranch, ArrowRight, Boxes, ShieldCheck } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
+import { ProvenanceDialog } from '../../components/provenance/ProvenanceDialog';
 import { StellarExpertButton, StatusBadge, EmptyState, fmtDate } from '../../components/ui';
 import { apiFetch } from '../../lib/api';
 import { unwrapPaginated } from '../../lib/pagination';
@@ -18,6 +19,7 @@ function Content({ token }: { token: string }) {
   const [bonds, setBonds] = useState<Bond[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [sel, setSel] = useState<string | null>(null);
+  const [provOpen, setProvOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -61,7 +63,18 @@ function Content({ token }: { token: string }) {
             <div className="glass-card rounded-2xl p-6">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div><div className="text-xs uppercase tracking-wide text-on-surface-variant">Bono</div><div className="mono-data text-lg font-bold text-primary-container">{bond?.bond_id}</div></div>
-                {bond && <StellarExpertButton href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} label="Ver transacciones en Stellar Expert" />}
+                <div className="flex flex-wrap items-center gap-2">
+                  {sel && (
+                    <button
+                      type="button"
+                      onClick={() => setProvOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                    >
+                      <ShieldCheck size={14} /> Ver procedencia verificada
+                    </button>
+                  )}
+                  {bond && <StellarExpertButton href={bondExplorerUrl(bond.soroban_contract_id, bond.bond_id)} label="Ver transacciones en Stellar Expert" />}
+                </div>
               </div>
 
               {movs.length === 0 ? (
@@ -85,6 +98,10 @@ function Content({ token }: { token: string }) {
             </div>
           </div>
         </div>
+      )}
+
+      {provOpen && sel && (
+        <ProvenanceDialog subjectId={sel} mode="auth" token={token} onClose={() => setProvOpen(false)} />
       )}
     </>
   );
