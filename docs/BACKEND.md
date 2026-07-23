@@ -365,3 +365,39 @@ Se reemplaza por ClamAV/VirusTotal sin tocar el resto del módulo.
 
 El TSE (revisión/observación/aprobación) es un **epic aparte**; este issue cubre el
 lado del partido y el dominio compartido de reporte/conciliación.
+
+## 9. Procedencia y trazabilidad: reconstrucción de historia + integridad (issue #36)
+
+Reconstruye la **historia verificada** de un bono a partir de la bitácora
+append-only (`audit_events`), las `transfers` y los registros de escrow, y produce
+un reporte de integridad con anomalías tipadas. La bitácora nunca se reordena ni
+se muta (ver `docs/AGENTS.md` §4): el motor ordena una **copia**.
+
+### Motor puro (`provenance/provenance-engine.ts`)
+Funciones sin dependencias (ni Nest ni Supabase), fáciles de testear:
+- `reconstructOwnership` — línea de tiempo de dueños (`OwnershipSegment[]`) a partir
+  de los eventos de propiedad (`bond_emitido`, `bond_asignado`, `token_liberado`).
+- `reconstructTransferLifecycle` — mapea los eventos de una transferencia a etapas
+  ordenadas + índice de paso actual (`TRANSFER_LIFECYCLE_STEPS`) y si es terminal.
+- `checkIntegrity` — anomalías tipadas: `out_of_order`, `ownership_gap`,
+  `illegal_transition` (contra la máquina de estados `TRANSFER_TRANSITIONS`),
+  `onchain_offchain_mismatch`, `missing_event`.
+- `reconstructProvenance` — arma el `BondProvenance` + `IntegrityReport`.
+
+### Servicio y endpoints (`provenance/`)
+`ProvenanceService` es delgado: pide el `ProvenanceInput` a `AuditService`
+(`getProvenanceInput` / `resolveTokenId`, que reutilizan los mappers de
+trazabilidad) y corre el motor.
+- `GET /bonds/:tokenId/provenance` — **autenticado** (cualquier rol): historia completa.
+- `GET /public/bonds/:idOrToken/provenance` — **público** (verificación ciudadana);
+  acepta `token_id` o el `bond_id` legible. La salida no expone mensajes privados
+  de negociación (los lifecycles solo llevan estado + fechas).
+
+### Tipos (`@velar/types`)
+`BondProvenance`, `OwnershipSegment`, `TransferLifecycle`, `ProvenanceAnomaly` /
+`ProvenanceAnomalyType`, `IntegrityReport`, `ProvenanceInput`, más el fixture
+`provenanceFixture` para pruebas locales sin base de datos.
+
+### Comprobación local sin credenciales
+`npx jest` en `apps/api` (motor + servicio con `AuditService` mockeado). El motor
+no toca la red ni la base; el servicio se prueba con dobles.
