@@ -67,6 +67,75 @@
   --velar-glass-strong: #FFFFFF;
 }
 
+/* ─── Tema oscuro ────────────────────────────────────────────────────────────
+   Sobreescribe las MISMAS variables que usan las utilidades de Tailwind
+   (var(--color-*)) y los helpers .velar-*. No se agregan tokens nuevos: solo
+   cambian los valores según el tema activo en <html data-theme="dark">. */
+[data-theme='dark'] {
+  --color-primary: #8DBBFF;
+  --color-primary-container: #2563EB;
+  --color-primary-hover: #3B82F6;
+  --color-primary-fixed: #16233F;
+  --color-primary-fixed-dim: #1E3766;
+  --color-on-primary: #ffffff;
+  --color-institutional: #E6EDF9;
+  --color-secondary: #9FB2D0;
+  --color-secondary-container: #1E2B47;
+  --color-secondary-fixed: #16233F;
+  --color-tertiary: #8DBBFF;
+  --color-tertiary-container: #2563EB;
+  --color-background: #0B1220;
+  --color-surface: #111A2E;
+  --color-surface-variant: #1E2B47;
+  --color-surface-container: #17223A;
+  --color-surface-container-low: #0F1626;
+  --color-surface-container-high: #1E2B47;
+  --color-surface-container-highest: #26365A;
+  --color-surface-container-lowest: #0B1220;
+  --color-on-surface: #E6EDF9;
+  --color-on-surface-variant: #9FB2D0;
+  --color-on-background: #E6EDF9;
+  --color-outline: #33456B;
+  --color-outline-variant: #26365A;
+  --color-inverse-surface: #E6EDF9;
+  --color-inverse-on-surface: #0B1220;
+  --color-error: #FF6B5E;
+  --color-error-container: #4A1A15;
+  --color-success: #34D399;
+  --color-glass-border: #26365A;
+
+  --velar-canvas: #0B1220;
+  --velar-section: #0F1626;
+  --velar-surface: #111A2E;
+  --velar-surface-soft: #17223A;
+  --velar-text: #E6EDF9;
+  --velar-muted: #9FB2D0;
+  --velar-border: #26365A;
+  --velar-border-strong: #33456B;
+  --velar-success: #34D399;
+  --velar-warning: #E0A82E;
+  --velar-error: #FF6B5E;
+  --velar-glass: rgba(17, 26, 46, 0.78);
+  --velar-glass-strong: #111A2E;
+}
+
+/* ─── Branding por país ──────────────────────────────────────────────────────
+   Reajusta solo el acento primario (botones/enlaces) según <html data-country>.
+   CR es el default y no necesita override. Los tonos mantienen contraste AA con
+   texto blanco tanto en claro como en oscuro. */
+[data-country='CO'] {
+  --color-primary-container: #C2410C;
+  --color-primary-hover: #9A3412;
+}
+[data-country='BR'] {
+  --color-primary-container: #15803D;
+  --color-primary-hover: #166534;
+}
+[data-country='AR'] {
+  --color-primary-container: #0369A1;
+  --color-primary-hover: #075985;
+}
+
 html {
   scroll-behavior: smooth;
 }
