@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { CountryProvider } from '../lib/country';
 import { WalletProvider } from '../lib/wallet';
+import { ThemeProvider } from './ui/theme';
 import { ToastContainer } from './Toast';
 
 function isAuthRoute(pathname: string | null) {
@@ -19,10 +20,12 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <CountryProvider>
-      <WalletProvider>
-        {children}
-        <ToastContainer />
-      </WalletProvider>
+      <ThemeProvider>
+        <WalletProvider>
+          {children}
+          <ToastContainer />
+        </WalletProvider>
+      </ThemeProvider>
     </CountryProvider>
   );
 }
