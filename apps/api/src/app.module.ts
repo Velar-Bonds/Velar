@@ -13,9 +13,14 @@ import { UsersModule } from './users/users.module';
 import { PartiesModule } from './parties/parties.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ReportsModule } from './reports/reports.module';
+import { SlaModule } from './sla/sla.module';
+import { ComplianceAnalyticsModule } from './compliance-analytics/compliance-analytics.module';
+import { ExportsModule } from './reports/exports/exports.module';
 import { ExplorerModule } from './explorer/explorer.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthModule } from './health/health.module';
+import { ContractsModule } from './contracts/contracts.module';
+import { ProvenanceModule } from './provenance/provenance.module';
 import { RolesGuard } from './auth/roles.guard';
 import { AuthGuard } from './auth/auth.guard';
 
@@ -47,9 +52,14 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
     PartiesModule,
     AnalyticsModule,
     ReportsModule,
+    SlaModule,
+    ComplianceAnalyticsModule,
+    ExportsModule,
     ExplorerModule,
     NotificationsModule,
     HealthModule,
+    ContractsModule,
+    ProvenanceModule,
   ],
   controllers: [AppController],
   providers: [

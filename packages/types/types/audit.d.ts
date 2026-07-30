@@ -21,6 +21,19 @@ export declare const AuditEventType: {
     readonly WALLET_PROVISIONED: "wallet_provisioned";
     readonly BOND_PUBLISHED: "bond_published";
     readonly COUNTER_OFFER_SENT: "counter_offer_sent";
+    readonly REPORT_SUBMITTED: "report_submitted";
+    readonly REPORT_RESUBMITTED: "report_resubmitted";
+    readonly REPORT_VERSION_CREATED: "report_version_created";
+    readonly REPORT_OBSERVED: "report_observed";
+    readonly REPORT_APPROVED: "report_approved";
+    readonly REPORT_FILE_UPLOADED: "report_file_uploaded";
+    readonly REPORT_REJECTED: "report_rejected";
+    readonly REPORT_ASSIGNED: "report_assigned";
+    readonly REPORT_PENDING_SECOND_APPROVAL: "report_pending_second_approval";
+    readonly REPORT_SECOND_APPROVED: "report_second_approved";
+    readonly REPORT_SLA_ESCALATED: "report_sla_escalated";
+    readonly REPORT_EXPORTED: "report_exported";
+    readonly REPORT_MARKED_REVIEWED: "report_marked_reviewed";
 };
 export type AuditEventType = (typeof AuditEventType)[keyof typeof AuditEventType];
 export interface AuditEvent {
@@ -63,4 +76,22 @@ export interface TraceabilityResponse {
     events: AuditEvent[];
     transfers: import('./transfer').Transfer[];
     owners: OwnerEntry[];
+}
+/** Un evento de auditoría con sus campos de cadena de hashes poblados. */
+export interface ChainedAuditEvent extends AuditEvent {
+    chainSeq: number | null;
+    prevHash: string | null;
+    hash: string | null;
+}
+/** Un problema detectado al verificar la cadena de auditoría. */
+export interface ChainIntegrityIssue {
+    type: 'hash_mismatch' | 'gap' | 'broken_link';
+    chainSeq: number | null;
+    message: string;
+}
+/** Resultado de verificar la integridad de la cadena de auditoría. */
+export interface ChainVerificationResult {
+    valid: boolean;
+    checkedCount: number;
+    issues: ChainIntegrityIssue[];
 }

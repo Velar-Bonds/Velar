@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, FileText, Wallet, Handshake, Waypoints, History, Settings, LogOut, ShieldCheck, Send,
+  LayoutDashboard, FileText, Wallet, Handshake, Waypoints, History, Settings, LogOut, ShieldCheck, Send, BarChart3,
 } from 'lucide-react';
 import { createClient } from '../lib/supabase/client';
 import type { Me } from '../lib/api';
@@ -19,6 +19,7 @@ const NAV = [
   { href: '/partido/mis-bonos', label: 'Mis bonos', Icon: Wallet },
   { href: '/partido/negociaciones', label: 'Negociaciones', Icon: Handshake },
   { href: '/partido/trazabilidad', label: 'Trazabilidad', Icon: Waypoints },
+  { href: '/partido/analytics', label: 'Análisis', Icon: BarChart3 },
   { href: '/partido/reportes', label: 'Reportes al TSE', Icon: Send },
   { href: '/partido/historial', label: 'Historial', Icon: History },
   { href: '/partido/configuracion', label: 'Configuración', Icon: Settings },

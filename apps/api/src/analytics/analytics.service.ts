@@ -1,89 +1,221 @@
-import { BadRequestException, Injectable, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type {
+  AlertBreach,
+  AlertRule,
+  AlertRuleInput,
+  AnalyticsQuery,
+  AnalyticsScope,
+  AnalyticsSnapshot,
+  Role,
+  SavedView,
+  SavedViewInput,
+  ScheduledReportConfig,
+  ScheduledReportResult,
+} from '@velar/types';
+import { NotificationType } from '@velar/types';
 import { SupabaseService } from '../common/supabase/supabase.service';
-import { Role } from '@velar/types';
+import { NotificationsService } from '../notifications/notifications.service';
+import { AnalyticsDataService } from './analytics-data.service';
+import { renderSnapshotCsv } from './csv/analytics-csv';
+import { applyScope, buildAnalyticsSnapshot, evaluateAlertRules } from './engine';
+import { renderAnalyticsPdf } from './pdf/analytics-pdf';
+import { SCHEDULED_REPORT_GENERATOR, ScheduledReportGenerator } from './scheduled-report/scheduled-report-generator.interface';
 
 const AUTHORITY: Role[] = ['tse', 'admin'];
+/** Legacy CSV columns, kept for the (unchanged) transfer-detail drill-down export. */
 const CSV_HEADERS = ['bond_id', 'transfer_date', 'seller_name', 'buyer_name', 'amount_colones', 'party_name'] as const;
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private data: AnalyticsDataService,
+    private supabase: SupabaseService,
+    private notifications: NotificationsService,
+    @Inject(SCHEDULED_REPORT_GENERATOR) private scheduledReportGenerator: ScheduledReportGenerator,
+  ) {}
 
   private assertAuth(role: Role) {
     if (!AUTHORITY.includes(role)) throw new ForbiddenException('Solo TSE/admin');
   }
 
-  private assertTseOnly(role: Role) {
-    if (role !== 'tse') throw new ForbiddenException('Solo TSE');
+  /** TSE/admin see every party; `emisor` sees only their own party's data. Everyone else is out of scope for aggregate analytics. */
+  private resolveScope(role: Role, partyId: string | null): AnalyticsScope {
+    if (AUTHORITY.includes(role)) return { kind: 'all' };
+    if (role === 'emisor') {
+      if (!partyId) throw new ForbiddenException('Tu perfil no tiene un partido asociado');
+      return { kind: 'party', partyId };
+    }
+    throw new ForbiddenException('No autorizado para ver analítica');
   }
 
-  /** Overview general del sistema. */
-  async overview(role: Role) {
-    this.assertAuth(role);
-    const db = this.supabase.admin;
+  // ─── Snapshot & exports ─────────────────────────────────────────────────────
 
-    const [bondsRes, transfersRes, requestsRes] = await Promise.all([
-      db.from('bonds').select('*, parties(id, name)'),
-      db.from('transfers').select('amount, status, from_owner, to_owner, bond_token_id, created_at, bonds(issuer_party_id, parties(name))'),
-      db.from('bond_requests').select('id, status'),
-    ]);
+  async getSnapshot(role: Role, partyId: string | null, query: AnalyticsQuery = {}): Promise<AnalyticsSnapshot> {
+    const scope = this.resolveScope(role, partyId);
+    const input = await this.data.getAnalyticsInput();
+    return buildAnalyticsSnapshot(input, query, scope);
+  }
 
-    const bonds = bondsRes.data ?? [];
-    const transfers = transfersRes.data ?? [];
-    const requests = requestsRes.data ?? [];
+  async exportCsv(role: Role, partyId: string | null, query: AnalyticsQuery = {}): Promise<string> {
+    return renderSnapshotCsv(await this.getSnapshot(role, partyId, query));
+  }
 
-    const liberadas = transfers.filter((t: any) => t.status === 'liberada');
-    const totalVolumen = liberadas.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0);
-    const valorEmitido = bonds.reduce((s: number, b: any) => s + (Number(b.face_value) || 0), 0);
+  async exportPdf(role: Role, partyId: string | null, query: AnalyticsQuery = {}): Promise<Buffer> {
+    return renderAnalyticsPdf(await this.getSnapshot(role, partyId, query));
+  }
 
+  // ─── Alert rules (TSE/admin only — enforced at the controller via @Roles) ──
+
+  private mapAlertRule(row: any): AlertRule {
     return {
-      total_bonds: bonds.length,
-      total_volume_crc: totalVolumen,
-      total_emitted_crc: valorEmitido,
-      total_transfers: transfers.length,
-      total_sales: liberadas.length,
-      pending_requests: requests.filter((r: any) => r.status === 'pendiente').length,
-      approved_requests: requests.filter((r: any) => r.status === 'aprobado').length,
-      rejected_requests: requests.filter((r: any) => r.status === 'rechazado').length,
-      bonds_by_status: this.groupCount(bonds, (b: any) => b.status),
+      id: row.id,
+      name: row.name,
+      metricPath: row.metric_path,
+      comparator: row.comparator,
+      threshold: Number(row.threshold),
+      scope: row.scope ?? { kind: 'all' },
+      notifyUserIds: row.notify_user_ids ?? [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 
-  /** Métricas por partido. */
-  async byParty(role: Role) {
-    this.assertAuth(role);
-    const db = this.supabase.admin;
-
-    const [partiesRes, bondsRes, transfersRes] = await Promise.all([
-      db.from('parties').select('id, name, code'),
-      db.from('bonds').select('issuer_party_id, face_value, status'),
-      db.from('transfers').select('amount, status, bonds!inner(issuer_party_id)'),
-    ]);
-
-    const parties = partiesRes.data ?? [];
-    const bonds = bondsRes.data ?? [];
-    const transfers = (transfersRes.data ?? []) as any[];
-
-    return parties.map((p: any) => {
-      const partyBonds = bonds.filter((b: any) => b.issuer_party_id === p.id);
-      const partyTransfers = transfers.filter((t: any) => t.bonds?.issuer_party_id === p.id);
-      const sales = partyTransfers.filter((t: any) => t.status === 'liberada');
-      const volume = sales.reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0);
-      const emitted = partyBonds.reduce((s: number, b: any) => s + (Number(b.face_value) || 0), 0);
-
-      return {
-        party_id: p.id,
-        party_name: p.name,
-        party_code: p.code,
-        bonds_count: partyBonds.length,
-        emitted_value: emitted,
-        sales_count: sales.length,
-        volume_moved: volume,
-        active_bonds: partyBonds.filter((b: any) => ['activo', 'en_venta'].includes(b.status)).length,
-        sold_bonds: partyBonds.filter((b: any) => b.status === 'vendido').length,
-      };
-    }).sort((a, b) => b.volume_moved - a.volume_moved);
+  async listAlertRules(): Promise<AlertRule[]> {
+    const { data, error } = await this.supabase.admin
+      .from('analytics_alert_rules')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return (data ?? []).map((r: any) => this.mapAlertRule(r));
   }
+
+  async createAlertRule(input: AlertRuleInput): Promise<AlertRule> {
+    if (!input.name?.trim()) throw new BadRequestException('El nombre es obligatorio');
+    if (!input.metricPath?.trim()) throw new BadRequestException('metricPath es obligatorio');
+    const { data, error } = await this.supabase.admin
+      .from('analytics_alert_rules')
+      .insert({
+        name: input.name.trim(),
+        metric_path: input.metricPath.trim(),
+        comparator: input.comparator,
+        threshold: input.threshold,
+        scope: input.scope,
+        notify_user_ids: input.notifyUserIds ?? [],
+      })
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    return this.mapAlertRule(data);
+  }
+
+  async updateAlertRule(id: string, input: Partial<AlertRuleInput>): Promise<AlertRule> {
+    const patch: Record<string, unknown> = {};
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.metricPath !== undefined) patch.metric_path = input.metricPath;
+    if (input.comparator !== undefined) patch.comparator = input.comparator;
+    if (input.threshold !== undefined) patch.threshold = input.threshold;
+    if (input.scope !== undefined) patch.scope = input.scope;
+    if (input.notifyUserIds !== undefined) patch.notify_user_ids = input.notifyUserIds;
+
+    const { data, error } = await this.supabase.admin
+      .from('analytics_alert_rules')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error || !data) throw new NotFoundException('Regla no encontrada');
+    return this.mapAlertRule(data);
+  }
+
+  async deleteAlertRule(id: string): Promise<{ ok: true }> {
+    const { error } = await this.supabase.admin.from('analytics_alert_rules').delete().eq('id', id);
+    if (error) throw new BadRequestException(error.message);
+    return { ok: true };
+  }
+
+  private async evaluateAndNotify(rules: AlertRule[]): Promise<AlertBreach[]> {
+    if (rules.length === 0) return [];
+    const input = await this.data.getAnalyticsInput();
+    const allBreaches: AlertBreach[] = [];
+    for (const rule of rules) {
+      const scopedInput = applyScope(input, rule.scope);
+      const snapshot = buildAnalyticsSnapshot(scopedInput, {}, rule.scope);
+      const breaches = evaluateAlertRules(snapshot, [rule]);
+      for (const breach of breaches) {
+        for (const userId of rule.notifyUserIds) {
+          await this.notifications.emit(userId, NotificationType.ANALYTICS_THRESHOLD_BREACHED, { ...breach });
+        }
+      }
+      allBreaches.push(...breaches);
+    }
+    return allBreaches;
+  }
+
+  async evaluateAlertRule(id: string): Promise<AlertBreach[]> {
+    const { data, error } = await this.supabase.admin.from('analytics_alert_rules').select('*').eq('id', id).single();
+    if (error || !data) throw new NotFoundException('Regla no encontrada');
+    return this.evaluateAndNotify([this.mapAlertRule(data)]);
+  }
+
+  async evaluateAllAlertRules(): Promise<AlertBreach[]> {
+    return this.evaluateAndNotify(await this.listAlertRules());
+  }
+
+  // ─── Saved views (owner-scoped) ─────────────────────────────────────────────
+
+  private mapSavedView(row: any): SavedView {
+    return {
+      id: row.id,
+      ownerId: row.owner_id,
+      role: row.role,
+      name: row.name,
+      query: row.query ?? {},
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  async listSavedViews(ownerId: string): Promise<SavedView[]> {
+    const { data, error } = await this.supabase.admin
+      .from('analytics_saved_views')
+      .select('*')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return (data ?? []).map((r: any) => this.mapSavedView(r));
+  }
+
+  async createSavedView(ownerId: string, role: Role, input: SavedViewInput): Promise<SavedView> {
+    if (!input.name?.trim()) throw new BadRequestException('El nombre es obligatorio');
+    const { data, error } = await this.supabase.admin
+      .from('analytics_saved_views')
+      .insert({ owner_id: ownerId, role, name: input.name.trim(), query: input.query ?? {} })
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    return this.mapSavedView(data);
+  }
+
+  async deleteSavedView(id: string, ownerId: string): Promise<{ ok: true }> {
+    const { error } = await this.supabase.admin
+      .from('analytics_saved_views')
+      .delete()
+      .eq('id', id)
+      .eq('owner_id', ownerId);
+    if (error) throw new BadRequestException(error.message);
+    return { ok: true };
+  }
+
+  // ─── Scheduled report (manual trigger, no cron) ────────────────────────────
+
+  async runScheduledReport(config: ScheduledReportConfig): Promise<ScheduledReportResult> {
+    const input = await this.data.getAnalyticsInput();
+    const scopedInput = applyScope(input, config.scope);
+    const snapshot = buildAnalyticsSnapshot(scopedInput, {}, config.scope);
+    return this.scheduledReportGenerator.generate(config, snapshot);
+  }
+
+  // ─── Legacy bond-detail drill-down (unchanged, TSE/admin only, live Supabase) ─
 
   /** Histórico de precios y % de cambio de un bono. */
   async bondPriceHistory(tokenId: string, role: Role) {
@@ -145,10 +277,8 @@ export class AnalyticsService {
 
     const liberadas = ((transfers ?? []) as any[]).filter((t: any) => t.status === 'liberada');
 
-    // Construir cadena de propietarios
     const owners: any[] = [];
     if (liberadas.length === 0) {
-      // Solo el partido (emisor original)
       if (bond.profiles) {
         owners.push({
           name: bond.profiles.full_name,
@@ -160,14 +290,13 @@ export class AnalyticsService {
         });
       }
     } else {
-      // Primer dueño = vendedor de la primera transferencia
       const first = liberadas[0];
       owners.push({
         name: first.from_profile?.full_name,
         email: first.from_profile?.email,
         since: bond.created_at,
         until: first.created_at,
-        paid: null, // emitido, no comprado
+        paid: null,
         current: false,
       });
       liberadas.forEach((t: any, i: number) => {
@@ -191,7 +320,7 @@ export class AnalyticsService {
     };
   }
 
-  /** Top N bonos más movidos. */
+  /** Top N bonos más movidos (detalle legado con nombre de partido, para drill-down). */
   async topBonds(role: Role, limit = 5) {
     this.assertAuth(role);
     const { data: transfers } = await this.supabase.admin
@@ -210,9 +339,9 @@ export class AnalyticsService {
     return [...agg.values()].sort((a, b) => b.volume - a.volume).slice(0, limit);
   }
 
-  /** CSV de transferencias liberadas para auditores externos. Solo rol TSE. */
+  /** CSV legado de transferencias liberadas con nombres, para auditores externos. Solo rol TSE. */
   async exportTransfersCsv(role: Role, format: string | undefined) {
-    this.assertTseOnly(role);
+    if (role !== 'tse') throw new ForbiddenException('Solo TSE');
     if (format !== 'csv') throw new BadRequestException('format=csv requerido');
 
     const { data, error } = await this.supabase.admin
@@ -239,38 +368,6 @@ export class AnalyticsService {
     ]);
 
     return `\uFEFF${[CSV_HEADERS.join(','), ...rows.map((row) => row.map((cell) => this.csvCell(cell)).join(','))].join('\r\n')}\r\n`;
-  }
-
-  /** Serie temporal del volumen movido por día. */
-  async volumeOverTime(role: Role, days = 30) {
-    this.assertAuth(role);
-    const since = new Date();
-    since.setDate(since.getDate() - days);
-
-    const { data } = await this.supabase.admin
-      .from('transfers')
-      .select('amount, created_at')
-      .eq('status', 'liberada')
-      .gte('created_at', since.toISOString())
-      .order('created_at', { ascending: true });
-
-    const byDay = new Map<string, { date: string; volume: number; sales: number }>();
-    ((data ?? []) as any[]).forEach((t: any) => {
-      const day = (t.created_at ?? '').slice(0, 10);
-      const cur = byDay.get(day) ?? { date: day, volume: 0, sales: 0 };
-      cur.volume += Number(t.amount) || 0;
-      cur.sales += 1;
-      byDay.set(day, cur);
-    });
-    return [...byDay.values()];
-  }
-
-  private groupCount<T>(arr: T[], key: (x: T) => string): Record<string, number> {
-    return arr.reduce<Record<string, number>>((acc, x) => {
-      const k = key(x) ?? 'unknown';
-      acc[k] = (acc[k] ?? 0) + 1;
-      return acc;
-    }, {});
   }
 
   private csvCell(value: string | number): string {

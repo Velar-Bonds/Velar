@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ReportsService, CreateReportInput } from './reports.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Role } from '@velar/types';
 
@@ -27,9 +28,15 @@ export class ReportsController {
   @Patch(':id/review')
   review(
     @Param('id') id: string,
-    @Body() body: { status: 'revisado' | 'observado' | 'aprobado'; notes?: string },
+    @Body() body: { status: 'revisado' | 'observado' | 'aprobado' | 'rechazado'; notes?: string; expectedVersion?: number },
     @CurrentUser() user: any,
   ) {
-    return this.reports.review(id, body.status, body.notes, user.id, user.profile?.role as Role);
+    return this.reports.review(id, body.status, body.notes, user.id, user.profile?.role as Role, body.expectedVersion);
+  }
+
+  @Patch(':id/assign')
+  @Roles('admin')
+  assign(@Param('id') id: string, @Body() body: { reviewerId: string }, @CurrentUser() user: any) {
+    return this.reports.assignReviewer(id, body.reviewerId, user.id, user.profile?.role as Role);
   }
 }

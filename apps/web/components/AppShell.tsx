@@ -11,6 +11,7 @@ import { useRoleGuard } from '../lib/role-guard';
 import { CountrySelector } from './CountrySelector';
 import { ConnectWalletButton } from './ConnectWalletButton';
 import { StellarNetworkBadge } from './StellarNetworkBadge';
+import { ThemeSwitcher } from './ui';
 import { useCountry, DEMO_MODE } from '../lib/country';
 
 const TABS = [
@@ -32,9 +33,9 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
   useEffect(() => { seedFromProfile(me?.country); }, [me?.country, seedFromProfile]);
 
   return (
-    <div className="min-h-screen bg-[#fafcff] text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-background text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Navbar global */}
-      <header className="sticky top-0 z-50 border-b border-outline-variant/20 bg-white/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-outline-variant/20 bg-surface/85 backdrop-blur-xl">
         <div className="mx-auto flex h-[68px] max-w-[1440px] items-center justify-between gap-4 px-4 md:px-8">
           <Link href="/marketplace" className="flex shrink-0 items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-container to-blue-400 text-white shadow-sm"><Boxes size={18} /></span>
@@ -43,11 +44,12 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
 
           <div className="relative mx-4 hidden max-w-xl flex-1 md:block">
             <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
-            <input className="w-full rounded-full border border-outline-variant/40 bg-white/60 py-2 pl-10 pr-3 text-sm outline-none transition focus:border-primary-container focus:bg-white focus:ring-1 focus:ring-primary-container" placeholder="Buscar bonos, emisores, hashes…" />
+            <input className="w-full rounded-full border border-outline-variant/40 bg-surface/60 py-2 pl-10 pr-3 text-sm text-on-surface outline-none transition focus:border-primary-container focus:bg-surface focus:ring-1 focus:ring-primary-container" placeholder="Buscar bonos, emisores, hashes…" />
           </div>
 
           <div className="flex items-center gap-2">
             <StellarNetworkBadge className="hidden lg:inline-flex" />
+            <ThemeSwitcher />
             {DEMO_MODE && <CountrySelector />}
             <ConnectWalletButton />
             <NotificationBell role={me?.role} />
@@ -58,17 +60,17 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
                 <ChevronDown size={16} className="text-outline" />
               </button>
               {menu && (
-                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-outline-variant/30 bg-white shadow-xl">
+                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface shadow-xl">
                   <div className="border-b border-outline-variant/20 px-4 py-3"><p className="text-sm font-semibold">{me?.full_name}</p><p className="text-xs capitalize text-on-surface-variant">{me?.role}</p></div>
                   <Link href="/configuracion" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm transition hover:bg-surface-container-low"><Settings size={16} /> Configuración</Link>
-                  <button onClick={logout} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50"><LogOut size={16} /> Cerrar sesión</button>
+                  <button onClick={logout} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-error transition hover:bg-error-container"><LogOut size={16} /> Cerrar sesión</button>
                 </div>
               )}
             </div>
           </div>
         </div>
         {/* Tabs */}
-        <nav className="border-t border-outline-variant/20 bg-white/50">
+        <nav className="border-t border-outline-variant/20 bg-surface/50">
           <div className="mx-auto flex h-12 max-w-[1440px] items-center gap-1 overflow-x-auto px-2 md:justify-center md:gap-6 md:px-8">
             {TABS.map(({ href, label, Icon }) => {
               const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -86,7 +88,7 @@ export function AppShell({ children }: { children: (ctx: { token: string; me: Me
       {loading || !token || !me || !ok ? (
         <div className="flex min-h-[60vh] items-center justify-center">
           {error
-            ? <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700">{error}</div>
+            ? <div className="rounded-xl border border-error/30 bg-error-container px-6 py-4 text-sm text-error">{error}</div>
             : <div className="flex items-center gap-3 text-on-surface-variant"><span className="h-5 w-5 animate-spin rounded-full border-2 border-primary-container border-t-transparent" /> Cargando…</div>}
         </div>
       ) : (

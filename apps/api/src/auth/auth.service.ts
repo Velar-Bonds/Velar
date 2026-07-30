@@ -7,6 +7,11 @@ import {
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { WalletService } from '../escrow/wallet.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
+import type { LoginRequest, RegisterRequest } from '@velar/types';
+
+export type Perspectiva = RegisterRequest['perspectiva'];
+export type RegisterInput = RegisterRequest;
+export type LoginInput = LoginRequest;
 
 /**
  * Registro de cuentas con las 3 perspectivas:
@@ -150,6 +155,7 @@ export class AuthService {
           : input.perspectiva === 'tse'
             ? 'tse'
             : 'comprador';
+      const role = input.perspectiva === 'partido' ? 'emisor' : 'comprador';
       const core = {
         role,
         full_name: this.fullName(input),

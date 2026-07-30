@@ -1,9 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { FileText, Send, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { FileText, Send, CheckCircle, AlertCircle, Clock, ClipboardList, ArrowRight } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../lib/api';
 import { unwrapPaginated } from '../../../lib/pagination';
+import { clientCompliance, COMPLIANCE_LABEL, COMPLIANCE_STYLE, periodLabel } from '../../../lib/reports';
+import { createReportRequestSchema, type FieldErrors } from '@velar/types';
+import { validateSchemaForm } from '../../../lib/forms/schema-form';
+import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFieldError';
+import { typedApi } from '../../../lib/typed-api';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : ':';
 const fmtCRC = (n?: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -16,6 +22,7 @@ const STATUS: Record<string, [string, string, any]> = {
 };
 
 export default function PartidoReportesPage() {
+  const router = useRouter();
   const { token, me, loading, error } = useSession();
   const [reports, setReports] = useState<any[]>([]);
   const [bonds, setBonds] = useState<any[]>([]);
@@ -25,6 +32,7 @@ export default function PartidoReportesPage() {
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const load = () =>
     Promise.all([
@@ -44,20 +52,20 @@ export default function PartidoReportesPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim() || !form.description.trim()) {
-      setMsg({ type: 'err', text: 'Título y descripción son obligatorios.' });
-      return;
-    }
+    const payload = {
+      title: form.title,
+      description: form.description,
+      period_start: form.period_start || undefined,
+      period_end: form.period_end || undefined,
+      total_amount: form.total_amount ? Number(form.total_amount) : undefined,
+      bond_token_ids: form.bond_token_ids.length ? form.bond_token_ids : undefined,
+    };
+    const validation = validateSchemaForm(createReportRequestSchema, payload);
+    if (!validation.success) { setFieldErrors(validation.errors); setMsg(null); return; }
     setBusy(true); setMsg(null);
     try {
-      await apiFetch(token, 'POST', '/reports', {
-        title: form.title,
-        description: form.description,
-        period_start: form.period_start || undefined,
-        period_end: form.period_end || undefined,
-        total_amount: form.total_amount ? Number(form.total_amount) : undefined,
-        bond_token_ids: form.bond_token_ids.length ? form.bond_token_ids : undefined,
-      });
+      await typedApi.call('reports.create', { body: validation.data }, token);
+      setFieldErrors({});
       setMsg({ type: 'ok', text: 'Reporte enviado al TSE.' });
       setForm({ title: '', description: '', period_start: '', period_end: '', total_amount: '', bond_token_ids: [] });
       load();
@@ -74,6 +82,22 @@ export default function PartidoReportesPage() {
       </header>
 
       <div className="mx-auto w-full max-w-[1100px] p-10 pb-20">
+        {/* Reporte mensual estructurado (ciclo de vida completo) */}
+        <button
+          onClick={() => router.push('/partido/reportes/nuevo')}
+          className="glass-card mb-8 flex w-full items-center justify-between rounded-3xl p-6 text-left transition hover:shadow-lg"
+          style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(255,255,255,0.9))' }}
+        >
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ClipboardList size={24} /></span>
+            <div>
+              <h2 className="font-semibold" style={{ fontFamily: 'Geist' }}>Reporte mensual estructurado</h2>
+              <p className="text-xs text-on-surface-variant">Líneas, archivos, conciliación on-chain y control de vencimientos.</p>
+            </div>
+          </div>
+          <span className="flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white">Crear <ArrowRight size={15} /></span>
+        </button>
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           {/* Formulario */}
           <div className="lg:col-span-3">
@@ -92,31 +116,36 @@ export default function PartidoReportesPage() {
                 </div>
               )}
 
-              <form onSubmit={submit} className="flex flex-col gap-4">
+              <form noValidate onSubmit={submit} className="flex flex-col gap-4">
                 <div>
                   <label className="field-label">Título <span className="text-red-500">*</span></label>
-                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej. Informe trimestral Q1 2026" className="field-input" />
+                  <input value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setFieldErrors({}); }} placeholder="Ej. Informe trimestral Q1 2026" className="field-input" {...schemaFieldProps(fieldErrors, 'title')} />
+                  <SchemaFieldError errors={fieldErrors} field="title" />
                 </div>
 
                 <div>
                   <label className="field-label">Descripción <span className="text-red-500">*</span></label>
-                  <textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Detalle de bonos emitidos, ventas realizadas, uso de fondos…" className="field-input resize-none" />
+                  <textarea rows={4} value={form.description} onChange={(e) => { setForm({ ...form, description: e.target.value }); setFieldErrors({}); }} placeholder="Detalle de bonos emitidos, ventas realizadas, uso de fondos…" className="field-input resize-none" {...schemaFieldProps(fieldErrors, 'description')} />
+                  <SchemaFieldError errors={fieldErrors} field="description" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="field-label">Desde</label>
-                    <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })} className="field-input" />
+                    <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })} className="field-input" {...schemaFieldProps(fieldErrors, 'period_start')} />
+                    <SchemaFieldError errors={fieldErrors} field="period_start" />
                   </div>
                   <div>
                     <label className="field-label">Hasta</label>
-                    <input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} className="field-input" />
+                    <input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} className="field-input" {...schemaFieldProps(fieldErrors, 'period_end')} />
+                    <SchemaFieldError errors={fieldErrors} field="period_end" />
                   </div>
                 </div>
 
                 <div>
                   <label className="field-label">Monto total reportado (CRC)</label>
-                  <input type="number" min="0" step="1000" value={form.total_amount} onChange={(e) => setForm({ ...form, total_amount: e.target.value })} placeholder="5000000" className="field-input" />
+                  <input type="number" min="0" step="1000" value={form.total_amount} onChange={(e) => setForm({ ...form, total_amount: e.target.value })} placeholder="5000000" className="field-input" {...schemaFieldProps(fieldErrors, 'total_amount')} />
+                  <SchemaFieldError errors={fieldErrors} field="total_amount" />
                 </div>
 
                 {bonds.length > 0 && (
@@ -152,19 +181,34 @@ export default function PartidoReportesPage() {
               <div className="flex flex-col gap-3">
                 {reports.map((r) => {
                   const [cls, lbl, Icon] = STATUS[r.status] ?? ['bg-gray-100 text-gray-600 border-gray-200', r.status, Clock];
+                  const comp = r.period_year && r.period_month
+                    ? clientCompliance(r.period_year, r.period_month, r.submitted_at ?? null)
+                    : null;
                   return (
-                    <div key={r.id} className="glass-card rounded-2xl p-4">
+                    <div
+                      key={r.id}
+                      onClick={() => router.push(`/partido/reportes/${r.id}`)}
+                      className="glass-card cursor-pointer rounded-2xl p-4 transition hover:shadow-md"
+                    >
                       <div className="mb-1 flex items-center justify-between">
                         <p className="font-semibold">{r.title}</p>
                         <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
                           <Icon size={11} /> {lbl}
                         </span>
                       </div>
+                      {r.period_year && r.period_month && (
+                        <p className="mb-1 text-[11px] font-medium text-primary">{periodLabel(r.period_year, r.period_month)}</p>
+                      )}
                       <p className="line-clamp-2 text-xs text-on-surface-variant">{r.description}</p>
-                      <div className="mt-2 flex justify-between text-[11px] text-on-surface-variant">
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-on-surface-variant">
                         <span>{fmtDate(r.created_at)}</span>
                         {r.total_amount && <span className="font-mono font-semibold">{fmtCRC(r.total_amount)}</span>}
                       </div>
+                      {comp && (
+                        <span className={`mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium ${COMPLIANCE_STYLE[comp.status]}`}>
+                          {COMPLIANCE_LABEL[comp.status]}
+                        </span>
+                      )}
                       {r.tse_notes && (
                         <div className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-700">
                           <strong>TSE:</strong> {r.tse_notes}

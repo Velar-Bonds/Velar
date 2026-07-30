@@ -7,6 +7,10 @@ import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
 import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl, txUrl } from '../../../lib/stellar';
+import { reviewReportRequestSchema, type FieldErrors } from '@velar/types';
+import { validateSchemaForm } from '../../../lib/forms/schema-form';
+import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFieldError';
+import { typedApi } from '../../../lib/typed-api';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmtCRC = (n?: number | null) => n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
@@ -26,6 +30,7 @@ export default function TSEReportesPage() {
   const [sel, setSel] = useState<any | null>(null);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   
 
   const load = () =>
@@ -47,9 +52,12 @@ export default function TSEReportesPage() {
 
   async function review(status: 'aprobado' | 'observado' | 'revisado') {
     if (!sel) return;
+    const validation = validateSchemaForm(reviewReportRequestSchema, { status, notes: notes || undefined });
+    if (!validation.success) { setFieldErrors(validation.errors); return; }
     setBusy(true);
     try {
-      await apiFetch(token, 'PATCH', `/reports/${sel.id}/review`, { status, notes });
+      await typedApi.call('reports.review', { params: { id: sel.id }, body: validation.data }, token);
+      setFieldErrors({});
       notify.ok(`Reporte marcado como ${status}.`);
       setSel(null); setNotes('');
       load();
@@ -278,7 +286,9 @@ export default function TSEReportesPage() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Observaciones, recomendaciones o requerimientos…"
                 className="field-input resize-none"
+                {...schemaFieldProps(fieldErrors, 'notes')}
               />
+              <SchemaFieldError errors={fieldErrors} field="notes" />
             </div>
 
             <div className="-mx-6 -mb-6 mt-6 flex flex-col items-center justify-end gap-2 rounded-b-2xl border-t border-outline-variant/20 bg-surface-container-low/50 px-6 py-4 sm:flex-row">

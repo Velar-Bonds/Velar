@@ -7,6 +7,7 @@ import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { BondsService } from './bonds.service';
+import { ContractsService } from '../contracts/contracts.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
@@ -24,7 +25,7 @@ import {
 @Controller('bonds')
 @UseGuards(AuthGuard)
 export class BondsController {
-  constructor(private bonds: BondsService) {}
+  constructor(private bonds: BondsService, private contracts: ContractsService) {}
 
   @Post()
   @Throttle({ default: { limit: 20, ttl: 60000 } })
@@ -78,6 +79,13 @@ export class BondsController {
   @Get(':tokenId')
   findOne(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
     return this.bonds.findOne(tokenId, user.id, user.profile?.role as Role);
+  }
+
+  @Get(':tokenId/summary')
+  async summary(@Param('tokenId') tokenId: string, @CurrentUser() user: any) {
+    // Reuse findOne's ownership/role visibility check before deriving the summary.
+    await this.bonds.findOne(tokenId, user.id, user.profile?.role as Role);
+    return this.contracts.getContractSummary(tokenId);
   }
 
   @Get(':tokenId/onchain')

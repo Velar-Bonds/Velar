@@ -50,28 +50,12 @@ export interface BondToken {
   updatedAt: string;
 }
 
-export interface RegisterBondInput {
-  bondId: string;
-  issuerPartyId: string;
-  documentHash: string;
-  metadataUri?: string;
-  faceValue?: number;
-  initialOwner?: string;
-  certificateNumber?: string;
-  currency?: string;
-  interestRate?: number;
-  series?: string;
-  issueDate?: string;
-  maturityDate?: string;
-}
+/** @deprecated Import `CreateBondRequest`; kept as a schema-derived compatibility alias. */
+export type RegisterBondInput = import('zod').infer<
+  typeof import('./schemas/bonds').createBondRequestSchema
+>;
 
-export interface BondRequestInput {
-  faceValue: number;
-  currency?: string;
-  interestRate?: number;
-  series?: string;
-  issueDate?: string;
-  maturityDate?: string;
-  notes?: string;
-  certificateNumber?: string;
-}
+/** @deprecated Import `BondRequestRequest`; kept as a schema-derived compatibility alias. */
+export type BondRequestInput = import('zod').infer<
+  typeof import('./schemas/bonds').createBondRequestRequestSchema
+>;

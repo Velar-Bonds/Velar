@@ -5,9 +5,10 @@ import { AuthModule } from '../auth/auth.module';
 import { AuditModule } from '../audit/audit.module';
 import { EscrowModule } from '../escrow/escrow.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ContractsModule } from '../contracts/contracts.module';
 
 @Module({
-  imports: [AuthModule, AuditModule, EscrowModule, NotificationsModule],
+  imports: [AuthModule, AuditModule, EscrowModule, NotificationsModule, ContractsModule],
   providers: [BondsService],
   controllers: [BondsController],
   exports: [BondsService],

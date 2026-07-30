@@ -21,6 +21,19 @@ export const AuditEventType = {
   WALLET_PROVISIONED: 'wallet_provisioned',
   BOND_PUBLISHED: 'bond_published',
   COUNTER_OFFER_SENT: 'counter_offer_sent',
+  REPORT_SUBMITTED: 'report_submitted',
+  REPORT_RESUBMITTED: 'report_resubmitted',
+  REPORT_VERSION_CREATED: 'report_version_created',
+  REPORT_OBSERVED: 'report_observed',
+  REPORT_APPROVED: 'report_approved',
+  REPORT_FILE_UPLOADED: 'report_file_uploaded',
+  REPORT_REJECTED: 'report_rejected',
+  REPORT_ASSIGNED: 'report_assigned',
+  REPORT_PENDING_SECOND_APPROVAL: 'report_pending_second_approval',
+  REPORT_SECOND_APPROVED: 'report_second_approved',
+  REPORT_SLA_ESCALATED: 'report_sla_escalated',
+  REPORT_EXPORTED: 'report_exported',
+  REPORT_MARKED_REVIEWED: 'report_marked_reviewed',
 } as const;
 
 export type AuditEventType =
@@ -69,4 +82,29 @@ export interface TraceabilityResponse {
   events: AuditEvent[];
   transfers: import('./transfer').Transfer[];
   owners: OwnerEntry[];
+}
+
+// ---------------------------------------------------------------------------
+// Hash chain (tamper evidence)
+// ---------------------------------------------------------------------------
+
+/** Un evento de auditoría con sus campos de cadena de hashes poblados. */
+export interface ChainedAuditEvent extends AuditEvent {
+  chainSeq: number | null;
+  prevHash: string | null;
+  hash: string | null;
+}
+
+/** Un problema detectado al verificar la cadena de auditoría. */
+export interface ChainIntegrityIssue {
+  type: 'hash_mismatch' | 'gap' | 'broken_link';
+  chainSeq: number | null;
+  message: string;
+}
+
+/** Resultado de verificar la integridad de la cadena de auditoría. */
+export interface ChainVerificationResult {
+  valid: boolean;
+  checkedCount: number;
+  issues: ChainIntegrityIssue[];
 }

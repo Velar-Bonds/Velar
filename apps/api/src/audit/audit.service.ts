@@ -6,9 +6,13 @@ import {
   BondSearchQuery,
   type AuditEvent,
   type BondToken,
+  type ChainedAuditEvent,
+  type ChainVerificationResult,
+  type ProvenanceInput,
   type Transfer,
   type TraceabilityResponse,
 } from '@velar/types';
+import { canonicalize, computeEventHash, verifyChain } from './audit-chain';
 
 @Injectable()
 export class AuditService {
@@ -22,6 +26,36 @@ export class AuditService {
     payload?: Record<string, unknown>;
     txHash?: string;
   }) {
+    const now = new Date().toISOString();
+
+    const { data: tipRows } = await this.supabase.admin
+      .from('audit_events')
+      .select('chain_seq, hash')
+      .order('chain_seq', { ascending: false });
+
+    const chained = (tipRows ?? []).filter((r: any) => r.chain_seq != null);
+    const tip = chained.length === 0
+      ? null
+      : chained.reduce((max: any, r: any) =>
+          r.chain_seq > max.chain_seq ? r : max,
+        chained[0]);
+
+    const nextSeq = (tip?.chain_seq ?? 0) + 1;
+    const prevHash = tip?.hash ?? null;
+
+    const canonical = canonicalize({
+      chainSeq: nextSeq,
+      prevHash,
+      type: event.type,
+      bondTokenId: event.bondTokenId ?? null,
+      transferId: event.transferId ?? null,
+      actorId: event.actorId ?? null,
+      payload: event.payload ?? {},
+      txHash: event.txHash ?? null,
+      createdAt: now,
+    });
+    const hash = computeEventHash(prevHash, canonical);
+
     await this.supabase.admin.from('audit_events').insert({
       type: event.type,
       bond_token_id: event.bondTokenId ?? null,
@@ -29,7 +63,40 @@ export class AuditService {
       actor_id: event.actorId ?? null,
       payload: event.payload ?? {},
       tx_hash: event.txHash ?? null,
+      chain_seq: nextSeq,
+      prev_hash: prevHash,
+      hash,
+      created_at: now,
     });
+  }
+
+  /** Cadena completa de eventos encadenados, ordenada por chain_seq ascendente (para verificación/export). */
+  async getFullChain(): Promise<ChainedAuditEvent[]> {
+    const { data } = await this.supabase.admin.from('audit_events').select('*');
+    const rows = (data ?? []).filter((r: any) => r.chain_seq != null);
+    rows.sort((a: any, b: any) => a.chain_seq - b.chain_seq);
+    return rows.map((r: any) => this.mapChainedAuditEvent(r));
+  }
+
+  /** Verifica la integridad de la cadena completa (o de un subconjunto ya cargado, para tests). */
+  async verifyChainIntegrity(events?: ChainedAuditEvent[]): Promise<ChainVerificationResult> {
+    const chain = events ?? (await this.getFullChain());
+    return verifyChain(chain);
+  }
+
+  /**
+   * Trazabilidad de auditoría de un reporte específico: los `reportId` viven
+   * dentro de `payload` (audit_events no tiene columna report_id), así que se
+   * filtra en JS después de traer/verificar la cadena completa (la integridad
+   * de la cadena es un concepto GLOBAL — los eventos de un reporte no son
+   * contiguos en chain_seq, así que no se puede verificar un subconjunto
+   * filtrado de forma aislada).
+   */
+  async getReportAuditTrail(reportId: string): Promise<{ events: ChainedAuditEvent[]; verification: ChainVerificationResult }> {
+    const chain = await this.getFullChain();
+    const verification = verifyChain(chain);
+    const events = chain.filter((e) => (e.payload as any)?.reportId === reportId);
+    return { events, verification };
   }
 
   async getBondTimeline(tokenId: string) {
@@ -94,6 +161,15 @@ export class AuditService {
       payload: event.payload ?? {},
       txHash: event.tx_hash ?? null,
       createdAt: event.created_at,
+    };
+  }
+
+  private mapChainedAuditEvent(row: any): ChainedAuditEvent {
+    return {
+      ...this.mapAuditEvent(row),
+      chainSeq: row.chain_seq ?? null,
+      prevHash: row.prev_hash ?? null,
+      hash: row.hash ?? null,
     };
   }
 
@@ -185,6 +261,35 @@ export class AuditService {
     const full = await this.getBondTraceability(tokenId);
     const transfers = full.transfers.map((t) => ({ ...t, sellerMessage: null, buyerMessage: null }));
     return { ...full, transfers };
+  }
+
+  /**
+   * Raw inputs for the provenance engine (issue #36): the bond, its append-only
+   * audit events and its transfers, mapped to the shared @velar/types shapes.
+   * Reuses the traceability row mappers so both features read the DB the same way.
+   */
+  async getProvenanceInput(tokenId: string): Promise<ProvenanceInput> {
+    const { bond, events, transfers } = await this.getBondTimeline(tokenId);
+    return {
+      bond: this.mapBondTraceabilityBond(bond),
+      events: events.map((event) => this.mapAuditEvent(event)),
+      transfers: transfers.map((transfer) => this.mapTransfer(transfer)),
+    };
+  }
+
+  /**
+   * Resolves a token_id (UUID) or a human-readable bond_id (e.g. "SOL-2026-114")
+   * to the token_id, for public lookups. Throws 404 if the bond does not exist.
+   */
+  async resolveTokenId(idOrToken: string): Promise<string> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrToken);
+    if (isUuid) return idOrToken;
+    const { data } = await this.supabase.admin
+      .from('bonds').select('token_id').eq('bond_id', idOrToken).maybeSingle();
+    if (!data) {
+      throw new HttpException({ error: 'Bond not found', statusCode: 404 }, HttpStatus.NOT_FOUND);
+    }
+    return data.token_id;
   }
 
   async searchBonds(query: BondSearchQuery) {
