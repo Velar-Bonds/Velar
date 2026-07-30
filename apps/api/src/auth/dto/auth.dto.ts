@@ -7,7 +7,29 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import type { LoginInput, Perspectiva, RegisterInput } from '../auth.service';
+
+export type Perspectiva = 'usuario' | 'partido' | 'tse';
+
+interface RegisterInput {
+  email: string;
+  password: string;
+  perspectiva: Perspectiva;
+  nombres?: string;
+  apellidos?: string;
+  identificacion?: string;
+  telefono?: string;
+  direccion?: string;
+  // Partido
+  nombrePartido?: string;
+  codigo?: string;
+  representanteLegal?: string;
+  cedulaJuridica?: string;
+}
+
+interface LoginInput {
+  email: string;
+  password: string;
+}
 
 export class LoginDto implements LoginInput {
   @ApiProperty({ example: 'comprador@velar.cr' })
