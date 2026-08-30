@@ -31,3 +31,12 @@ export type { TabItem } from './Tabs.js';
 export { Tooltip } from './Tooltip.js';
 export { Modal } from './Modal.js';
 export type { ModalProps } from './Modal.js';
+
+export { Table, DataTable } from './Table.js';
+export type {
+  TableProps,
+  DataTableProps,
+  TableColumn,
+  TablePagination,
+  TableSortDirection,
+} from './Table.js';
