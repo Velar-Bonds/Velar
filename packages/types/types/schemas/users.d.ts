@@ -1,4 +1,45 @@
 import { z } from 'zod';
+/** GET /users — paginación + filtros por rol y búsqueda (nombre/email). */
+export declare const usersQuerySchema: z.ZodObject<{
+    page: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    limit: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    role: z.ZodOptional<z.ZodEnum<{
+        readonly TSE: "tse";
+        readonly EMISOR: "emisor";
+        readonly COMPRADOR: "comprador";
+        readonly RECOMPRADOR: "recomprador";
+        readonly VALIDADOR: "validador";
+        readonly ADMIN: "admin";
+    }>>;
+    search: z.ZodOptional<z.ZodString>;
+}, z.core.$loose>;
+/** Asignación de rol en lote — solo admin. */
+export declare const bulkSetRoleRequestSchema: z.ZodObject<{
+    userIds: z.ZodArray<z.ZodString>;
+    role: z.ZodEnum<{
+        readonly TSE: "tse";
+        readonly EMISOR: "emisor";
+        readonly COMPRADOR: "comprador";
+        readonly RECOMPRADOR: "recomprador";
+        readonly VALIDADOR: "validador";
+        readonly ADMIN: "admin";
+    }>;
+}, z.core.$strict>;
+export declare const bulkSetRoleResponseSchema: z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    updated: z.ZodArray<z.ZodString>;
+}, z.core.$loose>;
+/** Eventos mostrados en la trazabilidad de administración por usuario. */
+export declare const userAuditEventSchema: z.ZodObject<{
+    id: z.ZodString;
+    bondTokenId: z.ZodNullable<z.ZodString>;
+    transferId: z.ZodNullable<z.ZodString>;
+    type: z.ZodString;
+    actorId: z.ZodNullable<z.ZodString>;
+    payload: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    txHash: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    createdAt: z.ZodString;
+}, z.core.$loose>;
 export declare const updateProfileRequestSchema: z.ZodObject<{
     full_name: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>;

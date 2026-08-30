@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Matches } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsIn, IsString, Matches } from 'class-validator';
+import { ALL_ROLES, Role } from '@velar/types';
 
 /** Vincula la wallet self-custody (Freighter) del usuario a su perfil. */
 export class UpdateWalletDto {
@@ -11,4 +12,17 @@ export class UpdateWalletDto {
     message: 'stellar_public_key debe ser una llave pública de Stellar válida (G...)',
   })
   publicKey!: string;
+}
+
+/** Asignación de rol en lote — mismo criterio de autorización que setRole (admin only). */
+export class BulkSetRoleDto {
+  @ApiProperty({ type: [String], description: 'IDs de perfiles a actualizar' })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  userIds!: string[];
+
+  @ApiProperty({ enum: ALL_ROLES })
+  @IsIn(ALL_ROLES)
+  role!: Role;
 }

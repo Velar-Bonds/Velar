@@ -34,6 +34,8 @@ describe('shared contract boundary', () => {
     ['transfers.submitXdr', request({ signedXdr: 'AAAA' }, { id: 'transfer-1' })],
     ['notifications.read', request(undefined, { id: 'notification-1' })],
     ['users.updateWallet', request({ publicKey: `G${'A'.repeat(55)}` })],
+    ['users.bulkSetRole', request({ userIds: ['user-1'], role: 'comprador' })],
+    ['users.list', request(undefined, {}, { page: '2', limit: '20', role: 'comprador', search: 'ana' })],
   ];
 
   it.each(invalidCases)('rejects invalid %s requests with localized structured errors', (name, parts) => {

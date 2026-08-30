@@ -38,4 +38,8 @@ describe('controller ⇄ shared contract coverage', () => {
       expect(match).not.toBeNull();
     }
   });
+
+  it('includes the user-administration audit contract', () => {
+    expect(findContract('GET', '/users/user-1/audit')?.name).toBe('users.auditTrail');
+  });
 });

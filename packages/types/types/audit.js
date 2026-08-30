@@ -45,4 +45,6 @@ exports.AuditEventType = {
     AUTH_ACCOUNT_DEACTIVATED: 'auth_account_deactivated',
     AUTH_ACCOUNT_REACTIVATED: 'auth_account_reactivated',
     WALLET_RETRY_REQUESTED: 'wallet_retry_requested',
+    // Administración de usuarios: cambios de rol, individuales o en lote.
+    USER_ROLE_CHANGED: 'user_role_changed',
 };

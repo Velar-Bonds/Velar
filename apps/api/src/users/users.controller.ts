@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Role } from '@velar/types';
-import { UpdateWalletDto } from './dto/users.dto';
+import { BulkSetRoleDto, UpdateWalletDto } from './dto/users.dto';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -29,7 +29,15 @@ export class UsersController {
   }
 
   @Get()
-  listAll(@CurrentUser() user: any) { return this.users.listUsers(user.profile?.role as Role); }
+  listAll(
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Query('role') role: string | undefined,
+    @Query('search') search: string | undefined,
+    @CurrentUser() user: any,
+  ) {
+    return this.users.listUsers(user.profile?.role as Role, page, limit, role as Role | undefined, search);
+  }
 
   @Get('recompradores')
   listRecipients(@CurrentUser() user: any) {
@@ -38,7 +46,21 @@ export class UsersController {
 
   @Patch(':id/role')
   setRole(@Param('id') id: string, @Body() body: { role: Role }, @CurrentUser() user: any) {
-    return this.users.setRole(id, body.role, user.profile?.role as Role);
+    return this.users.setRole(id, body.role, user.profile?.role as Role, user.id);
+  }
+
+  /** Asignación de rol en lote (admin). Audita cada cambio individualmente. */
+  @Post('bulk-role')
+  @Roles('admin')
+  bulkSetRole(@Body() body: BulkSetRoleDto, @CurrentUser() user: any) {
+    return this.users.bulkSetRole(body.userIds, body.role, user.profile?.role as Role, user.id);
+  }
+
+  /** Trazabilidad de auditoría de un usuario (tse/admin). */
+  @Get(':id/audit')
+  @Roles('tse', 'admin')
+  getUserAuditTrail(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.users.getUserAuditTrail(id, user.profile?.role as Role);
   }
 
   /** Desactiva una cuenta (admin). Bloquea el login hasta reactivarla. */

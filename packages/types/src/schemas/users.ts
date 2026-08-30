@@ -1,6 +1,37 @@
 import { z } from 'zod';
 import { idSchema, requiredStringSchema, roleSchema } from './common';
 
+/** GET /users — paginación + filtros por rol y búsqueda (nombre/email). */
+export const usersQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  role: roleSchema.optional(),
+  search: z.string().trim().min(1).optional(),
+}).passthrough();
+
+/** Asignación de rol en lote — solo admin. */
+export const bulkSetRoleRequestSchema = z.object({
+  userIds: z.array(idSchema).min(1),
+  role: roleSchema,
+}).strict();
+
+export const bulkSetRoleResponseSchema = z.object({
+  ok: z.literal(true),
+  updated: z.array(idSchema),
+}).passthrough();
+
+/** Eventos mostrados en la trazabilidad de administración por usuario. */
+export const userAuditEventSchema = z.object({
+  id: idSchema,
+  bondTokenId: idSchema.nullable(),
+  transferId: idSchema.nullable(),
+  type: z.string().min(1),
+  actorId: idSchema.nullable(),
+  payload: z.record(z.string(), z.unknown()),
+  txHash: z.string().nullable().optional(),
+  createdAt: requiredStringSchema,
+}).passthrough();
+
 export const updateProfileRequestSchema = z.object({
   full_name: requiredStringSchema.max(200).optional(),
 }).strict().refine((value) => value.full_name !== undefined, { path: ['full_name'], message: 'validation.required' });

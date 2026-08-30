@@ -4,6 +4,7 @@ import { WalletService } from '../escrow/wallet.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditEventType, Role } from '@velar/types';
 import { WalletReconciliationService } from './wallet-reconciliation.service';
+import { paginatedResponse, parsePagination } from '../common/pagination';
 
 /**
  * Desactivar = banear en Supabase Auth por un plazo efectivamente infinito
@@ -94,11 +95,25 @@ export class UsersService {
     return { ok: true, stellar_public_key: (data as { stellar_public_key?: string })?.stellar_public_key ?? publicKey };
   }
 
-  async listUsers(actorRole: Role) {
+  /**
+   * Directorio de usuarios paginado, con filtro por rol y búsqueda por
+   * nombre/email. Reusa parsePagination/paginatedResponse (mismo patrón que
+   * BondsService.findAll y AuditService.getRecentEvents).
+   */
+  async listUsers(actorRole: Role, page?: string, limit?: string, role?: Role, search?: string) {
     if (!['tse', 'admin'].includes(actorRole)) throw new ForbiddenException('Admin only');
-    const { data } = await this.supabase.admin
-      .from('profiles').select('*, parties(*)').order('created_at', { ascending: false });
-    return data ?? [];
+    const { page: p, limit: l, from, to } = parsePagination(page, limit);
+    let q = this.supabase.admin
+      .from('profiles')
+      .select('*, parties(*)', { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    if (role) q = q.eq('role', role);
+    if (search) q = q.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+
+    const { data, count, error } = await q.range(from, to);
+    if (error) throw new BadRequestException(error.message);
+    return paginatedResponse(data ?? [], count ?? 0, p, l);
   }
 
   /**
@@ -122,12 +137,46 @@ export class UsersService {
     return data ?? [];
   }
 
-  async setRole(targetId: string, role: Role, actorRole: Role) {
+  async setRole(targetId: string, role: Role, actorRole: Role, actorId?: string) {
     if (actorRole !== 'admin') throw new ForbiddenException('Admin only');
     const { data, error } = await this.supabase.admin
       .from('profiles').update({ role }).eq('id', targetId).select().single();
     if (error) throw new BadRequestException(error.message);
+    await this.audit.emit({
+      type: AuditEventType.USER_ROLE_CHANGED,
+      actorId: actorId ?? targetId,
+      payload: { targetUserId: targetId, newRole: role },
+    });
     return data;
+  }
+
+  /**
+   * Asigna un rol a varios usuarios en una sola llamada. Misma regla de
+   * autorización que setRole (admin only); cada actualización exitosa se
+   * audita individualmente. Los ids que fallan se omiten en vez de abortar
+   * el lote completo.
+   */
+  async bulkSetRole(userIds: string[], role: Role, actorRole: Role, actorId: string) {
+    if (actorRole !== 'admin') throw new ForbiddenException('Admin only');
+    const updated: string[] = [];
+    for (const targetId of userIds) {
+      const { error } = await this.supabase.admin
+        .from('profiles').update({ role }).eq('id', targetId).select().single();
+      if (error) continue;
+      updated.push(targetId);
+      await this.audit.emit({
+        type: AuditEventType.USER_ROLE_CHANGED,
+        actorId,
+        payload: { targetUserId: targetId, newRole: role },
+      });
+    }
+    return { ok: true as const, updated };
+  }
+
+  /** Trazabilidad de auditoría de un usuario: cambios de rol y (des)activación. */
+  async getUserAuditTrail(targetId: string, actorRole: Role) {
+    if (!['tse', 'admin'].includes(actorRole)) throw new ForbiddenException('TSE/Admin only');
+    return this.audit.getUserAuditTrail(targetId);
   }
 
   /* ─── Ciclo de vida de la cuenta (issue #77) ─────────────────────────────── */

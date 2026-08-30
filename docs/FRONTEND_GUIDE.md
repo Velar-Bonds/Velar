@@ -89,8 +89,9 @@ nuevos en paralelo.
 ### Usuarios
 - `GET  /users/me`  a  perfil del usuario actual (incluye `role`, `party_id`, `stellar_wallet`).
 - `PATCH /users/me`  a  body `{ full_name?, stellar_wallet? }`.
-- `GET  /users`  a  lista usuarios (solo admin/tse).
-- `PATCH /users/:id/role`  a  body `{ role }` (solo admin).
+- `GET  /users?page=1&limit=20&role=&search=`  a  directorio paginado (solo admin/tse).
+- `PATCH /users/:id/role` y `POST /users/bulk-role`  a  cambio de roles (solo admin).
+- `GET /users/:id/audit`  a  trazabilidad del usuario (admin/tse).
 
 ### Partidos
 - `GET  /parties`  a  lista de partidos (para `<select>`).

@@ -64,6 +64,8 @@ VELAR convierte cada bono en un **token único en la blockchain de Stellar** —
 | **Partido político** | Recibe bonos emitidos a su nombre, los pone en venta, confirma pagos |
 | **Usuario / Comprador** | Compra bonos al partido o a otros usuarios, revende con trazabilidad completa |
 
+Los administradores también disponen de `/tse/usuarios` para buscar el directorio, asignar roles en lote, administrar el acceso a cuentas y revisar cada cambio auditado.
+
 ---
 
 ## El flujo en 6 pasos

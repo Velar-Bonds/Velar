@@ -309,6 +309,21 @@ export class AuditService {
     return data ?? [];
   }
 
+  /**
+   * Trazabilidad de auditoría de un usuario: eventos que originó (actor) y
+   * eventos donde fue el objetivo de una acción de un admin (payload.targetUserId),
+   * como cambios de rol o (des)activación de cuenta.
+   */
+  async getUserAuditTrail(userId: string): Promise<AuditEvent[]> {
+    const { data, error } = await this.supabase.admin
+      .from('audit_events')
+      .select('*')
+      .or(`actor_id.eq.${userId},payload->>targetUserId.eq.${userId}`)
+      .order('created_at', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return (data ?? []).map((row: any) => this.mapAuditEvent(row));
+  }
+
   async getRecentEvents(page?: string, limit?: string) {
     const { page: p, limit: l, from, to } = parsePagination(page, limit);
     const { data, count, error } = await this.supabase.admin

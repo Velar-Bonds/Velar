@@ -52,6 +52,8 @@ import {
   xdrResponseSchema,
 } from './schemas/transfers';
 import {
+  bulkSetRoleRequestSchema,
+  bulkSetRoleResponseSchema,
   profileRowSchema,
   recipientRowSchema,
   retryWalletRequestSchema,
@@ -59,6 +61,8 @@ import {
   setRoleRequestSchema,
   updateProfileRequestSchema,
   updateWalletRequestSchema,
+  userAuditEventSchema,
+  usersQuerySchema,
   walletResponseSchema,
 } from './schemas/users';
 import {
@@ -180,9 +184,11 @@ export const apiContracts = {
   'users.me': endpoint({ method: 'GET', path: '/users/me', module: 'users', auth: true, body: noBody, params: noParams, query: noQuery, response: profileRowSchema }),
   'users.updateMe': endpoint({ method: 'PATCH', path: '/users/me', module: 'users', auth: true, body: updateProfileRequestSchema, params: noParams, query: noQuery, response: profileRowSchema }),
   'users.updateWallet': endpoint({ method: 'PATCH', path: '/users/me/wallet', module: 'users', auth: true, body: updateWalletRequestSchema, params: noParams, query: noQuery, response: walletResponseSchema }),
-  'users.list': endpoint({ method: 'GET', path: '/users', module: 'users', auth: true, body: noBody, params: noParams, query: noQuery, response: z.array(profileRowSchema) }),
+  'users.list': endpoint({ method: 'GET', path: '/users', module: 'users', auth: true, body: noBody, params: noParams, query: usersQuerySchema, response: paginatedSchema(profileRowSchema) }),
   'users.recipients': endpoint({ method: 'GET', path: '/users/recompradores', module: 'users', auth: true, body: noBody, params: noParams, query: noQuery, response: z.array(recipientRowSchema) }),
   'users.setRole': endpoint({ method: 'PATCH', path: '/users/:id/role', module: 'users', auth: true, body: setRoleRequestSchema, params: paramsIdSchema, query: noQuery, response: profileRowSchema }),
+  'users.bulkSetRole': endpoint({ method: 'POST', path: '/users/bulk-role', module: 'users', auth: true, body: bulkSetRoleRequestSchema, params: noParams, query: noQuery, response: bulkSetRoleResponseSchema }),
+  'users.auditTrail': endpoint({ method: 'GET', path: '/users/:id/audit', module: 'users', auth: true, body: noBody, params: paramsIdSchema, query: noQuery, response: z.array(userAuditEventSchema) }),
   'users.deactivate': endpoint({ method: 'PATCH', path: '/users/:id/deactivate', module: 'users', auth: true, body: noBody, params: paramsIdSchema, query: noQuery, response: accountStatusResponseSchema }),
   'users.reactivate': endpoint({ method: 'PATCH', path: '/users/:id/reactivate', module: 'users', auth: true, body: noBody, params: paramsIdSchema, query: noQuery, response: accountStatusResponseSchema }),
   'users.retryWallet': endpoint({ method: 'POST', path: '/users/:id/wallet/retry', module: 'users', auth: true, body: retryWalletRequestSchema, params: paramsIdSchema, query: noQuery, response: retryWalletResponseSchema }),

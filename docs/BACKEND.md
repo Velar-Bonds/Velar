@@ -35,7 +35,7 @@ Módulos implementados:
 | Módulo | Estado | Notas |
 |---|---|---|
 | `auth` (AuthGuard) | ✅ | Valida Bearer token de Supabase, carga `profile` con rol. |
-| `users` | ✅ | getProfile, updateProfile, listUsers (admin/tse), setRole (admin). |
+| `users` | ✅ | Directorio paginado/buscable, roles individuales o masivos, ciclo de cuenta y auditoría por usuario. |
 | `parties` | ✅ | Listar/crear partidos. Seed de 5 partidos en la migración. |
 | `bonds` | ✅ | register, findAll (filtrado por rol), findOne, freeze/unfreeze (TSE). |
 | `transfers` | ✅ | Flujo completo: request a accept a registerPayment a validate a release a cancel. |
@@ -57,6 +57,8 @@ GET    /api/users/me
 PATCH  /api/users/me
 GET    /api/users                 (admin/tse; incluye stellar_wallet_status + stellar_wallet_error)
 PATCH  /api/users/:id/role        (admin)
+POST   /api/users/bulk-role       (admin; `{ userIds, role }`, un evento por usuario)
+GET    /api/users/:id/audit       (admin/tse)
 POST   /api/users/:id/wallet/retry (admin; ver §14)
 PATCH  /api/users/:id/deactivate   (admin; ver §12)
 PATCH  /api/users/:id/reactivate   (admin; ver §12)

@@ -2158,32 +2158,49 @@ export declare const apiContracts: {
         auth: boolean;
         body: z.ZodUndefined;
         params: z.ZodObject<{}, z.core.$strict>;
-        query: z.ZodObject<{}, z.core.$strict>;
-        response: z.ZodArray<z.ZodObject<{
-            id: z.ZodString;
-            email: z.ZodString;
-            full_name: z.ZodNullable<z.ZodString>;
-            role: z.ZodEnum<{
+        query: z.ZodObject<{
+            page: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+            limit: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+            role: z.ZodOptional<z.ZodEnum<{
                 readonly TSE: "tse";
                 readonly EMISOR: "emisor";
                 readonly COMPRADOR: "comprador";
                 readonly RECOMPRADOR: "recomprador";
                 readonly VALIDADOR: "validador";
                 readonly ADMIN: "admin";
-            }>;
-            party_id: z.ZodNullable<z.ZodString>;
-            stellar_wallet: z.ZodNullable<z.ZodString>;
-            stellar_public_key: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-            stellar_wallet_status: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-            stellar_wallet_error: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-            stellar_network: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-            stellar_created_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-            stellar_wallet_retry_count: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
-            stellar_wallet_last_retry_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-            country: z.ZodOptional<z.ZodString>;
-            created_at: z.ZodString;
-            updated_at: z.ZodString;
-        }, z.core.$loose>>;
+            }>>;
+            search: z.ZodOptional<z.ZodString>;
+        }, z.core.$loose>;
+        response: z.ZodObject<{
+            data: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                email: z.ZodString;
+                full_name: z.ZodNullable<z.ZodString>;
+                role: z.ZodEnum<{
+                    readonly TSE: "tse";
+                    readonly EMISOR: "emisor";
+                    readonly COMPRADOR: "comprador";
+                    readonly RECOMPRADOR: "recomprador";
+                    readonly VALIDADOR: "validador";
+                    readonly ADMIN: "admin";
+                }>;
+                party_id: z.ZodNullable<z.ZodString>;
+                stellar_wallet: z.ZodNullable<z.ZodString>;
+                stellar_public_key: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                stellar_wallet_status: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                stellar_wallet_error: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                stellar_network: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                stellar_created_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                stellar_wallet_retry_count: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+                stellar_wallet_last_retry_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                country: z.ZodOptional<z.ZodString>;
+                created_at: z.ZodString;
+                updated_at: z.ZodString;
+            }, z.core.$loose>>;
+            total: z.ZodNumber;
+            page: z.ZodNumber;
+            limit: z.ZodNumber;
+        }, z.core.$strip>;
     };
     readonly 'users.recipients': {
         method: HttpMethod;
@@ -2251,6 +2268,50 @@ export declare const apiContracts: {
             created_at: z.ZodString;
             updated_at: z.ZodString;
         }, z.core.$loose>;
+    };
+    readonly 'users.bulkSetRole': {
+        method: HttpMethod;
+        path: string;
+        module: "auth" | "bonds" | "transfers" | "reports" | "escrow" | "notifications" | "users" | "contracts";
+        auth: boolean;
+        body: z.ZodObject<{
+            userIds: z.ZodArray<z.ZodString>;
+            role: z.ZodEnum<{
+                readonly TSE: "tse";
+                readonly EMISOR: "emisor";
+                readonly COMPRADOR: "comprador";
+                readonly RECOMPRADOR: "recomprador";
+                readonly VALIDADOR: "validador";
+                readonly ADMIN: "admin";
+            }>;
+        }, z.core.$strict>;
+        params: z.ZodObject<{}, z.core.$strict>;
+        query: z.ZodObject<{}, z.core.$strict>;
+        response: z.ZodObject<{
+            ok: z.ZodLiteral<true>;
+            updated: z.ZodArray<z.ZodString>;
+        }, z.core.$loose>;
+    };
+    readonly 'users.auditTrail': {
+        method: HttpMethod;
+        path: string;
+        module: "auth" | "bonds" | "transfers" | "reports" | "escrow" | "notifications" | "users" | "contracts";
+        auth: boolean;
+        body: z.ZodUndefined;
+        params: z.ZodObject<{
+            id: z.ZodString;
+        }, z.core.$strip>;
+        query: z.ZodObject<{}, z.core.$strict>;
+        response: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            bondTokenId: z.ZodNullable<z.ZodString>;
+            transferId: z.ZodNullable<z.ZodString>;
+            type: z.ZodString;
+            actorId: z.ZodNullable<z.ZodString>;
+            payload: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+            txHash: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            createdAt: z.ZodString;
+        }, z.core.$loose>>;
     };
     readonly 'users.deactivate': {
         method: HttpMethod;
