@@ -969,3 +969,47 @@ body {
   border-radius: 8px;
   font-size: 1rem;
 }
+
+/* ─── Landing pública ────────────────────────────────────────────────────────
+   La landing (app/page.tsx) está diseñada en claro: usa slate/white hardcodeado
+   y paneles semitransparentes. Con <html data-theme="dark"> eso se rompía por
+   partida doble: el degradado navy del <body> se transparentaba a través del
+   `main` (dejando la página gris sucia) y los tokens --color-* tomaban sus
+   valores oscuros, así que `bg-primary` quedaba en #8DBBFF (azul pálido) con
+   texto blanco encima. La landing fija su propia paleta clara y un fondo
+   opaco, sea cual sea el tema activo. */
+.velar-landing {
+  --color-primary: #174EA6;
+  --color-primary-container: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-fixed: #EEF5FF;
+  --color-primary-fixed-dim: #8DBBFF;
+  --color-on-primary: #ffffff;
+  --color-institutional: #0B1739;
+  --color-secondary: #52627A;
+  --color-secondary-container: #D9E6F8;
+  --color-tertiary: #174EA6;
+  --color-tertiary-container: #2563EB;
+  --color-background: #F7FAFF;
+  --color-surface: #FFFFFF;
+  --color-surface-variant: #D9E6F8;
+  --color-on-surface: #0B1739;
+  --color-on-surface-variant: #52627A;
+  --color-outline: #B8CBE8;
+  --color-outline-variant: #D9E6F8;
+  --color-success: #15803D;
+
+  --velar-canvas: #F7FAFF;
+  --velar-section: #EEF5FF;
+  --velar-surface: #FFFFFF;
+  --velar-surface-soft: #F1F6FD;
+  --velar-text: #0B1739;
+  --velar-muted: #52627A;
+  --velar-border: #D9E6F8;
+  --velar-border-strong: #B8CBE8;
+
+  /* Fondo propio y opaco: ni el degradado del body ni el tema oscuro se filtran. */
+  background-color: #F7FAFF;
+  background-image: radial-gradient(circle at top right, rgba(37, 99, 235, 0.07), transparent 34rem);
+  color: #0F172A;
+}
