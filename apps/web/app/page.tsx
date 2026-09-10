@@ -50,10 +50,10 @@ const AUDIT_GUARANTEES = [
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-slate-50/40 text-slate-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <main className="velar-landing min-h-screen text-slate-900" style={{ fontFamily: 'Inter, sans-serif' }}>
 
       {/* ─── NAVBAR (Server Component estático, navegación HTML pura) ───── */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/95 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-6 lg:px-10">
           <a href="/" className="flex items-center no-underline" aria-label="VELAR">
             <VelarBrand size="sm" />
@@ -122,10 +122,10 @@ export default function LandingPage() {
               <div aria-hidden className="absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-primary-container/15 via-sky-200/20 to-transparent blur-2xl" />
 
               <div
-                className="relative isolate overflow-hidden rounded-3xl border border-white/60 p-7 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.25),0_8px_30px_-12px_rgba(21,94,239,0.18),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+                className="relative isolate overflow-hidden rounded-3xl border border-slate-200/80 p-7 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.25),0_8px_30px_-12px_rgba(21,94,239,0.18),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-2xl backdrop-saturate-150"
                 style={{
                   background:
-                    'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.25)), rgba(241,245,255,0.45)',
+                    'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.72)), #F1F6FD',
                 }}
               >
                 {/* highlight superior interno (refracción glass) */}
