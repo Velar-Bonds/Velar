@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 import { TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { Modal } from '@velar/ui';
 import { apiFetch } from '../../lib/api';
-
-const fmtCRC = (n: number) => new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n || 0);
+import { useCountry } from '../../lib/country';
 
 /**
  * Drill-down from a chart segment (a top bond) into its underlying set:
@@ -12,6 +11,7 @@ const fmtCRC = (n: number) => new Intl.NumberFormat('es-CR', { style: 'currency'
  * (kept for exactly this purpose — see analytics.controller.ts).
  */
 export function DrillDownPanel({ token, tokenId, onClose }: { token: string; tokenId: string | null; onClose: () => void }) {
+  const { money } = useCountry();
   const [priceHistory, setPriceHistory] = useState<any>(null);
   const [owners, setOwners] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -60,7 +60,7 @@ export function DrillDownPanel({ token, tokenId, onClose }: { token: string; tok
                 {priceHistory.points.map((pt: any, i: number) => (
                   <li key={i} className="flex items-center justify-between rounded-lg border border-outline-variant/20 px-3 py-2 text-xs">
                     <span className="text-on-surface-variant">Venta #{pt.index}</span>
-                    <span className="font-mono font-semibold">{fmtCRC(pt.price)}</span>
+                    <span className="font-mono font-semibold">{money(pt.price)}</span>
                   </li>
                 ))}
               </ul>
