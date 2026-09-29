@@ -7,12 +7,11 @@ import Link from 'next/link';
 import { TSEShell } from '../../../components/TSEShell';
 import { ProvenanceDialog } from '../../../components/provenance/ProvenanceDialog';
 import { useSession, apiFetch } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
 import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
 
 const fmtDate = (s?: string) => s ? new Date(s).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-const fmtMoney = (n: number | null, cur = 'CRC') =>
-  n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
 
 const STATUS_COLOR: Record<string, string> = {
   emitido: 'bg-blue-100 text-primary border-blue-200',
@@ -27,6 +26,7 @@ const STATUS_COLOR: Record<string, string> = {
 function TrazabilidadContent({ token, me }: { token: string; me: any }) {
   const params = useSearchParams();
   const initialBono = params.get('bono') ?? '';
+  const { money } = useCountry();
 
   const [bonds, setBonds] = useState<any[]>([]);
   const [trace, setTrace] = useState<any>(null);
@@ -98,7 +98,7 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
                   <div>
                     <p className="text-sm font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{b.bond_id}</p>
                     <p className="text-xs text-on-surface-variant">{b.parties?.name ?? '—'}</p>
-                    <p className="text-xs font-medium">{fmtMoney(b.face_value, b.currency)}</p>
+                    <p className="text-xs font-medium">{money(b.face_value)}</p>
                   </div>
                   <span className="rounded-full bg-surface-container px-2 py-0.5 text-[10px] text-on-surface-variant">{b.status}</span>
                 </button>
@@ -130,7 +130,7 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Monto</p>
-                    <p className="mt-0.5 text-sm font-bold">{fmtMoney(bond.face_value, bond.currency)}</p>
+                    <p className="mt-0.5 text-sm font-bold">{money(bond.face_value)}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Dueño actual</p>
