@@ -11,6 +11,7 @@ import { PublishBondDialog, type PaymentMethod } from '../../../components/Publi
 import { useSession, apiFetch } from '../../../lib/api';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
+import { useCountry } from '../../../lib/country';
 
 type Bond = {
   token_id: string;
@@ -38,15 +39,12 @@ const STATUS_MAP: Record<string, [string, string]> = {
   cancelado: ['bg-gray-100 text-gray-500 border-gray-200', 'Cancelado'],
 };
 
-const fmtMoney = (n: number | null | undefined, cur = 'CRC') => {
-  if (n == null) return '—';
-  return new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
-};
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 
 export default function PartidoMisBonosPage() {
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const [bonds, setBonds] = useState<Bond[]>([]);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
@@ -105,7 +103,7 @@ export default function PartidoMisBonosPage() {
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {([
             ['Total de bonos', total, <Boxes size={20} key="a" />],
-            ['Valor total (CRC)', fmtMoney(totalCRC), <Wallet size={20} key="b" />],
+            ['Valor total (CRC)', money(totalCRC), <Wallet size={20} key="b" />],
             ['En marketplace', enVenta, <ShoppingCart size={20} key="c" />],
           ] as const).map(([label, val, icon]: any) => (
             <div key={label} className="glass-card flex items-center gap-4 rounded-2xl p-5">
@@ -142,7 +140,7 @@ export default function PartidoMisBonosPage() {
                     <td className="px-5 py-3.5 font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{b.bond_id}</td>
                     <td className="px-5 py-3.5 text-on-surface-variant">{b.certificate_number ?? '—'}</td>
                     <td className="px-5 py-3.5 text-on-surface-variant">{b.series ?? '—'}</td>
-                    <td className="px-5 py-3.5 font-semibold">{fmtMoney(b.face_value, b.currency)}</td>
+                    <td className="px-5 py-3.5 font-semibold">{money(b.face_value)}</td>
                     <td className="px-5 py-3.5">{b.interest_rate != null ? `${b.interest_rate}%` : '—'}</td>
                     <td className="px-5 py-3.5 text-on-surface-variant">{fmtDate(b.maturity_date)}</td>
                     <td className="px-5 py-3.5"><span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${cls}`}>{lbl}</span></td>

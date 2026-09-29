@@ -8,11 +8,7 @@ import { PartidoShell } from '../../components/PartidoShell';
 import { useSession } from '../../lib/api';
 import { apiFetch } from '../../lib/api';
 import { unwrapPaginated } from '../../lib/pagination';
-
-const fmt = (n: number | null | undefined, cur = 'CRC') => {
-  if (n == null) return '—';
-  return new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
-};
+import { useCountry } from '../../lib/country';
 
 
 const reqChip: Record<string, [string, string, string]> = {
@@ -30,6 +26,7 @@ function actionFor(t: any): [string, string] | null {
 
 export default function PartidoPageClient() {
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const [bonds, setBonds] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
   
@@ -72,7 +69,7 @@ export default function PartidoPageClient() {
     { label: 'Solicitudes de compra', value: myTransfers.filter((t) => t.status === 'solicitada').length, Icon: FileText, color: 'text-primary' },
     { label: 'Bonos a mi nombre', value: bonds.length, Icon: Landmark, color: 'text-emerald-600' },
     { label: 'Ventas completadas', value: ventas.length, Icon: Handshake, color: 'text-purple-600' },
-    { label: 'Ingresos generados', value: fmt(ingresos), Icon: Wallet, color: 'text-emerald-600' },
+    { label: 'Ingresos generados', value: money(ingresos), Icon: Wallet, color: 'text-emerald-600' },
   ];
 
   return (
@@ -149,7 +146,7 @@ export default function PartidoPageClient() {
                     <tr key={b.token_id} className="border-b border-outline-variant/10 hover:bg-surface-container-low/50">
                       <td className="py-3 font-medium text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{b.bond_id}</td>
                       <td className="py-3 text-on-surface-variant">{b.series ?? '—'}</td>
-                      <td className="py-3 font-semibold">{fmt(b.face_value, b.currency)}</td>
+                      <td className="py-3 font-semibold">{money(b.face_value)}</td>
                       <td className="py-3"><span className="rounded-full bg-surface-container px-2 py-0.5 text-[11px] font-medium text-on-surface-variant">{b.status}</span></td>
                     </tr>
                   ))}
