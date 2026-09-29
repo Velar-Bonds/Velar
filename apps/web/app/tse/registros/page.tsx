@@ -5,6 +5,7 @@ import { Filter, Search, ExternalLink, ChevronDown, ChevronUp, FileCheck, Link2 
 import Link from 'next/link';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl } from '../../../lib/stellar';
 import { Table } from '@velar/ui';
@@ -29,10 +30,10 @@ const CHIP: Record<string, string> = {
 };
 
 const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-const fmtMoney = (n: number | null, cur = 'CRC') =>
-  n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
+
 export default function RegistrosPage() {
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const [bonds, setBonds] = useState<Bond[]>([]);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
@@ -178,7 +179,7 @@ export default function RegistrosPage() {
                 sortValue: (b) => Number(b.face_value) || 0,
                 headerClassName: 'text-right',
                 cellClassName: 'text-right font-semibold tabular-nums',
-                render: (b) => fmtMoney(b.face_value, b.currency),
+                render: (b) => money(b.face_value),
               },
               {
                 key: 'date',
