@@ -96,6 +96,7 @@ function ToastItem({ t, onDone }: { t: ToastData; onDone: () => void }) {
         )}
       </div>
       <button
+        aria-label="Cerrar notificación"
         onClick={() => { setVisible(false); setTimeout(onDone, 300); }}
         className="mt-3 mr-3 shrink-0 text-on-surface-variant transition hover:text-on-surface"
       >
