@@ -5,13 +5,14 @@ import { ArrowRight, AlertTriangle, CheckCircle, XCircle, Shield } from 'lucide-
 import { TSEShell } from '../../../components/TSEShell';
 import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 
-const fmtCRC = (n: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ':';
 
 export default function RetirosPage() {
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const [transfers, setTransfers] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
@@ -96,7 +97,7 @@ export default function RetirosPage() {
                       
                       {t.to_profile?.full_name ?? '?'}
                     </p>
-                    <p className="text-xs text-on-surface-variant">Monto en negociación: <span className="font-semibold">{fmtCRC(Number(t.amount))}</span></p>
+                    <p className="text-xs text-on-surface-variant">Monto en negociación: <span className="font-semibold">{money(Number(t.amount))}</span></p>
                   </div>
                   <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">{t.status}</span>
                 </div>
@@ -150,7 +151,7 @@ export default function RetirosPage() {
                       </p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-semibold">{fmtCRC(Number(t.amount))}</span>
+                  <span className="font-mono text-sm font-semibold">{money(Number(t.amount))}</span>
                 </div>
               ))}
             </div>
