@@ -4,10 +4,10 @@ import { Shield, ExternalLink, ArrowRight, CheckCircle, Clock } from 'lucide-rea
 import { TSEShell } from '../../../components/TSEShell';
 import { PaginationControls } from '../../../components/PaginationControls';
 import { useSession, apiFetch } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
 import { contractUrl } from '../../../lib/stellar';
 import { paginatedQuery, paginationMeta, unwrapPaginated } from '../../../lib/pagination';
 
-const fmtCRC = (n: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ':';
 
 const STATUS_LBL: Record<string, [string, string, any]> = {
@@ -21,6 +21,7 @@ const STATUS_LBL: Record<string, [string, string, any]> = {
 
 export default function EscrowsPage() {
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const [transfers, setTransfers] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
@@ -159,7 +160,7 @@ export default function EscrowsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      {t.amount && <span className="font-mono font-semibold">{fmtCRC(Number(t.amount))}</span>}
+                      {t.amount && <span className="font-mono font-semibold">{money(Number(t.amount))}</span>}
                       <span className={`flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>
                         <Icon size={11} /> {lbl}
                       </span>
