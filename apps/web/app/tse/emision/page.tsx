@@ -16,7 +16,7 @@ export default function EmisionPage() {
   const { token, me, loading, error } = useSession();
   const { country, profile } = useCountry();
   const [form, setForm] = useState({
-    party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: 'CRC',
+    party_id: '', bond_id: '', certificate_number: '', face_value: '', currency: profile.currency.code,
     interest_rate: '', series: '', issue_date: '', maturity_date: '',
   });
 
