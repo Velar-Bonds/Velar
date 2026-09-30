@@ -6,6 +6,7 @@ import {
   Search, X,
 } from 'lucide-react';
 import { publicApiFetch } from '../../lib/api';
+import { useCountry } from '../../lib/country';
 import { PaginationControls } from '../../components/PaginationControls';
 import { StatusBadge } from '../../components/status-ui';
 import type { PaginatedResponse } from '@velar/types';
@@ -44,12 +45,12 @@ type Snapshot = {
 
 type SearchResponse = { query: string; count: number; results: BondSummary[] };
 
-const fmtCRC = (n: number) => new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n || 0);
 const fmtNum = (n: number) => new Intl.NumberFormat('es-CR').format(n || 0);
 const shortKey = (k: string, n = 8) => k.length > 2 * n + 3 ? `${k.slice(0, n)}…${k.slice(-n)}` : k;
 const PAGE_LIMIT = 20;
 
 export default function ExplorerPage() {
+  const { money } = useCountry();
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -218,7 +219,7 @@ export default function ExplorerPage() {
                   >
                     <div className="min-w-0">
                       <p className="font-mono text-sm font-bold text-primary" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{b.bond_id}</p>
-                      <p className="truncate text-[12.5px] text-slate-500">{b.party ?? 'Sin partido'} · {fmtCRC(b.face_value)}</p>
+                      <p className="truncate text-[12.5px] text-slate-500">{b.party ?? 'Sin partido'} · {money(b.face_value)}</p>
                     </div>
                     <StatusBadge status={b.status} />
                   </Link>
@@ -232,9 +233,9 @@ export default function ExplorerPage() {
         <section className="mb-12 grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
             ['Bonos emitidos', fmtNum(data.stats.total_bonds)],
-            ['Valor total emitido', fmtCRC(data.stats.total_emitted_crc)],
+            ['Valor total emitido', money(data.stats.total_emitted_crc)],
             ['Ventas completadas', fmtNum(data.stats.total_sales)],
-            ['Volumen movido', fmtCRC(data.stats.total_volume_crc)],
+            ['Volumen movido', money(data.stats.total_volume_crc)],
           ].map(([l, v]) => (
             <div key={l} className="rounded-2xl border border-slate-200 bg-white p-5 text-center">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{l}</p>
@@ -392,7 +393,7 @@ export default function ExplorerPage() {
                     {b.bond_id}
                   </Link>
                   <span className="text-sm text-slate-700">{b.party ?? '—'}</span>
-                  <span className="text-sm font-semibold text-slate-900">{fmtCRC(b.face_value)}</span>
+                  <span className="text-sm font-semibold text-slate-900">{money(b.face_value)}</span>
                   <span><StatusBadge status={b.status} /></span>
                   <div className="flex items-center justify-end gap-2">
                     <a href={b.asset_url} target="_blank" rel="noopener noreferrer"

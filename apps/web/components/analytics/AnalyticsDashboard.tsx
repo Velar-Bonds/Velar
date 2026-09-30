@@ -4,6 +4,7 @@ import { Activity, BarChart3, Boxes, DollarSign } from 'lucide-react';
 import type { AnalyticsQuery, AnalyticsSnapshot } from '@velar/types';
 import { getCountryProfile } from '@velar/types';
 import { apiFetch } from '../../lib/api';
+import { useCountry } from '../../lib/country';
 import { fetchSnapshot } from '../../lib/analytics/client';
 import { KpiCard } from './KpiCard';
 import { FilterBar } from './FilterBar';
@@ -16,7 +17,6 @@ import { AnalyticsAreaChart } from './charts/AreaChart';
 import { AnalyticsLineChart } from './charts/LineChart';
 import { AnalyticsStackedBarChart } from './charts/StackedBarChart';
 
-const fmtCRC = (n: number) => new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n || 0);
 const fmtNum = (n: number) => new Intl.NumberFormat('es-CR').format(n || 0);
 
 /**
@@ -27,6 +27,7 @@ const fmtNum = (n: number) => new Intl.NumberFormat('es-CR').format(n || 0);
  * to their own party regardless of what this component renders.
  */
 export function AnalyticsDashboard({ token, showPartyControls }: { token: string; showPartyControls: boolean }) {
+  const { money } = useCountry();
   const [query, setQuery] = useState<AnalyticsQuery>({});
   const [snapshot, setSnapshot] = useState<AnalyticsSnapshot | null>(null);
   const [parties, setParties] = useState<{ id: string; name: string }[]>([]);
@@ -94,8 +95,8 @@ export function AnalyticsDashboard({ token, showPartyControls }: { token: string
         ) : (
           <>
             <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-              <KpiCard label="Volumen movido" value={fmtCRC(snapshot.valueVolume.totalVolumeMoved)} Icon={DollarSign} color="text-success" bg="bg-success/10" />
-              <KpiCard label="Valor emitido" value={fmtCRC(snapshot.valueVolume.totalEmittedValue)} Icon={Boxes} color="text-primary-container" bg="bg-primary-container/10" />
+              <KpiCard label="Volumen movido" value={money(snapshot.valueVolume.totalVolumeMoved)} Icon={DollarSign} color="text-success" bg="bg-success/10" />
+              <KpiCard label="Valor emitido" value={money(snapshot.valueVolume.totalEmittedValue)} Icon={Boxes} color="text-primary-container" bg="bg-primary-container/10" />
               <KpiCard label="Bonos emitidos" value={fmtNum(snapshot.valueVolume.totalBonds)} Icon={BarChart3} color="text-primary" bg="bg-primary/10" />
               <KpiCard label="Ventas completadas" value={fmtNum(snapshot.valueVolume.totalSales)} Icon={Activity} color="text-warning" bg="bg-warning/10" />
             </div>
@@ -188,7 +189,7 @@ export function AnalyticsDashboard({ token, showPartyControls }: { token: string
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span>
                         <p className="font-mono text-xs font-semibold text-primary">{b.label}</p>
                       </div>
-                      <span className="font-mono text-xs font-semibold">{fmtCRC(b.value)}</span>
+                      <span className="font-mono text-xs font-semibold">{money(b.value)}</span>
                     </button>
                   ))}
                 </div>

@@ -6,6 +6,7 @@ import {
   ArrowLeft, ExternalLink, ShieldCheck, Boxes, FileText, Wallet, Users, ArrowRightLeft,
 } from 'lucide-react';
 import { publicApiFetch } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
 import { StatusBadge, fmtDate } from '../../../components/status-ui';
 
 type BondDetail = {
@@ -35,10 +36,10 @@ type BondDetail = {
   }>;
 };
 
-const fmtCRC = (n: number) => new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n || 0);
 const shortKey = (k: string, n = 8) => (k && k.length > 2 * n + 3 ? `${k.slice(0, n)}…${k.slice(-n)}` : k);
 
 export default function BondDetailPage() {
+  const { money } = useCountry();
   const params = useParams<{ bondId: string }>();
   const bondId = decodeURIComponent(params.bondId ?? '');
 
@@ -110,7 +111,7 @@ export default function BondDetailPage() {
                 <StatusBadge status={data.status} />
               </div>
               <p className="mt-2 text-2xl font-bold text-slate-900" style={{ fontFamily: 'Geist, sans-serif' }}>
-                {fmtCRC(data.face_value)} <span className="text-sm font-medium text-slate-400">{data.currency}</span>
+                {money(data.face_value)} <span className="text-sm font-medium text-slate-400">{data.currency}</span>
               </p>
             </section>
 
@@ -212,7 +213,7 @@ export default function BondDetailPage() {
                     <div key={t.id} className="grid grid-cols-1 items-center gap-2 border-b border-slate-100 px-5 py-3.5 last:border-0 md:grid-cols-[1fr_1fr_110px_130px_130px]">
                       <span className="text-sm text-slate-700">{t.from?.name ?? '—'}</span>
                       <span className="text-sm text-slate-700">{t.to?.name ?? '—'}</span>
-                      <span className="text-sm font-semibold text-slate-900">{t.amount != null ? fmtCRC(t.amount) : '—'}</span>
+                      <span className="text-sm font-semibold text-slate-900">{t.amount != null ? money(t.amount) : '—'}</span>
                       <span><StatusBadge status={t.status} /></span>
                       <div className="flex items-center justify-end gap-2 text-[12px] text-slate-500">
                         {fmtDate(t.created_at)}
