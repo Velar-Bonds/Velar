@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FileText, CheckCircle, ArrowLeft, Info, Clock } from 'lucide-react';
 import { PartidoShell } from '../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
 import { createBondRequestRequestSchema, type FieldErrors } from '@velar/types';
 import { validateSchemaForm } from '../../../lib/forms/schema-form';
 import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFieldError';
@@ -30,21 +31,17 @@ const STATUS_MAP: Record<string, [string, string]> = {
   rechazado: ['bg-red-50 text-red-600 border-red-200', 'Rechazado'],
 };
 
-const CURRENCIES = ['CRC', 'USD', 'EUR'];
-
-const fmtMoney = (n: number, cur = 'CRC') =>
-  new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(n);
-
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 export default function SolicitarBonosPage() {
   const { token, me, loading, error } = useSession();
+  const { country, profile, profiles } = useCountry();
   const [requests, setRequests] = useState<BondRequest[]>([]);
   const [form, setForm] = useState({
     certificate_number: '',
     face_value: '',
-    currency: 'CRC',
+    currency: profile.currency.code,
     interest_rate: '',
     series: '',
     issue_date: '',
@@ -59,6 +56,14 @@ export default function SolicitarBonosPage() {
     apiFetch(tok, 'GET', '/bonds/requests').then(setRequests).catch(() => {});
 
   useEffect(() => { if (token) load(token); /* eslint-disable-next-line */ }, [token]);
+
+  // La moneda por defecto sigue al país activo del selector.
+  useEffect(() => {
+    setForm((f) => ({ ...f, currency: profile.currency.code }));
+  }, [country, profile.currency.code]);
+
+  // Monedas disponibles: las de los perfiles de país soportados (vienen del contexto).
+  const currencies = Array.from(new Set(profiles.map((p) => p.currency.code)));
 
   if (loading || !token || !me) {
     return (
@@ -89,7 +94,7 @@ export default function SolicitarBonosPage() {
     try {
       await typedApi.call('bonds.requests.create', { body: validation.data }, token);
       setMsg({ type: 'ok', text: 'Solicitud enviada al TSE. Te notificaremos cuando sea procesada.' });
-      setForm({ certificate_number: '', face_value: '', currency: 'CRC', interest_rate: '', series: '', issue_date: '', maturity_date: '', notes: '' });
+      setForm({ certificate_number: '', face_value: '', currency: profile.currency.code, interest_rate: '', series: '', issue_date: '', maturity_date: '', notes: '' });
       load(token);
     } catch (err: any) {
       setMsg({ type: 'err', text: err.message });
@@ -158,7 +163,7 @@ export default function SolicitarBonosPage() {
                   <div>
                     <label className="field-label">Moneda</label>
                     <select value={form.currency} onChange={set('currency')} className="field-input bg-white">
-                      {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>
@@ -257,13 +262,12 @@ export default function SolicitarBonosPage() {
 }
 
 function RequestRow({ r }: { r: BondRequest }) {
+  const { money } = useCountry();
   const [cls, lbl] = STATUS_MAP[r.status] ?? ['bg-gray-100 text-gray-600 border-gray-200', r.status];
-  const fmt = (n: number, cur = 'CRC') =>
-    new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(n);
   return (
     <div className="flex items-center justify-between rounded-lg border border-outline-variant/20 bg-white px-3 py-2">
       <div>
-        <p className="text-xs font-semibold text-on-surface">{fmt(r.face_value, r.currency)}</p>
+        <p className="text-xs font-semibold text-on-surface">{money(r.face_value)}</p>
         {r.series && <p className="text-[11px] text-on-surface-variant">Serie {r.series}</p>}
       </div>
       <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}>{lbl}</span>
