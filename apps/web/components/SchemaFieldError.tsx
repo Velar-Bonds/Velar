@@ -14,3 +14,5 @@ export function schemaFieldProps(errors: FieldErrors, field: string) {
     'aria-describedby': invalid ? `${field}-error` : undefined,
   };
 }
+
+export const __test__ = { SchemaFieldError, schemaFieldProps };
