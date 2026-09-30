@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CheckCircle, AlertCircle, Eye, X, ExternalLink, User, Waypoints, Coins } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
 import { unwrapPaginated } from '../../../lib/pagination';
 import { bondExplorerUrl, txUrl } from '../../../lib/stellar';
 import { reviewReportRequestSchema, type FieldErrors } from '@velar/types';
@@ -13,7 +14,6 @@ import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFi
 import { typedApi } from '../../../lib/typed-api';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-const fmtCRC = (n?: number | null) => n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
 
 const STATUS: Record<string, [string, string]> = {
   enviado: ['bg-blue-50 text-primary border-blue-200', 'Enviado'],
@@ -24,6 +24,7 @@ const STATUS: Record<string, [string, string]> = {
 
 export default function TSEReportesPage() {
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const [reports, setReports] = useState<any[]>([]);
   const [allBonds, setAllBonds] = useState<any[]>([]);
   const [allTransfers, setAllTransfers] = useState<any[]>([]);
@@ -95,7 +96,7 @@ export default function TSEReportesPage() {
                   <tr key={r.id} className="bg-white/60 transition-colors hover:bg-primary/[0.02]">
                     <td className="px-5 py-3.5 font-medium">{r.parties?.name ?? '—'}</td>
                     <td className="px-5 py-3.5">{r.title}</td>
-                    <td className="px-5 py-3.5 font-semibold">{fmtCRC(r.total_amount)}</td>
+                    <td className="px-5 py-3.5 font-semibold">{money(r.total_amount)}</td>
                     <td className="px-5 py-3.5 text-on-surface-variant">{fmtDate(r.created_at)}</td>
                     <td className="px-5 py-3.5"><span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${cls}`}>{lbl}</span></td>
                     <td className="px-5 py-3.5 text-right">
@@ -133,7 +134,7 @@ export default function TSEReportesPage() {
               {sel.total_amount != null && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Monto reportado</p>
-                  <p className="font-semibold">{fmtCRC(sel.total_amount)}</p>
+                  <p className="font-semibold">{money(sel.total_amount)}</p>
                 </div>
               )}
             </div>
@@ -154,18 +155,18 @@ export default function TSEReportesPage() {
               <div className="mb-4 grid grid-cols-3 gap-2">
                 <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-primary/70">Valor facial total</p>
-                  <p className="mt-1 text-lg font-bold text-primary">{fmtCRC(valorFacial)}</p>
+                  <p className="mt-1 text-lg font-bold text-primary">{money(valorFacial)}</p>
                   <p className="text-[10px] text-primary/60">{selBonds.length} bono{selBonds.length !== 1 ? 's' : ''}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700/70">Valor de reventas</p>
-                  <p className="mt-1 text-lg font-bold text-emerald-700">{fmtCRC(valorReventas)}</p>
+                  <p className="mt-1 text-lg font-bold text-emerald-700">{money(valorReventas)}</p>
                   <p className="text-[10px] text-emerald-700/60">{liberadas.length} venta{liberadas.length !== 1 ? 's' : ''}</p>
                 </div>
                 <div className={`rounded-xl border px-4 py-3 ${diff >= 0 ? 'border-emerald-100 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">Diferencia</p>
                   <p className={`mt-1 text-lg font-bold ${diff >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {diff >= 0 ? '+' : ''}{fmtCRC(diff)}
+                    {diff >= 0 ? '+' : ''}{money(diff)}
                   </p>
                   <p className={`text-[10px] ${diff >= 0 ? 'text-emerald-700/60' : 'text-red-600/60'}`}>
                     {diff >= 0 ? '+' : ''}{diffPct.toFixed(1)}% vs facial
@@ -194,7 +195,7 @@ export default function TSEReportesPage() {
                             <p className="text-[11px] text-on-surface-variant">{b.parties?.name ?? '—'} · {b.certificate_number ?? 'sin certificado'}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-mono text-sm font-semibold">{fmtCRC(b.face_value)}</p>
+                            <p className="font-mono text-sm font-semibold">{money(b.face_value)}</p>
                             <span className="rounded-full bg-surface-container px-2 py-0.5 text-[10px] uppercase text-on-surface-variant">{b.status}</span>
                           </div>
                         </div>
