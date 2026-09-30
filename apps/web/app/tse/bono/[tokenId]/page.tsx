@@ -12,9 +12,8 @@ import { ContractReader } from '../../../../components/contract-reader/ContractR
 import { ContractEngineExplorer } from '../../../../components/contract-engine/ContractEngineExplorer';
 import { useSession, apiFetch, apiFetchBlob, API_URL } from '../../../../lib/api';
 import { contractUrl, accountUrl } from '../../../../lib/stellar';
+import { useCountry } from '../../../../lib/country';
 
-const fmtCRC = (n: number | null, cur = 'CRC') =>
-  n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric' }) : ':';
 const shortKey = (k?: string | null, n = 6) =>
@@ -147,6 +146,7 @@ function LiveOnchainState({ token, tokenId }: { token: string; tokenId: string }
 
 export default function BonoDetallePage() {
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const params = useParams<{ tokenId: string }>();
   const tokenId = params?.tokenId;
 
@@ -194,7 +194,7 @@ export default function BonoDetallePage() {
             certificate_number: bond.certificate_number ?? null,
             series: bond.series ?? null,
             face_value: bond.face_value != null ? Number(bond.face_value) : null,
-            currency: bond.currency ?? 'CRC',
+            currency: bond.currency ?? null,
             interest_rate: bond.interest_rate != null ? Number(bond.interest_rate) : null,
             issue_date: bond.issue_date ?? null,
             maturity_date: bond.maturity_date ?? null,
@@ -301,7 +301,7 @@ export default function BonoDetallePage() {
                 <Field
                   icon={<DollarSign size={15} />}
                   label="Valor facial"
-                  value={fmtCRC(data.face_value, data.currency)}
+                  value={data.face_value == null ? null : money(data.face_value)}
                   emphasis
                 />
                 <Field icon={<Percent size={15} />} label="Tasa de interés" value={data.interest_rate != null ? `${data.interest_rate}%` : ':'} />

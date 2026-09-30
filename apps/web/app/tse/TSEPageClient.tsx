@@ -9,8 +9,6 @@ import { useCountry } from '../../lib/country';
 
 const fmtDate = (s?: string) =>
   s ? new Date(s).toLocaleString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-const fmtMoney = (n: number | null, cur = 'CRC') =>
-  n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
 
 const CHIP: Record<string, string> = {
   activo: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -25,7 +23,7 @@ const CHIP: Record<string, string> = {
 
 export default function TSEPageClient() {
   const { token, me, loading, error } = useSession();
-  const { profile } = useCountry();
+  const { profile, money } = useCountry();
   const [bonds, setBonds] = useState<any[]>([]);
   const [bondsTotal, setBondsTotal] = useState(0);
   const [requests, setRequests] = useState<any[]>([]);
@@ -121,7 +119,7 @@ export default function TSEPageClient() {
                     <tr key={r.id} className="bg-white/50 transition-colors hover:bg-primary/[0.03]">
                       <td className="px-5 py-3 font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{r.certificate_number ?? `REQ-2026-00${i + 1}`}</td>
                       <td className="px-5 py-3 font-medium">{r.parties?.name ?? '—'}</td>
-                      <td className="px-5 py-3 font-semibold">{fmtMoney(r.face_value, r.currency)}</td>
+                      <td className="px-5 py-3 font-semibold">{money(r.face_value)}</td>
                       <td className="px-5 py-3 text-on-surface-variant">{fmtDate(r.created_at)}</td>
                       <td className="px-5 py-3 text-right">
                         <Link href="/tse/revision" className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90">Revisar</Link>
@@ -148,7 +146,7 @@ export default function TSEPageClient() {
                       <td className="px-5 py-3 font-semibold text-primary" style={{ fontFamily: 'JetBrains Mono' }}>{b.bond_id}</td>
                       <td className="px-5 py-3 font-medium">{b.parties?.name ?? '—'}</td>
                       <td className="px-5 py-3 text-on-surface-variant">{b.profiles?.full_name ?? '—'}</td>
-                      <td className="px-5 py-3 font-semibold">{fmtMoney(b.face_value, b.currency)}</td>
+                      <td className="px-5 py-3 font-semibold">{money(b.face_value)}</td>
                       <td className="px-5 py-3"><span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${CHIP[b.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>{b.status}</span></td>
                     </tr>
                   ))}
