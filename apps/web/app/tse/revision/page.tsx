@@ -4,6 +4,7 @@ import { useEffect, useState, Fragment } from 'react';
 import { Filter, CheckCircle, XCircle, ChevronDown, Search } from 'lucide-react';
 import { TSEShell } from '../../../components/TSEShell';
 import { useSession, apiFetch } from '../../../lib/api';
+import { useCountry } from '../../../lib/country';
 
 type Request = {
   id: string; status: string; face_value: number; currency: string;
@@ -15,8 +16,6 @@ type Request = {
 
 const fmtDate = (s?: string) =>
   s ? new Date(s).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-const fmtMoney = (n: number | null, cur = 'CRC') =>
-  n == null ? '—' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: cur || 'CRC', maximumFractionDigits: 0 }).format(n);
 
 const STATUS_CHIP: Record<string, [string, string]> = {
   pendiente: ['bg-amber-50 text-amber-700 border-amber-200', 'Pendiente'],
@@ -26,6 +25,7 @@ const STATUS_CHIP: Record<string, [string, string]> = {
 
 export default function RevisionPage() {
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const [requests, setRequests] = useState<Request[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   
@@ -155,7 +155,7 @@ export default function RevisionPage() {
                         </button>
                       </td>
                       <td className="px-5 py-3.5 font-medium">{r.parties?.name ?? '—'}</td>
-                      <td className="px-5 py-3.5 font-semibold">{fmtMoney(r.face_value, r.currency)}</td>
+                      <td className="px-5 py-3.5 font-semibold">{money(r.face_value)}</td>
                       <td className="px-5 py-3.5 text-on-surface-variant">{r.series ?? '—'}</td>
                       <td className="px-5 py-3.5 text-on-surface-variant">{fmtDate(r.created_at)}</td>
                       <td className="px-5 py-3.5"><span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${chipCls}`}>{chipLbl}</span></td>
@@ -189,7 +189,7 @@ export default function RevisionPage() {
                               ['Fecha de emisión', fmtDate(r.issue_date)],
                               ['Vencimiento', fmtDate(r.maturity_date)],
                               ['Partido', r.parties?.name ?? '—'],
-                              ['Monto', fmtMoney(r.face_value, r.currency)],
+                              ['Monto', money(r.face_value)],
                             ].map(([lbl, val]) => (
                               <div key={lbl}>
                                 <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{lbl}</p>
