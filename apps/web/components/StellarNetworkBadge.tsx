@@ -1,6 +1,6 @@
 'use client';
 
-import { STELLAR_DASHOARD_URL } from '../lib/stellar';
+import { STELLAR_DASHBOARD_URL } from '../lib/stellar';
 
 /**
  * Badge discreto que indica que la plataforma opera sobre Stellar Testnet.
