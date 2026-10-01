@@ -8,8 +8,9 @@ import { PartidoShell } from '../../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../../lib/api';
 import {
   STATUS_LABEL, STATUS_STYLE, CATEGORY_LABEL, COMPLIANCE_LABEL, COMPLIANCE_STYLE,
-  fmtCRC, fmtDate, periodLabel, clientCompliance,
+  fmtDate, periodLabel, clientCompliance,
 } from '../../../../lib/reports';
+import { useCountry } from '../../../../lib/country';
 import type {
   MonthlyReportDetail, ReportLineCategory,
 } from '@velar/types';
@@ -20,6 +21,7 @@ export default function ReporteDetallePage({ params }: { params: Promise<{ id: s
   const { id } = usePromise(params);
   const router = useRouter();
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
 
   const [detail, setDetail] = useState<MonthlyReportDetail | null>(null);
   const [loadErr, setLoadErr] = useState('');
@@ -105,7 +107,7 @@ export default function ReporteDetallePage({ params }: { params: Promise<{ id: s
               <div className="glass-card rounded-3xl p-6">
                 <h3 className="mb-3 flex items-center gap-2 font-semibold"><FileText size={16} /> Conciliación on-chain</h3>
                 {detail.reconciliation.status === 'clean' ? (
-                  <p className="flex items-center gap-2 text-sm text-emerald-700"><CheckCircle size={16} /> Sin discrepancias · {fmtCRC(detail.reconciliation.declaredTotal)}</p>
+                  <p className="flex items-center gap-2 text-sm text-emerald-700"><CheckCircle size={16} /> Sin discrepancias · {money(detail.reconciliation.declaredTotal)}</p>
                 ) : (
                   <div className="flex flex-col gap-2">
                     <p className="flex items-center gap-2 text-sm text-amber-700"><AlertTriangle size={16} /> {detail.reconciliation.discrepancies.length} discrepancia(s)</p>
@@ -129,7 +131,7 @@ export default function ReporteDetallePage({ params }: { params: Promise<{ id: s
                           <tr key={it.id} className="border-b border-outline-variant/20 last:border-0">
                             <td className="p-3">{it.concept}</td>
                             <td className="p-3 text-on-surface-variant">{CATEGORY_LABEL[it.category]}</td>
-                            <td className="p-3 text-right font-mono">{fmtCRC(it.amount)}</td>
+                            <td className="p-3 text-right font-mono">{money(it.amount)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -181,7 +183,7 @@ export default function ReporteDetallePage({ params }: { params: Promise<{ id: s
                           <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[v.status] ?? ''}`}>{STATUS_LABEL[v.status] ?? v.status}</span>
                           <span className="text-[11px] text-on-surface-variant">{fmtDate(v.createdAt)}</span>
                         </div>
-                        <p className="mt-2 text-xs text-on-surface-variant">Total: <span className="font-mono">{fmtCRC(v.snapshot?.declaredTotal)}</span></p>
+                        <p className="mt-2 text-xs text-on-surface-variant">Total: <span className="font-mono">{money(v.snapshot?.declaredTotal)}</span></p>
                         <p className="text-xs text-on-surface-variant">Conciliación: {v.snapshot?.reconciliation?.status === 'clean' ? 'limpia' : `${v.snapshot?.reconciliation?.discrepancies?.length ?? 0} disc.`}</p>
                       </div>
                     </li>

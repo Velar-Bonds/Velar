@@ -9,8 +9,9 @@ import { PartidoShell } from '../../../../components/PartidoShell';
 import { useSession, apiFetch } from '../../../../lib/api';
 import { unwrapPaginated } from '../../../../lib/pagination';
 import {
-  CATEGORY_LABEL, fmtCRC, periodLabel, uploadReportFile,
+  CATEGORY_LABEL, periodLabel, uploadReportFile,
 } from '../../../../lib/reports';
+import { useCountry } from '../../../../lib/country';
 import type {
   ReportLineCategory, ReportLineItem, ReportFile, ReconciliationResult,
 } from '@velar/types';
@@ -29,6 +30,7 @@ const now = new Date();
 export default function NuevoReportePage() {
   const router = useRouter();
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
 
   const [step, setStep] = useState(0);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -220,7 +222,7 @@ export default function NuevoReportePage() {
                   <label className="field-label">Bono declarado (opcional)</label>
                   <select value={draft.bondTokenId} onChange={(e) => setDraft({ ...draft, bondTokenId: e.target.value })} className="field-input">
                     <option value="">— Sin bono —</option>
-                    {bonds.map((b: any) => <option key={b.token_id} value={b.token_id}>{b.bond_id} · {fmtCRC(b.face_value)}</option>)}
+                    {bonds.map((b: any) => <option key={b.token_id} value={b.token_id}>{b.bond_id} · {money(b.face_value)}</option>)}
                   </select>
                 </div>
                 <div className="sm:col-span-2">
@@ -241,13 +243,13 @@ export default function NuevoReportePage() {
                         <tr key={it.id} className="border-t border-outline-variant/20">
                           <td className="p-3">{it.concept}</td>
                           <td className="p-3">{CATEGORY_LABEL[it.category]}</td>
-                          <td className="p-3 text-right font-mono">{fmtCRC(it.amount)}</td>
+                          <td className="p-3 text-right font-mono">{money(it.amount)}</td>
                           <td className="p-3 text-right"><button onClick={() => removeLine(it.id)} className="text-red-500 hover:text-red-700" aria-label="Eliminar"><Trash2 size={15} /></button></td>
                         </tr>
                       ))}
                       <tr className="border-t border-outline-variant/30 bg-surface-container-low font-semibold">
                         <td className="p-3" colSpan={2}>Total declarado</td>
-                        <td className="p-3 text-right font-mono">{fmtCRC(total)}</td>
+                        <td className="p-3 text-right font-mono">{money(total)}</td>
                         <td />
                       </tr>
                     </tbody>
@@ -291,7 +293,7 @@ export default function NuevoReportePage() {
                   <CheckCircle size={22} />
                   <div>
                     <p className="font-semibold">Sin discrepancias</p>
-                    <p className="text-xs">Lo declarado coincide con los bonos que tenés en cadena ({fmtCRC(recon.actualTotal)}).</p>
+                    <p className="text-xs">Lo declarado coincide con los bonos que tenés en cadena ({money(recon.actualTotal)}).</p>
                   </div>
                 </div>
               ) : (
@@ -300,7 +302,7 @@ export default function NuevoReportePage() {
                     <AlertTriangle size={22} />
                     <div>
                       <p className="font-semibold">{recon.discrepancies.length} discrepancia(s) detectada(s)</p>
-                      <p className="text-xs">Declarado {fmtCRC(recon.declaredTotal)} · En cadena {fmtCRC(recon.actualTotal)}. Podés enviar igual; el TSE las verá.</p>
+                      <p className="text-xs">Declarado {money(recon.declaredTotal)} · En cadena {money(recon.actualTotal)}. Podés enviar igual; el TSE las verá.</p>
                     </div>
                   </div>
                   <ul className="flex flex-col gap-2">
@@ -322,7 +324,7 @@ export default function NuevoReportePage() {
               <dl className="grid grid-cols-2 gap-3 text-sm">
                 <div><dt className="text-xs text-on-surface-variant">Período</dt><dd className="font-semibold">{periodLabel(year, month)}</dd></div>
                 <div><dt className="text-xs text-on-surface-variant">Líneas</dt><dd className="font-semibold">{items.length}</dd></div>
-                <div><dt className="text-xs text-on-surface-variant">Total declarado</dt><dd className="font-mono font-semibold">{fmtCRC(total)}</dd></div>
+                <div><dt className="text-xs text-on-surface-variant">Total declarado</dt><dd className="font-mono font-semibold">{money(total)}</dd></div>
                 <div><dt className="text-xs text-on-surface-variant">Archivos</dt><dd className="font-semibold">{files.length}</dd></div>
                 <div className="col-span-2">
                   <dt className="text-xs text-on-surface-variant">Conciliación</dt>
