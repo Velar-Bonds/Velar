@@ -10,9 +10,9 @@ import { createReportRequestSchema, type FieldErrors } from '@velar/types';
 import { validateSchemaForm } from '../../../lib/forms/schema-form';
 import { SchemaFieldError, schemaFieldProps } from '../../../components/SchemaFieldError';
 import { typedApi } from '../../../lib/typed-api';
+import { useCountry } from '../../../lib/country';
 
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : ':';
-const fmtCRC = (n?: number | null) => n == null ? 'Sin dato' : new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 const STATUS: Record<string, [string, string, any]> = {
   enviado: ['bg-blue-50 text-primary border-blue-200', 'Enviado', Clock],
@@ -24,6 +24,7 @@ const STATUS: Record<string, [string, string, any]> = {
 export default function PartidoReportesPage() {
   const router = useRouter();
   const { token, me, loading, error } = useSession();
+  const { money } = useCountry();
   const [reports, setReports] = useState<any[]>([]);
   const [bonds, setBonds] = useState<any[]>([]);
   const [form, setForm] = useState({
@@ -156,7 +157,7 @@ export default function PartidoReportesPage() {
                         <label key={b.token_id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-surface-container-low">
                           <input type="checkbox" checked={form.bond_token_ids.includes(b.token_id)} onChange={() => toggleBond(b.token_id)} />
                           <span className="font-mono font-semibold text-primary">{b.bond_id}</span>
-                          <span className="text-on-surface-variant">{fmtCRC(b.face_value)}</span>
+                          <span className="text-on-surface-variant">{money(b.face_value)}</span>
                         </label>
                       ))}
                     </div>
@@ -202,7 +203,7 @@ export default function PartidoReportesPage() {
                       <p className="line-clamp-2 text-xs text-on-surface-variant">{r.description}</p>
                       <div className="mt-2 flex items-center justify-between text-[11px] text-on-surface-variant">
                         <span>{fmtDate(r.created_at)}</span>
-                        {r.total_amount && <span className="font-mono font-semibold">{fmtCRC(r.total_amount)}</span>}
+                        {r.total_amount && <span className="font-mono font-semibold">{money(r.total_amount)}</span>}
                       </div>
                       {comp && (
                         <span className={`mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium ${COMPLIANCE_STYLE[comp.status]}`}>
