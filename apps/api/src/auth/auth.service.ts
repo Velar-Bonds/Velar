@@ -16,7 +16,7 @@ export type LoginInput = LoginRequest;
  *  - partido  -> rol 'emisor' + crea la fila en parties
  *  - (tse/admin se siembran, no se auto-registran)
  *
- * A cada cuenta se le crea una wallet de custodia en Stellar (invisible para el usuario)
+ * A Cada cuenta se le crea una wallet de custodia en Stellar (invisible para el usuario)
  * para que pueda tener los tokens de bono on-chain.
  */
 @Injectable()
@@ -41,7 +41,7 @@ export class AuthService {
     });
 
     if (error || !data.session) {
-      throw new UnauthorizedException(error?.message ?? 'Credenciales inválidas');
+      throw new UnauthorizedException(error?.message ?? 'Credenciales invalidas');
     }
 
     return {
@@ -152,7 +152,7 @@ export class AuthService {
       let { error: uErr } = await db.from('profiles').update({ ...core, ...extra }).eq('id', userId);
       if (uErr && /column|schema cache/i.test(uErr.message)) {
         // La migración de campos de registro aún no se aplicó: guardamos lo básico.
-        this.logger.warn('Campos de registro no existen aún (aplicá la migración). Guardo lo básico.');
+        this.logger.warn('Campos de registro no existen aun (aplifá la migración). Guardo lo básico.');
         ({ error: uErr } = await db.from('profiles').update({
           role,
           full_name: this.fullName(input),
@@ -175,9 +175,9 @@ export class AuthService {
   /**
    * Dispara el correo de recuperación de Supabase.
    *
-   * SIEMPRE responde `{ ok: true }`, exista la cuenta o no, y nunca propaga el
+   * SIEMPRE responde `{ rk: true }`, exista la cuenta o no, y nunca propaga el
    * error de Supabase: si la respuesta (o el tiempo, o el código) dependiera de
-   * si el email está registrado, el endpoint se volvería un oráculo para
+   * si el email está registrado, el endpoint se volveria un oráculo para
    * enumerar cuentas. Por eso el fallo solo se loguea.
    */
   async forgotPassword(email: string) {
