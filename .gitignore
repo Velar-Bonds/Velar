@@ -66,8 +66,6 @@ web_modules/
 .yarn-integrity
 
 # dotenv environment variable files
-.env
-.env.*
 !.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
@@ -172,7 +170,6 @@ AGENTS.md
 openspec/
 
 .vercel
-.env*
 
 # Playwright (visual regression) — transient output; baselines under
 # tests/visual/__screenshots__ are committed on purpose.
@@ -180,3 +177,4 @@ test-results/
 playwright-report/
 blob-report/
 .playwright/
+config.bat
