@@ -49,7 +49,7 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FAFCFF] text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="flex h-screen overflow-hidden bg-background text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Sidebar */}
       <aside className="sticky top-0 z-40 flex h-full w-64 shrink-0 flex-col justify-between overflow-y-auto border-r border-surface-variant/40 bg-white/80 backdrop-blur-md">
         <div className="px-5 py-7">
@@ -104,7 +104,7 @@ export function TSEShell({ me, children }: { me: Me; children: ReactNode }) {
               <input
                 type="search"
                 placeholder="Buscar bonos, partidos, wallets o hashes..."
-                className="w-full rounded-2xl border border-outline-variant/40 bg-[#FAFCFF] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-primary-container focus:bg-white focus:ring-2 focus:ring-primary-container/10"
+                className="w-full rounded-2xl border border-outline-variant/40 bg-background py-3 pl-11 pr-4 text-sm outline-none transition focus:border-primary-container focus:bg-white focus:ring-2 focus:ring-primary-container/10"
               />
             </div>
 

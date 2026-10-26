@@ -60,7 +60,7 @@ export default function TSEPageClient() {
 
   return (
     <TSEShell me={me}>
-      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-surface-variant/40 bg-background/85 px-8 backdrop-blur-md">
         <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>
           Panel {profile.authority.code} <span className="text-on-surface-variant">{profile.flag}</span>
         </h1>
@@ -165,7 +165,7 @@ export default function TSEPageClient() {
                   { href: '/tse/auditoria', label: 'Ver auditoría', desc: 'Consultar eventos auditables', Icon: Activity },
                   { href: '/tse/registros', label: 'Publicar registro', desc: 'Publicar en el portal público', Icon: CheckCircle },
                 ] as const).map(({ href, label, desc, Icon }: any) => (
-                  <Link key={href} href={href} className="group flex items-center justify-between rounded-xl border border-[#D5E3FF] bg-white p-3 transition-all hover:border-primary hover:shadow-sm">
+                  <Link key={href} href={href} className="group flex items-center justify-between rounded-xl border border-outline-variant bg-white p-3 transition-all hover:border-primary hover:shadow-sm">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4 w-4" strokeWidth={2.1} /></div>
                       <div><p className="text-sm font-semibold">{label}</p><p className="text-xs text-on-surface-variant">{desc}</p></div>

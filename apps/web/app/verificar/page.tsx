@@ -19,7 +19,7 @@ export default function VerificarPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafcff] text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-background text-on-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
       <header className="border-b border-outline-variant/20 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[920px] items-center justify-between px-5">
           <Link href="/" className="flex items-center gap-2">

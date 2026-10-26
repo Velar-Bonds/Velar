@@ -121,7 +121,7 @@ export default function SolicitarBonosPage() {
 
           {/* Formulario */}
           <div className="lg:col-span-3">
-            <div className="glass-card rounded-3xl p-8" style={{ background: 'rgba(255,255,255,0.85)' }}>
+            <div className="glass-card rounded-3xl p-8">
               <div className="mb-6 flex items-center gap-3">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <FileText size={20} />
@@ -219,7 +219,7 @@ export default function SolicitarBonosPage() {
 
             {/* Solicitudes pendientes */}
             {pending.length > 0 && (
-              <div className="glass-card rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.85)' }}>
+              <div className="glass-card rounded-2xl p-5">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Clock size={14} className="text-amber-600" /> En revisión ({pending.length})</h3>
                 <div className="flex flex-col gap-2">
                   {pending.map((r) => <RequestRow key={r.id} r={r} />)}

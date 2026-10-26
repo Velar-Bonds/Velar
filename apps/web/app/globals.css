@@ -9,7 +9,15 @@
  */
 @source "../../../packages/ui/src";
 
-@theme {
+/*
+ * Fuente única de verdad de tokens de diseño (`@theme static`).
+ * `static` instruye a Tailwind v4 a emitir todas las variables `--color-*`,
+ * `--font-*` y `--shadow-*` en `:root, :host` sin podar las que solo se
+ * consumen vía `var()` / `colorVar()` en JS y gráficos (components/ui/tokens.ts,
+ * components/analytics/charts/**). De este modo no hace falta duplicar un
+ * bloque `:root` manual.
+ */
+@theme static {
   --font-sans: "Inter", sans-serif;
   --font-display: "Geist", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
@@ -23,6 +31,7 @@
   --color-institutional: #0B1739;
   --color-secondary: #52627A;
   --color-secondary-container: #D9E6F8;
+  --color-secondary-fixed: #EEF5FF;
   --color-tertiary: #174EA6;
   --color-tertiary-container: #2563EB;
   --color-background: #F7FAFF;
@@ -43,39 +52,25 @@
   --color-error: #B42318;
   --color-error-container: #FEE4E2;
   --color-success: #15803D;
+  --color-warning: #B7791F;
   --color-glass-border: #D9E6F8;
-  --color-secondary-fixed: #EEF5FF;
 
   --shadow-glass: 0 8px 18px rgba(11, 23, 57, 0.06);
   --shadow-glass-strong: 0 16px 36px rgba(11, 23, 57, 0.10);
   --shadow-card: 0 2px 8px rgba(11, 23, 57, 0.06);
-}
 
-:root {
-  /* Tokens que colorVar() promete exponer (components/ui/tokens.ts) pero que
-     Tailwind v4 poda de @theme si ninguna clase utilitaria los referencia
-     (solo se usan vía var() en JS/charts, issue #44). Mismos valores que
-     @theme/[data-theme='dark'] arriba — no son tokens nuevos, solo se
-     garantiza que sobrevivan el build sea cual sea el uso de utilidades. */
-  --color-secondary: #52627A;
-  --color-secondary-container: #D9E6F8;
-  --color-secondary-fixed: #EEF5FF;
-  --color-tertiary: #174EA6;
-  --color-tertiary-container: #2563EB;
-  --color-primary-fixed-dim: #8DBBFF;
-  --color-warning: #B7791F;
-
-  --velar-canvas: #F7FAFF;
-  --velar-section: #EEF5FF;
-  --velar-surface: #FFFFFF;
-  --velar-surface-soft: #F1F6FD;
-  --velar-text: #0B1739;
-  --velar-muted: #52627A;
-  --velar-border: #D9E6F8;
-  --velar-border-strong: #B8CBE8;
-  --velar-success: #15803D;
-  --velar-warning: #B7791F;
-  --velar-error: #B42318;
+  /* Tokens estructurales y alias semánticos (`--velar-*`) derivados sin duplicar hex */
+  --velar-canvas: var(--color-background);
+  --velar-section: var(--color-surface-container);
+  --velar-surface: var(--color-surface);
+  --velar-surface-soft: var(--color-surface-container-low);
+  --velar-text: var(--color-on-surface);
+  --velar-muted: var(--color-on-surface-variant);
+  --velar-border: var(--color-outline-variant);
+  --velar-border-strong: var(--color-outline);
+  --velar-success: var(--color-success);
+  --velar-warning: var(--color-warning);
+  --velar-error: var(--color-error);
   --velar-radius-sm: 8px;
   --velar-radius-md: 12px;
   --velar-radius-lg: 16px;
@@ -85,18 +80,14 @@
   --velar-space-5: 20px;
   --velar-space-6: 24px;
   --velar-glass: rgba(255, 255, 255, 0.92);
-  --velar-glass-strong: #FFFFFF;
+  --velar-glass-strong: var(--color-surface);
 }
 
 /* ─── Tema oscuro ────────────────────────────────────────────────────────────
    Sobreescribe las MISMAS variables que usan las utilidades de Tailwind
-   (var(--color-*)) y los helpers .velar-*. No se agregan tokens nuevos: solo
-   cambian los valores según el tema activo en <html data-theme="dark">. */
+   (var(--color-*)) y los helpers .velar-*. Los alias `--velar-*` que apuntan
+   a `var(--color-*)` se actualizan solos sin duplicar hex. */
 [data-theme='dark'] {
-  /* Ídem al comentario del :root claro: garantiza que estos tokens de
-     colorVar() sobrevivan la poda de Tailwind también en modo oscuro. */
-  --color-warning: #E0A82E;
-
   --color-primary: #8DBBFF;
   --color-primary-container: #2563EB;
   --color-primary-hover: #3B82F6;
@@ -127,21 +118,11 @@
   --color-error: #FF6B5E;
   --color-error-container: #4A1A15;
   --color-success: #34D399;
+  --color-warning: #E0A82E;
   --color-glass-border: #26365A;
 
-  --velar-canvas: #0B1220;
-  --velar-section: #0F1626;
-  --velar-surface: #111A2E;
-  --velar-surface-soft: #17223A;
-  --velar-text: #E6EDF9;
-  --velar-muted: #9FB2D0;
-  --velar-border: #26365A;
-  --velar-border-strong: #33456B;
-  --velar-success: #34D399;
-  --velar-warning: #E0A82E;
-  --velar-error: #FF6B5E;
+  --velar-section: var(--color-surface-container-low);
   --velar-glass: rgba(17, 26, 46, 0.78);
-  --velar-glass-strong: #111A2E;
 }
 
 /* ─── Branding por país ──────────────────────────────────────────────────────
@@ -186,6 +167,50 @@ body {
 .glass-panel {
   background: var(--velar-surface);
   border: 1px solid var(--velar-border);
+}
+
+.velar-hero-glass {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72)),
+    var(--color-surface-container-low);
+  box-shadow:
+    0 30px 80px -30px rgba(15, 23, 42, 0.25),
+    0 8px 30px -12px rgba(21, 94, 239, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.velar-strip-shadow {
+  box-shadow: 0 8px 30px -12px rgba(15, 23, 42, 0.10);
+}
+
+.velar-step-hover-shadow:hover {
+  box-shadow: 0 18px 40px -18px rgba(21, 94, 239, 0.25);
+}
+
+.velar-role-hover-shadow:hover {
+  box-shadow: 0 24px 60px -30px rgba(15, 23, 42, 0.25);
+}
+
+.velar-cta-shadow {
+  box-shadow: 0 18px 60px -30px rgba(15, 23, 42, 0.18);
+}
+
+.velar-auth-tab-active {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary);
+  box-shadow: 0 10px 22px rgba(31, 99, 255, 0.18);
+}
+
+.velar-hero-drop-shadow-compact {
+  filter: drop-shadow(0 20px 34px rgba(31, 99, 255, 0.18));
+}
+
+.velar-hero-drop-shadow {
+  filter: drop-shadow(0 28px 48px rgba(31, 99, 255, 0.16));
+}
+
+.velar-report-banner {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(255, 255, 255, 0.9));
 }
 
 .velar-auth-shell {

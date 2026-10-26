@@ -122,11 +122,7 @@ export default function LandingPage() {
               <div aria-hidden className="absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-primary-container/15 via-sky-200/20 to-transparent blur-2xl" />
 
               <div
-                className="relative isolate overflow-hidden rounded-3xl border border-slate-200/80 p-7 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.25),0_8px_30px_-12px_rgba(21,94,239,0.18),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-2xl backdrop-saturate-150"
-                style={{
-                  background:
-                    'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.72)), #F1F6FD',
-                }}
+                className="velar-hero-glass relative isolate overflow-hidden rounded-3xl border border-slate-200/80 p-7 backdrop-blur-2xl backdrop-saturate-150"
               >
                 {/* highlight superior interno (refracción glass) */}
                 <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
@@ -211,7 +207,7 @@ export default function LandingPage() {
 
         {/* STRIP de 4 cards flotantes bajo el hero */}
         <div className="mx-auto -mt-2 max-w-[1320px] px-6 pb-16 lg:px-10">
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.10)] backdrop-blur md:grid-cols-2 lg:grid-cols-4 lg:gap-2">
+          <div className="velar-strip-shadow grid grid-cols-1 gap-4 rounded-3xl border border-slate-200/80 bg-white/95 p-6 backdrop-blur md:grid-cols-2 lg:grid-cols-4 lg:gap-2">
             {QUICK_FEATURES.map(({ Icon, title, desc }) => (
               <div key={title} className="group flex items-start gap-4 rounded-2xl p-4 transition hover:bg-slate-50">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/[0.08] text-primary transition group-hover:bg-primary group-hover:text-white">
@@ -249,7 +245,7 @@ export default function LandingPage() {
             {STEPS.map((s, i) => (
               <Reveal key={s.n} delay={i * 0.07}>
                 <div className="relative lg:px-2">
-                  <div className="group relative h-full rounded-2xl border border-slate-200 bg-white p-6 transition hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_18px_40px_-18px_rgba(21,94,239,0.25)]">
+                  <div className="velar-step-hover-shadow group relative h-full rounded-2xl border border-slate-200 bg-white p-6 transition hover:-translate-y-1 hover:border-primary/30">
                     <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-white shadow-md shadow-primary/25">
                       {s.n}
                     </div>
@@ -326,7 +322,7 @@ export default function LandingPage() {
               },
             ].map((s, i) => (
               <Reveal key={s.role} delay={i * 0.08}>
-                <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-7 transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_24px_60px_-30px_rgba(15,23,42,0.25)]">
+                <div className="velar-role-hover-shadow group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-7 transition hover:-translate-y-1 hover:border-slate-300">
                   {/* gradient accent bar */}
                   <div aria-hidden className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${s.accent}`} />
 
@@ -358,7 +354,7 @@ export default function LandingPage() {
       {/* ─── 3. HISTORIAL AUDITABLE (dark, full-width, centrado) ─────────── */}
       <section id="historial" className="py-20">
         <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
-          <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-[#0a1530] p-8 text-slate-100 lg:p-12">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-institutional p-8 text-slate-100 lg:p-12">
             {/* glows decorativos */}
             <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary-container/30 blur-3xl" />
             <div aria-hidden className="pointer-events-none absolute -left-32 bottom-0 h-72 w-72 rounded-full bg-sky-500/20 blur-3xl" />
@@ -450,7 +446,7 @@ export default function LandingPage() {
       {/* ─── 4. CTA FINAL ────────────────────────────────────────────────── */}
       <section id="consulta" className="bg-gradient-to-b from-white to-slate-100 py-24">
         <div className="mx-auto max-w-[1320px] px-6 lg:px-10">
-          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-10 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.18)] lg:p-14">
+          <div className="velar-cta-shadow relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-10 lg:p-14">
             <div aria-hidden className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary-container/10 blur-3xl" />
             <div aria-hidden className="pointer-events-none absolute -bottom-32 right-1/3 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
 

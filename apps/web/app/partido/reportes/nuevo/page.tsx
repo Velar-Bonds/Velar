@@ -167,7 +167,7 @@ export default function NuevoReportePage() {
           </div>
         )}
 
-        <div className="glass-card rounded-3xl p-8" style={{ background: 'rgba(255,255,255,0.85)' }}>
+        <div className="glass-card rounded-3xl p-8">
           <div className="mb-6 flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"><StepIcon size={20} /></span>
             <h2 className="font-semibold" style={{ fontFamily: 'Geist' }}>{STEPS[step].label}</h2>

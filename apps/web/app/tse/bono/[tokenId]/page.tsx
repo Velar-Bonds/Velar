@@ -221,7 +221,7 @@ export default function BonoDetallePage() {
 
   return (
     <TSEShell me={me}>
-      <header className="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-surface-variant/40 bg-background/85 px-8 backdrop-blur-md">
         <Link href="/tse/registros" className="inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary">
            Volver a registros
         </Link>

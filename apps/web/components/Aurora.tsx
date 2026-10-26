@@ -5,6 +5,7 @@
 // Paleta por defecto alineada a la marca VELAR (azules sobre navy).
 import { useEffect, useRef } from 'react';
 import { Renderer, Program, Mesh, Triangle, Color } from 'ogl';
+import { auroraDefaultColorStops } from './ui/tokens';
 
 const VERT = `
 attribute vec2 position;
@@ -103,7 +104,7 @@ interface AuroraProps {
 
 export default function Aurora({
   // Azul marca (band alta) · cian aurora (band media) · navy profundo (base).
-  colorStops = ['#1f63ff', '#38bdf8', '#020617'],
+  colorStops = [...auroraDefaultColorStops],
   amplitude = 1.2,
   blend = 0.6,
   speed = 0.8,

@@ -8,7 +8,27 @@
  */
 export const sharedIgnores = ['**/dist/**', '**/node_modules/**', '**/.next/**'];
 
+const HARDCODED_COLOR_REGEX = String.raw`/(?:#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b|\b(?:rgba?|hsla?)\s*[(])/`;
+
+const ALLOWED_TOKEN_DECLARATOR =
+  'VariableDeclarator[id.name=/^(colors|shadow|THEMES|oauthBrandColors|auroraDefaultColorStops)$/]';
+const ALLOWED_TEST_CALL =
+  'CallExpression[callee.property.name=/^(toBe|toEqual|toMatch|toContain)$/]';
+
 export const sharedRules = {
   '@typescript-eslint/no-explicit-any': 'warn',
   '@typescript-eslint/no-unused-vars': 'warn',
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector: `Literal[value=${HARDCODED_COLOR_REGEX}]:not(${ALLOWED_TOKEN_DECLARATOR} Literal, ${ALLOWED_TEST_CALL} Literal)`,
+      message:
+        'Hardcoded hex/rgb/hsl color literals are forbidden outside design token definitions (apps/web/app/globals.css and @velar/ui/tokens). Use semantic Tailwind classes, CSS variables, or tokens.',
+    },
+    {
+      selector: `TemplateElement[value.raw=${HARDCODED_COLOR_REGEX}]:not(${ALLOWED_TOKEN_DECLARATOR} TemplateElement, ${ALLOWED_TEST_CALL} TemplateElement)`,
+      message:
+        'Hardcoded hex/rgb/hsl color literals are forbidden outside design token definitions (apps/web/app/globals.css and @velar/ui/tokens). Use semantic Tailwind classes, CSS variables, or tokens.',
+    },
+  ],
 };

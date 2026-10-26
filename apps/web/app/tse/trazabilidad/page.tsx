@@ -75,7 +75,7 @@ function TrazabilidadContent({ token, me }: { token: string; me: any }) {
 
   return (
     <TSEShell me={me}>
-      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-surface-variant/40 bg-background/85 px-8 backdrop-blur-md">
         <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>Trazabilidad completa</h1>
       </header>
 

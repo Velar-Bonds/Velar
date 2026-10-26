@@ -85,8 +85,7 @@ export default function PartidoReportesPage() {
         {/* Reporte mensual estructurado (ciclo de vida completo) */}
         <button
           onClick={() => router.push('/partido/reportes/nuevo')}
-          className="glass-card mb-8 flex w-full items-center justify-between rounded-3xl p-6 text-left transition hover:shadow-lg"
-          style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(255,255,255,0.9))' }}
+          className="glass-card velar-report-banner mb-8 flex w-full items-center justify-between rounded-3xl p-6 text-left transition hover:shadow-lg"
         >
           <div className="flex items-center gap-4">
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ClipboardList size={24} /></span>
@@ -101,7 +100,7 @@ export default function PartidoReportesPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           {/* Formulario */}
           <div className="lg:col-span-3">
-            <div className="glass-card rounded-3xl p-8" style={{ background: 'rgba(255,255,255,0.85)' }}>
+            <div className="glass-card rounded-3xl p-8">
               <div className="mb-6 flex items-center gap-3">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"><Send size={20} /></span>
                 <div>

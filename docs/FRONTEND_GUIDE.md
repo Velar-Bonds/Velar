@@ -393,11 +393,16 @@ Sin esa línea, las clases que **solo** usan las primitivas del paquete se purga
 componentes quedan sin estilos — el build pasa igual, así que el fallo es silencioso.
 Apunta al *source*, nunca a `dist/`.
 
-### Tokens (fuente de verdad)
-- Los valores viven en `apps/web/app/globals.css` (`@theme` + `:root`) como variables CSS.
-  **No se duplican en el paquete**: `@velar/ui` los consume vía `var()`.
-- Espejo tipado en `packages/ui/src/tokens.ts` para consumir desde TS/JS (charts, estilos inline).
+### Tokens (fuente de verdad — issue #73)
+- Los valores viven en `apps/web/app/globals.css` dentro de un único bloque `@theme static`
+  (que emite todas las variables `--color-*` en `:root` sin necesidad de duplicarlas en un
+  bloque `:root` separado, incluso cuando se consumen vía `var()` desde JS).
+- Espejo tipado en `packages/ui/src/tokens.ts` y re-exportado en `apps/web/components/ui/tokens.ts`
+  para consumir desde TS/JS (charts, WebGL/Aurora, SVG, estilos inline).
 - **Para colores en runtime usá `colorVar('primary')`, no el hex literal** — así respeta el tema.
+- **Guardia de lint**: `@velar/config/eslint/rules` aplica `no-restricted-syntax` como `'error'`
+  contra cualquier literal `#rgb`/`#rrggbb` o `rgb()`/`rgba()`/`hsl()`/`hsla()` fuera de
+  `apps/web/app/globals.css` y las definiciones de tokens (`tokens.ts`).
 
 ### Theming (claro/oscuro + país)
 - `ThemeProvider` (ya montado en `AppProviders`) refleja `data-theme` y `data-country` en `<html>`.

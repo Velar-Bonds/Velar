@@ -68,7 +68,7 @@ export function ProvenanceDialog({
             <X size={18} aria-hidden="true" />
           </button>
         </div>
-        <div className="rounded-3xl bg-[#fafcff] p-5 shadow-xl md:p-6">
+        <div className="rounded-3xl bg-background p-5 shadow-xl md:p-6">
           <ProvenanceExplorer
             subjectId={subjectId}
             mode={mode}

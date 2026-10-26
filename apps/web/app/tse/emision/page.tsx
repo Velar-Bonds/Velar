@@ -104,7 +104,7 @@ export default function EmisionPage() {
 
   return (
     <TSEShell me={me}>
-      <header className="sticky top-0 z-30 flex h-20 items-center border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-20 items-center border-b border-surface-variant/40 bg-background/85 px-8 backdrop-blur-md">
         <h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>Emisión directa de bono</h1>
       </header>
 
@@ -121,7 +121,7 @@ export default function EmisionPage() {
           </div>
         )}
 
-        <form noValidate onSubmit={submit} className="glass-card flex flex-col gap-5 rounded-2xl p-7" style={{ background: 'rgba(255,255,255,0.85)' }}>
+        <form noValidate onSubmit={submit} className="glass-card flex flex-col gap-5 rounded-2xl p-7">
           <div>
             <label className="field-label">Partido emisor <span className="text-red-500">*</span></label>
             <select value={form.party_id} onChange={set('party_id')} required className="field-input bg-white" {...schemaFieldProps(fieldErrors, 'issuerPartyId')}>

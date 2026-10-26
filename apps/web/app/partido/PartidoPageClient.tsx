@@ -86,7 +86,7 @@ export default function PartidoPageClient() {
         {/* Métricas */}
         <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {metrics.map(({ label, value, Icon, color }, i) => (
-            <div key={label} className={`glass-card rounded-2xl p-6 ${i === 3 ? 'border-t-[1.5px] border-t-primary-container' : ''}`} style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)' }}>
+            <div key={label} className={`glass-card rounded-2xl p-6 ${i === 3 ? 'border-t-[1.5px] border-t-primary-container' : ''}`} style={{ background: 'var(--velar-glass)', backdropFilter: 'blur(8px)' }}>
               <p className="text-[10px] font-medium uppercase tracking-wider text-on-surface-variant">{label}</p>
               <div className="mt-1 flex items-center gap-2">
                 <Icon className={`h-6 w-6 ${color}`} strokeWidth={2.1} />
@@ -99,7 +99,7 @@ export default function PartidoPageClient() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
             {/* Solicitudes de compra */}
-            <div className="glass-card flex flex-col gap-6 rounded-3xl p-6" style={{ background: 'rgba(255,255,255,0.7)' }}>
+            <div className="glass-card flex flex-col gap-6 rounded-3xl p-6" style={{ background: 'var(--velar-glass)' }}>
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold" style={{ fontFamily: 'Geist' }}>Solicitudes de compra</h3>
                 <Link href="/partido/negociaciones" className="text-xs font-medium text-primary hover:underline">Ver todas</Link>
@@ -129,7 +129,7 @@ export default function PartidoPageClient() {
             </div>
 
             {/* Mis bonos */}
-            <div className="glass-card flex flex-col gap-4 rounded-3xl p-6" style={{ background: 'rgba(255,255,255,0.7)' }}>
+            <div className="glass-card flex flex-col gap-4 rounded-3xl p-6" style={{ background: 'var(--velar-glass)' }}>
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold" style={{ fontFamily: 'Geist' }}>Mis bonos</h3>
                 <Link href="/partido/mis-bonos" className="text-xs font-medium text-primary hover:underline">Ver todos</Link>
@@ -156,7 +156,7 @@ export default function PartidoPageClient() {
           </div>
 
           {/* Actividad reciente */}
-          <div className="glass-card flex flex-col gap-4 rounded-3xl p-6" style={{ background: 'rgba(255,255,255,0.7)' }}>
+          <div className="glass-card flex flex-col gap-4 rounded-3xl p-6" style={{ background: 'var(--velar-glass)' }}>
             <h3 className="text-xl font-semibold" style={{ fontFamily: 'Geist' }}>Actividad reciente</h3>
             <div className="relative flex flex-col">
               <div className="absolute bottom-4 left-[19px] top-4 -z-10 w-0.5 bg-outline-variant/30" />

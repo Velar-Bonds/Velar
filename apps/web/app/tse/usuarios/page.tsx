@@ -129,7 +129,7 @@ export default function UsuariosPage() {
 
   return (
     <TSEShell me={me}>
-      <header className="sticky top-0 z-30 border-b border-surface-variant/40 bg-[#FAFCFF]/85 px-8 py-5 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-surface-variant/40 bg-background/85 px-8 py-5 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Users size={20} /></span>
           <div><h1 className="text-2xl font-bold" style={{ fontFamily: 'Geist' }}>Administración de usuarios</h1><p className="text-sm text-on-surface-variant">Directorio, roles y trazabilidad de cambios.</p></div>

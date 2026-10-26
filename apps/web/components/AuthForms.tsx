@@ -114,7 +114,7 @@ export function LoginForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
           <button
             type="button"
             onClick={() => setState({ showPass: !showPass })}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9fb2d4] transition hover:text-[#cfe0ff]"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-primary-fixed-dim transition hover:text-primary-fixed"
             aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
           >
             {showPass ? (
@@ -126,16 +126,16 @@ export function LoginForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
         </AuthField>
 
         <div className="flex items-center justify-between gap-3 pt-1 text-[13px] sm:text-sm">
-          <label className="flex items-center gap-2 text-[#667698]">
+          <label className="flex items-center gap-2 text-on-surface-variant">
             <input
               type="checkbox"
               checked={remember}
               onChange={(e) => setState({ remember: e.target.checked })}
-              className="h-4 w-4 rounded border-[#b7c8eb] accent-[#1f63ff] sm:h-5 sm:w-5"
+              className="h-4 w-4 rounded border-outline accent-primary-container sm:h-5 sm:w-5"
             />
             Recordarme
           </label>
-          <button type="button" className="shrink-0 text-right font-medium text-[#1f63ff] hover:underline">
+          <button type="button" className="shrink-0 text-right font-medium text-primary-container hover:underline">
             ¿Olvidaste tu contraseña?
           </button>
         </div>
@@ -154,12 +154,12 @@ export function LoginForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
       <AuthDivider text="o continua con" />
       <SocialButtons />
 
-      <p className="mt-5 text-center text-sm text-[#667698] sm:hidden">
+      <p className="mt-5 text-center text-sm text-on-surface-variant sm:hidden">
         No tienes cuenta?{' '}
         <button
           type="button"
           onClick={onSwitchToSignUp}
-          className="font-semibold text-[#1f63ff] hover:underline"
+          className="font-semibold text-primary-container hover:underline"
         >
           Crear cuenta
         </button>
@@ -258,8 +258,8 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
       onClick={() => setState({ perspectiva: value, fieldErrors: {} })}
       className={`flex-1 rounded-[12px] py-2.5 text-sm font-semibold transition sm:py-3 ${
         perspectiva === value
-          ? 'bg-[#1f63ff] text-white shadow-[0_10px_22px_rgba(31,99,255,0.18)]'
-          : 'text-[#667698] hover:bg-[#f4f8ff]'
+          ? 'velar-auth-tab-active'
+          : 'text-on-surface-variant hover:bg-primary-fixed'
       }`}
     >
       {label}
@@ -268,7 +268,7 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
 
   return (
     <div className="mx-auto w-full max-w-[560px]">
-      <div className="mt-5 flex gap-1 rounded-[10px] border border-[#d8e2f5] bg-white p-1">
+      <div className="mt-5 flex gap-1 rounded-[10px] border border-outline-variant bg-white p-1">
         {tab('usuario', 'Usuario')}
         {tab('partido', 'Partido')}
       </div>
@@ -340,7 +340,7 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
           <button
             type="button"
             onClick={() => setState({ showPass: !showPass })}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9fb2d4] transition hover:text-[#cfe0ff]"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-primary-fixed-dim transition hover:text-primary-fixed"
             aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
           >
             {showPass ? (
@@ -363,12 +363,12 @@ export function SignUpForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-[#667698] sm:mt-6">
+      <p className="mt-5 text-center text-sm text-on-surface-variant sm:mt-6">
         Ya tienes cuenta?{' '}
         <button
           type="button"
           onClick={onSwitchToLogin}
-          className="font-semibold text-[#1f63ff] hover:underline"
+          className="font-semibold text-primary-container hover:underline"
         >
           Iniciar sesion
         </button>
