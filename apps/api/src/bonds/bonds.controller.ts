@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { BondsService } from './bonds.service';
 import { ContractsService } from '../contracts/contracts.service';
@@ -30,11 +30,17 @@ export class BondsController {
   @Post()
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Roles('tse', 'admin')
+  @ApiResponse({ status: 201, description: 'Bono registrado exitosamente.' })
+  @ApiResponse({ status: 400, description: 'Datos del bono invalidos.' })
+  @ApiResponse({ status: 401, description: 'Token Bearer ausente o invalido.' })
+  @ApiResponse({ status: 403, description: 'Requiere rol tse o admin.' })
   register(@Body() body: CreateBondDto, @CurrentUser() user: any) {
     return this.bonds.register(body, user.id, user.profile?.role as Role);
   }
 
   @Get()
+  @ApiResponse({ status: 200, description: 'Listado paginado de bonos.' })
+  @ApiResponse({ status: 401, description: 'Token Bearer ausente o invalido.' })
   findAll(
     @Query('page') page: string | undefined,
     @Query('limit') limit: string | undefined,

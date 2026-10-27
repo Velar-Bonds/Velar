@@ -1,6 +1,6 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from './public.decorator';
 import { AuthGuard } from './auth.guard';
 import { CurrentUser } from './current-user.decorator';
@@ -22,12 +22,17 @@ export class AuthController {
   /** Registro público: perspectiva 'usuario' o 'partido' (TSE/admin se siembran). */
   @Post('register')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiResponse({ status: 201, description: 'Cuenta registrada exitosamente.' })
+  @ApiResponse({ status: 400, description: 'Datos de registro invalidos.' })
   register(@Body() body: RegisterDto) {
     return this.auth.register(body);
   }
 
   @Post('login')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiResponse({ status: 200, description: 'Sesion iniciada y token emitido.' })
+  @ApiResponse({ status: 400, description: 'Credenciales invalidas.' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
   login(@Body() body: LoginDto) {
     return this.auth.login(body);
   }

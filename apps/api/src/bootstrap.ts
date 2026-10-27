@@ -40,17 +40,19 @@ export async function createNestExpressApp(): Promise<Express> {
   app.useGlobalFilters(new ContractExceptionFilter());
   app.setGlobalPrefix('api');
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('VELAR API')
-    .setDescription(
-      'API de VELAR: tokenizacion y trazabilidad de bonos politicos sobre Stellar. ' +
-        'La mayoria de endpoints requieren un Bearer token (JWT de Supabase).',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  if (process.env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('VELAR API')
+      .setDescription(
+        'API de VELAR: tokenizacion y trazabilidad de bonos politicos sobre Stellar. ' +
+          'La mayoria de endpoints requieren un Bearer token (JWT de Supabase).',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   await app.init();
   cachedApp = server;

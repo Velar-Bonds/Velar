@@ -1,0 +1,232 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "VELAR API",
+    "description": "API de VELAR: tokenizacion y trazabilidad de bonos politicos sobre Stellar. La mayoria de endpoints requieren un Bearer token (JWT de Supabase).",
+    "version": "1.0"
+  },
+  "tags": [
+    { "name": "auth" },
+    { "name": "bonds" },
+    { "name": "transfers" },
+    { "name": "audit" },
+    { "name": "users" },
+    { "name": "parties" },
+    { "name": "reports" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "required": ["email", "password", "perspectiva"],
+        "properties": {
+          "email": { "type": "string", "example": "nuevo@velar.cr" },
+          "password": { "type": "string", "minLength": 8, "example": "Velar12345!" },
+          "perspectiva": { "type": "string", "enum": ["usuario", "partido"] },
+          "nombres": { "type": "string" },
+          "apellidos": { "type": "string" },
+          "identificacion": { "type": "string" },
+          "telefono": { "type": "string" },
+          "direccion": { "type": "string" },
+          "nombrePartido": { "type": "string", "description": "Requerido si perspectiva = partido" },
+          "codigo": { "type": "string", "description": "Requerido si perspectiva = partido" },
+          "representanteLegal": { "type": "string" },
+          "country": { "type": "string", "example": "CR" }
+        }
+      },
+      "LoginDto": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "example": "comprador@velar.cr" },
+          "password": { "type": "string", "example": "Velar12345!" }
+        }
+      },
+      "CreateBondDto": {
+        "type": "object",
+        "required": ["bondId", "issuerPartyId", "documentHash"],
+        "properties": {
+          "bondId": { "type": "string", "example": "BOND-007" },
+          "issuerPartyId": { "type": "string", "description": "UUID del partido emisor" },
+          "documentHash": { "type": "string", "description": "Hash del documento del bono" },
+          "metadataUri": { "type": "string" },
+          "faceValue": { "type": "number", "example": 1000000 },
+          "initialOwner": { "type": "string", "description": "UUID del dueño inicial" },
+          "certificateNumber": { "type": "string" },
+          "currency": { "type": "string", "example": "CRC" },
+          "interestRate": { "type": "number", "example": 8.5 },
+          "series": { "type": "string" },
+          "issueDate": { "type": "string", "example": "2026-01-15" },
+          "maturityDate": { "type": "string", "example": "2027-01-15" }
+        }
+      },
+      "CreateBondRequestDto": {
+        "type": "object",
+        "required": ["faceValue"],
+        "properties": {
+          "faceValue": { "type": "number", "example": 1000000 },
+          "currency": { "type": "string", "example": "CRC" },
+          "interestRate": { "type": "number", "example": 8.5 },
+          "series": { "type": "string" },
+          "issueDate": { "type": "string" },
+          "maturityDate": { "type": "string" },
+          "certificateNumber": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Cuenta registrada exitosamente." },
+          "400": { "description": "Datos de registro invalidos." }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Sesion iniciada y token emitido." },
+          "400": { "description": "Credenciales invalidas." },
+          "401": { "description": "No autorizado." }
+        }
+      }
+    },
+    "/api/bonds": {
+      "post": {
+        "tags": ["bonds"],
+        "security": [{ "bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateBondDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Bono registrado exitosamente." },
+          "400": { "description": "Datos del bono invalidos." },
+          "401": { "description": "Token Bearer ausente o invalido." },
+          "403": { "description": "Requiere rol tse o admin." }
+        }
+      },
+      "get": {
+        "tags": ["bonds"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "200": { "description": "Listado paginado de bonos." },
+          "401": { "description": "Token Bearer ausente o invalido." }
+        }
+      }
+    },
+    "/api/bonds/requests": {
+      "post": {
+        "tags": ["bonds"],
+        "security": [{ "bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateBondRequestDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Solicitud de bono creada." },
+          "400": { "description": "Datos invalidos." },
+          "401": { "description": "Token Bearer ausente o invalido." }
+        }
+      },
+      "get": {
+        "tags": ["bonds"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "200": { "description": "Listado de solicitudes de bonos." }
+        }
+      }
+    },
+    "/api/transfers": {
+      "get": {
+        "tags": ["transfers"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "200": { "description": "Listado de transferencias." }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "tags": ["audit"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "200": { "description": "Bitacora de auditoria." }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": ["users"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "200": { "description": "Listado de usuarios." }
+        }
+      }
+    },
+    "/api/parties": {
+      "get": {
+        "tags": ["parties"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "200": { "description": "Listado de partidos politicos." }
+        }
+      }
+    },
+    "/api/reports": {
+      "post": {
+        "tags": ["reports"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "201": { "description": "Reporte creado y enviado al TSE." },
+          "400": { "description": "Datos de entrada invalidos." },
+          "401": { "description": "Token Bearer ausente o invalido." }
+        }
+      },
+      "get": {
+        "tags": ["reports"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "200": { "description": "Listado de reportes visibles para el usuario." },
+          "401": { "description": "Token Bearer ausente o invalido." }
+        }
+      }
+    }
+  }
+}
