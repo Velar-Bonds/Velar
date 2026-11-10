@@ -2,6 +2,8 @@
 
 # VELAR
 
+TALLER GRANTFOX
+
 **Infraestructura blockchain para el traspaso digital de propiedad de bonos de partidos políticos.**
 
 > Trazabilidad, custodia y auditoría en tiempo real sobre Stellar — para el TSE, partidos y ciudadanos.
