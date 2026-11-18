@@ -5,9 +5,9 @@
   "type": "module",
   "description": "Second consumer of @velar/ui \u2014 proves the package is reusable outside apps/web (issue #76).",
   "scripts": {
-    "dev": "node init && vite",
+    "dev": "vite",
     "prebuild": "npm run build --workspace @velar/ui",
-    "build": "node init && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src",
     "pretypecheck": "npm run build --workspace @velar/ui",
