@@ -16,7 +16,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "node init && tsc",
+    "build": "tsc",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit"
   },
