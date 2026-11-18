@@ -8,7 +8,7 @@
     "zod": "^4.4.3"
   },
   "scripts": {
-    "build": "node init && tsc",
+    "build": "tsc",
     "typecheck": "tsc --noEmit"
   }
 }
