@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, INestApplication } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import * as request from 'supertest';
+import { AuthGuard } from '../auth/auth.guard';
+import { ContractExceptionFilter } from '../common/contracts/contract-exception.filter';
+import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { WalletService } from '../escrow/wallet.service';
@@ -17,19 +22,27 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
 
 describe('HealthService', () => {
   let service: HealthService;
+  let module: TestingModule;
   let selectMock: jest.Mock;
   let walletService: { platformAddress?: string; escrowAddress?: string };
 
   beforeEach(async () => {
     selectMock = jest.fn().mockResolvedValue({ error: null });
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      abortSignal: selectMock,
+    };
     walletService = { platformAddress: PLATFORM_ADDRESS, escrowAddress: ESCROW_ADDRESS };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
+      controllers: [HealthController],
       providers: [
         HealthService,
+        { provide: APP_GUARD, useClass: AuthGuard },
         {
           provide: SupabaseService,
-          useValue: { admin: { from: jest.fn(() => ({ select: selectMock })) } },
+          useValue: { admin: { from: jest.fn(() => query) } },
         },
         { provide: WalletService, useValue: walletService },
       ],
@@ -40,11 +53,12 @@ describe('HealthService', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
   /** Simula: Horizon ok, Soroban RPC ok, wallets con balance saludable. */
   function mockHealthyFetch() {
-    jest.spyOn(globalThis, 'fetch').mockImplementation(async (input: unknown) => {
+    return jest.spyOn(globalThis, 'fetch').mockImplementation(async (input: unknown) => {
       const url = String(input);
       if (url.includes('soroban')) {
         return jsonResponse({ result: { status: 'healthy' } });
@@ -124,10 +138,39 @@ describe('HealthService', () => {
       } catch (e) {
         expect((e as HttpException).getStatus()).toBe(HttpStatus.SERVICE_UNAVAILABLE);
         const body = (e as HttpException).getResponse() as { status: string; supabase: string };
-        expect(body.status).toBe('down');
+        expect(body.status).toBe('degraded');
         expect(body.supabase).toBe('down');
       }
     });
+
+    it.each(['up', 'down'])('informa Horizon caído con Supabase %s', async (supabase) => {
+      if (supabase === 'down') selectMock.mockResolvedValue({ error: new Error('db down') });
+      mockHealthyFetch().mockResolvedValueOnce(jsonResponse({}, false, 503));
+
+      await expect(service.check()).rejects.toMatchObject({
+        status: HttpStatus.SERVICE_UNAVAILABLE,
+        response: { status: 'degraded', supabase, stellar: 'down' },
+      });
+    });
+
+    it('agota el timeout en paralelo e incluye la lectura del cuerpo de Soroban', async () => {
+      jest.useFakeTimers();
+      selectMock.mockReturnValue(new Promise(() => {}));
+      const stalledBody = { ...jsonResponse({}), json: () => new Promise(() => {}) } as Response;
+      const fetchMock = mockHealthyFetch()
+        .mockResolvedValueOnce(jsonResponse({}))
+        .mockResolvedValueOnce(stalledBody);
+
+      const result = expect(service.check()).rejects.toMatchObject({
+        status: HttpStatus.SERVICE_UNAVAILABLE,
+        response: { status: 'degraded', supabase: 'down', stellar: 'up', soroban: 'down' },
+      });
+      await jest.advanceTimersByTimeAsync(3000);
+      await result;
+      expect(selectMock.mock.calls[0][0]).toHaveProperty('aborted', true);
+      expect(fetchMock.mock.calls[1][1]?.signal?.aborted).toBe(true);
+      expect(jest.getTimerCount()).toBe(0);
+    }, 1000);
 
     it('lanza 503 cuando el RPC de Soroban está caído, aunque Horizon esté sano', async () => {
       jest.spyOn(globalThis, 'fetch').mockImplementation(async (input: unknown) => {
@@ -172,6 +215,34 @@ describe('HealthService', () => {
 
       // Horizon, Soroban y las dos wallets se piden todos antes de resolver: 4 llamadas fetch.
       expect(started.length).toBe(4);
+    });
+  });
+
+  describe('GET /api/health', () => {
+    let app: INestApplication;
+
+    beforeEach(async () => {
+      app = module.createNestApplication();
+      app.setGlobalPrefix('api');
+      app.useGlobalFilters(new ContractExceptionFilter());
+      await app.init();
+    });
+
+    afterEach(async () => {
+      await app.close();
+    });
+
+    it('responde sin credenciales y conserva los detalles ante un fallo crítico', async () => {
+      mockHealthyFetch();
+      const client = request(app.getHttpServer());
+      await client.get('/api/health').expect(200).expect(({ body }) => {
+        expect(body).toMatchObject({ status: 'ok', supabase: 'up', stellar: 'up' });
+      });
+
+      selectMock.mockResolvedValue({ error: new Error('db down') });
+      await client.get('/api/health').expect(503).expect(({ body }) => {
+        expect(body).toMatchObject({ status: 'degraded', supabase: 'down', stellar: 'up' });
+      });
     });
   });
 });
