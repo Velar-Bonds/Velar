@@ -57,7 +57,7 @@ export class HealthService {
       escrowWallet.status === 'down';
     const anyDegraded = platformWallet.status === 'degraded' || escrowWallet.status === 'degraded';
 
-    const status = criticalDown ? 'down' : anyDegraded ? 'degraded' : 'ok';
+    const status = criticalDown || anyDegraded ? 'degraded' : 'ok';
 
     const body = {
       status,
@@ -69,7 +69,7 @@ export class HealthService {
       ...this.buildInfo(),
     };
 
-    if (status === 'down') {
+    if (criticalDown) {
       throw new HttpException(body, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
@@ -95,10 +95,9 @@ export class HealthService {
 
   private async checkSupabase(): Promise<UpDown> {
     try {
-      const { error } = (await Promise.race([
-        this.supabase.admin.from('bonds').select('*', { count: 'exact', head: true }),
-        this.timeout(),
-      ])) as { error: unknown };
+      const { error } = await this.withTimeout((signal) =>
+        this.supabase.admin.from('bonds').select('*', { head: true }).limit(1).abortSignal(signal),
+      );
       return error ? 'down' : 'up';
     } catch {
       return 'down';
@@ -107,7 +106,7 @@ export class HealthService {
 
   private async checkStellar(): Promise<UpDown> {
     try {
-      const res = (await Promise.race([fetch(`${HORIZON_URL}/`), this.timeout()])) as Response;
+      const res = await this.withTimeout((signal) => fetch(`${HORIZON_URL}/`, { signal }));
       return res.ok ? 'up' : 'down';
     } catch {
       return 'down';
@@ -117,17 +116,17 @@ export class HealthService {
   /** Chequea el RPC de Soroban (contratos), distinto del Horizon clásico. */
   private async checkSoroban(): Promise<UpDown> {
     try {
-      const res = (await Promise.race([
-        fetch(SOROBAN_RPC_URL, {
+      return await this.withTimeout(async (signal) => {
+        const res = await fetch(SOROBAN_RPC_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getHealth' }),
-        }),
-        this.timeout(),
-      ])) as Response;
-      if (!res.ok) return 'down';
-      const json = (await res.json()) as { result?: { status?: string } };
-      return json?.result?.status === 'healthy' ? 'up' : 'down';
+          signal,
+        });
+        if (!res.ok) return 'down';
+        const json = (await res.json()) as { result?: { status?: string } };
+        return json?.result?.status === 'healthy' ? 'up' : 'down';
+      });
     } catch {
       return 'down';
     }
@@ -146,26 +145,37 @@ export class HealthService {
       return { status: 'unconfigured', label };
     }
     try {
-      const res = (await Promise.race([
-        fetch(`${HORIZON_URL}/accounts/${address}`),
-        this.timeout(),
-      ])) as Response;
-      if (!res.ok) {
-        return { status: 'down', label, address, error: `horizon ${res.status}` };
-      }
-      const account = (await res.json()) as {
-        balances?: { asset_type?: string; balance?: string }[];
-      };
-      const native = account.balances?.find((b) => b.asset_type === 'native');
-      const balanceXlm = native ? parseFloat(native.balance ?? '0') : 0;
-      const status: WalletCheckStatus = balanceXlm < this.minBalanceXlm ? 'degraded' : 'ok';
-      return { status, label, address, balanceXlm, minBalanceXlm: this.minBalanceXlm };
+      return await this.withTimeout(async (signal) => {
+        const res = await fetch(`${HORIZON_URL}/accounts/${address}`, { signal });
+        if (!res.ok) {
+          return { status: 'down', label, address, error: `horizon ${res.status}` };
+        }
+        const account = (await res.json()) as {
+          balances?: { asset_type?: string; balance?: string }[];
+        };
+        const native = account.balances?.find((b) => b.asset_type === 'native');
+        const balanceXlm = native ? parseFloat(native.balance ?? '0') : 0;
+        const status: WalletCheckStatus = balanceXlm < this.minBalanceXlm ? 'degraded' : 'ok';
+        return { status, label, address, balanceXlm, minBalanceXlm: this.minBalanceXlm };
+      });
     } catch (e) {
       return { status: 'down', label, address, error: (e as Error).message };
     }
   }
 
-  private timeout(): Promise<never> {
-    return new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS));
+  private async withTimeout<T>(check: (signal: AbortSignal) => PromiseLike<T>): Promise<T> {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error('timeout'));
+        controller.abort();
+      }, TIMEOUT_MS);
+    });
+    try {
+      return await Promise.race([check(controller.signal), timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }

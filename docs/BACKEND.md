@@ -754,8 +754,8 @@ Respuesta cuando todo está sano:
 - `status: "ok"` → HTTP 200.
 - `status: "degraded"` → HTTP 200 (algo pide atención — ej. wallet con balance bajo — pero
   ninguna dependencia crítica está caída).
-- `status: "down"` → HTTP 503 (`HttpException`, igual que antes). Se dispara si Supabase, Horizon,
-  Soroban RPC, o una wallet **configurada** están caídos. `unconfigured` nunca dispara `down`.
+- `status: "degraded"` → HTTP 503 si Supabase, Horizon, Soroban RPC o una wallet **configurada**
+  están caídos. El campo de la dependencia afectada indica `down`. `unconfigured` no dispara 503.
 
 **Build/version info:** `version` sale de `npm_package_version` (lo inyecta `npm` en runtime);
 `commit` de `GIT_COMMIT_SHA` / `VERCEL_GIT_COMMIT_SHA` / `RENDER_GIT_COMMIT` (el que exista según
